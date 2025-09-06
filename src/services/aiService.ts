@@ -4,62 +4,116 @@ import { geminiRecommendationsApi } from '../lib/gemini-recommendations';
 import { omdbApi } from '../lib/omdb';
 
 export class AIService {
-  async getRecommendations(userId: string, limit: number = 10) {
+  async getRecommendations(query: string, userId?: string): Promise<{ response: string; movies: any[] }> {
     try {
-      // Fetch user's watchlist data from movies table
-      const { data: watchlistData, error: watchlistError } = await supabase
-        .from('movies')
-        .select('*')
-        .eq('user_id', userId)
-        .limit(50); // Get recent watchlist items for context
+      let watchlistData: any[] = [];
+      
+      // Only fetch watchlist data if user is authenticated
+      if (userId) {
+        const { data, error: watchlistError } = await supabase
+          .from('movies')
+          .select('*')
+          .eq('user_id', userId)
+          .limit(50);
 
-      if (watchlistError) {
-        throw new Error(`Failed to fetch watchlist: ${watchlistError.message}`);
-      }
-
-      if (!watchlistData || watchlistData.length === 0) {
-        return [];
-      }
-
-      // Extract movie titles and genres for recommendation context
-      const watchedMovies = watchlistData.map(movie => ({
-        title: movie.title || '',
-        genre: movie.genre || '',
-        year: movie.year || '',
-        rating: movie.rating || 0
-      }));
-
-      let recommendedTitles: string[] = [];
-
-      // Try Claude first, then fallback to Gemini
-      try {
-        recommendedTitles = await claudeRecommendationsApi.getRecommendations(watchedMovies, limit);
-      } catch (claudeError) {
-        console.warn('Claude recommendations failed, trying Gemini:', claudeError);
-        try {
-          recommendedTitles = await geminiRecommendationsApi.getRecommendations(watchedMovies, limit);
-        } catch (geminiError) {
-          console.error('Both AI services failed:', geminiError);
-          throw new Error('AI recommendation services are currently unavailable');
+        if (watchlistError) {
+          console.warn('Failed to fetch watchlist:', watchlistError.message);
+        } else {
+          watchlistData = data || [];
         }
       }
 
-      // Fetch detailed movie information from OMDb
-      const detailedRecommendations = await Promise.allSettled(
-        recommendedTitles.map(async (title) => {
-          const searchResults = await omdbApi.searchMovies(title);
-          return searchResults.length > 0 ? searchResults[0] : null;
-        })
-      );
+      // Prepare watchlist data for AI services
+      const userWatchlistData = {
+        movies: watchlistData.filter(item => item.type === 'movie').map(movie => ({
+          title: movie.title || '',
+          user_rating: movie.user_rating || 0,
+          status: movie.status || 'watched',
+          date_watched: movie.date_watched,
+          imdb_id: movie.imdb_id
+        })),
+        tv_series: watchlistData.filter(item => item.type === 'series').map(series => ({
+          title: series.title || '',
+          user_rating: series.user_rating || 0,
+          status: series.status || 'watched',
+          date_watched: series.date_watched,
+          imdb_id: series.imdb_id
+        }))
+      };
 
-      // Filter out failed requests and null results
-      const validRecommendations = detailedRecommendations
-        .filter((result): result is PromiseFulfilledResult<any> => 
-          result.status === 'fulfilled' && result.value !== null
-        )
-        .map(result => result.value);
+      let aiResponse = '';
+      let recommendedMovies: any[] = [];
 
-      return validRecommendations;
+      // Try Claude first, then fallback to Gemini
+      try {
+        const claudeResult = await claudeRecommendationsApi.getRecommendations(userWatchlistData);
+        aiResponse = `Based on your query "${query}", here are some recommendations:`;
+        
+        // Get movie details from OMDb for Claude recommendations
+        const moviePromises = claudeResult.movies.slice(0, 5).map(async (rec) => {
+          try {
+            const searchResults = await omdbApi.searchMovies(rec.title);
+            if (searchResults.Search && searchResults.Search.length > 0) {
+              return await omdbApi.getMovieDetails(searchResults.Search[0].imdbID);
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch details for ${rec.title}:`, error);
+          }
+          return null;
+        });
+        
+        const movieDetails = await Promise.all(moviePromises);
+        recommendedMovies = movieDetails.filter(movie => movie !== null);
+      } catch (claudeError) {
+        console.warn('Claude recommendations failed, trying Gemini:', claudeError);
+        try {
+          const geminiResult = await geminiRecommendationsApi.getRecommendations(userWatchlistData);
+          aiResponse = `Based on your query "${query}", here are some recommendations:`;
+          
+          // Get movie details from OMDb for Gemini recommendations
+          const moviePromises = geminiResult.movies.slice(0, 5).map(async (rec) => {
+            try {
+              const searchResults = await omdbApi.searchMovies(rec.title);
+              if (searchResults.Search && searchResults.Search.length > 0) {
+                return await omdbApi.getMovieDetails(searchResults.Search[0].imdbID);
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch details for ${rec.title}:`, error);
+            }
+            return null;
+          });
+          
+          const movieDetails = await Promise.all(moviePromises);
+          recommendedMovies = movieDetails.filter(movie => movie !== null);
+        } catch (geminiError) {
+          console.error('Both AI services failed:', geminiError);
+          // Fallback to basic search if AI services fail
+          try {
+            const searchResults = await omdbApi.searchMovies(query);
+            if (searchResults.Search) {
+              const moviePromises = searchResults.Search.slice(0, 5).map(async (movie) => {
+                try {
+                  return await omdbApi.getMovieDetails(movie.imdbID);
+                } catch (error) {
+                  console.warn(`Failed to fetch details for ${movie.imdbID}:`, error);
+                  return null;
+                }
+              });
+              
+              const movieDetails = await Promise.all(moviePromises);
+              recommendedMovies = movieDetails.filter(movie => movie !== null);
+              aiResponse = `Here are search results for "${query}":`;
+            }
+          } catch (searchError) {
+            throw new Error('Unable to process your request. Please try again.');
+          }
+        }
+      }
+
+      return {
+        response: aiResponse,
+        movies: recommendedMovies
+      };
     } catch (error) {
       console.error('Error getting AI recommendations:', error);
       throw error;
