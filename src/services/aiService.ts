@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
-import { getClaudeRecommendations } from '../lib/claude-recommendations';
-import { getGeminiRecommendations } from '../lib/gemini-recommendations';
-import { searchMovies } from '../lib/omdb';
+import { claudeRecommendationsApi } from '../lib/claude-recommendations';
+import { geminiRecommendationsApi } from '../lib/gemini-recommendations';
+import { omdbApi } from '../lib/omdb';
 
 export class AIService {
   async getRecommendations(userId: string, limit: number = 10) {
@@ -36,11 +36,11 @@ export class AIService {
 
       // Try Claude first, then fallback to Gemini
       try {
-        recommendedTitles = await getClaudeRecommendations(watchedMovies, limit);
+        recommendedTitles = await claudeRecommendationsApi.getRecommendations(watchedMovies, limit);
       } catch (claudeError) {
         console.warn('Claude recommendations failed, trying Gemini:', claudeError);
         try {
-          recommendedTitles = await getGeminiRecommendations(watchedMovies, limit);
+          recommendedTitles = await geminiRecommendationsApi.getRecommendations(watchedMovies, limit);
         } catch (geminiError) {
           console.error('Both AI services failed:', geminiError);
           throw new Error('AI recommendation services are currently unavailable');
@@ -50,7 +50,7 @@ export class AIService {
       // Fetch detailed movie information from OMDb
       const detailedRecommendations = await Promise.allSettled(
         recommendedTitles.map(async (title) => {
-          const searchResults = await searchMovies(title);
+          const searchResults = await omdbApi.searchMovies(title);
           return searchResults.length > 0 ? searchResults[0] : null;
         })
       );
