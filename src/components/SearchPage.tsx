@@ -1,119 +1,161 @@
-import React, { useState } from 'react';
+// src/components/SearchPage.tsx (Updated with AI Recommendations)
+import React, { useState, useEffect } from 'react';
 import { SearchBar } from './SearchBar';
 import { MovieCard } from './MovieCard';
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
-import { aiService } from '../services/aiService';
-import { AlertCircle, Film, Bot, Sparkles } from 'lucide-react';
+import { AlertCircle, Film, Brain, Sparkles, Users, TrendingUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { getSimpleClaudeRecommendations, testClaudeRecommendationsService, type ClaudeRecommendation } from '../lib/supabase-claude-recommendations';
 
 export function SearchPage() {
+  const { user, isAuthenticated } = useAuth();
   const [movies, setMovies] = useState<OMDBMovieDetails[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchMode, setSearchMode] = useState<'traditional' | 'ai'>('traditional');
-  const [aiResponse, setAiResponse] = useState<string>('');
-  const { user } = useAuth();
 
-  // Quick action handlers
-  const handleQuickAction = async (actionType: 'movies' | 'tv' | 'popular') => {
-    let query = '';
-    
-    switch (actionType) {
-      case 'movies':
-        query = 'Recommend popular movies that are highly rated and critically acclaimed';
-        break;
-      case 'tv':
-        query = 'Recommend popular TV series that are highly rated and worth binge-watching';
-        break;
-      case 'popular':
-        query = 'Recommend trending movies and shows that are popular right now';
-        break;
+  // AI Recommendations state
+  const [recommendations, setRecommendations] = useState<{
+    movies: ClaudeRecommendation[];
+    tv_series: ClaudeRecommendation[];
+  }>({
+    movies: [],
+    tv_series: []
+  });
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [showingMovieRecs, setShowingMovieRecs] = useState(false);
+  const [showingTVRecs, setShowingTVRecs] = useState(false);
+
+  // Test Claude service on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      testClaudeService();
     }
-    
-    await handleSearch(query);
-  };
+  }, [isAuthenticated]);
 
-  // AI query detection patterns
-  const detectAIQuery = (query: string): boolean => {
-    const aiPatterns = [
-      /recommend.*movies?/i,
-      /find.*movies?.*like/i,
-      /suggest.*movies?/i,
-      /what.*should.*watch/i,
-      /movies?.*about/i,
-      /scary.*movies?/i,
-      /funny.*movies?/i,
-      /action.*movies?/i,
-      /comedy.*movies?/i,
-      /tv.*shows?/i,
-      /series.*like/i,
-      /popular.*movies?/i,
-      /trending.*movies?/i,
-      /highly.*rated/i,
-      /critically.*acclaimed/i,
-      /worth.*binge/i
-    ];
-    return aiPatterns.some(pattern => pattern.test(query));
+  const testClaudeService = async () => {
+    try {
+      const result = await testClaudeRecommendationsService();
+      if (!result.success) {
+        console.warn('Claude service test failed:', result.error);
+      }
+    } catch (error) {
+      console.warn('Claude service test error:', error);
+    }
   };
 
   const handleSearch = async (query: string) => {
     if (!query) {
       setMovies([]);
       setHasSearched(false);
-      setAiResponse('');
       return;
     }
 
     setLoading(true);
     setError(null);
     setHasSearched(true);
-    setAiResponse('');
-
-    // Detect if this should be an AI query
-    const isAIQuery = detectAIQuery(query);
-    setSearchMode(isAIQuery ? 'ai' : 'traditional');
 
     try {
-      if (isAIQuery) {
-        console.log('[SearchPage] Processing AI query:', query);
-        const aiResult = await aiService.getRecommendations(query, user?.id);
-        setAiResponse(aiResult.response);
-        setMovies(aiResult.movies);
-      } else {
-        console.log('[SearchPage] Processing traditional search:', query);
-        const searchResults = await omdbApi.searchMovies(query);
-        console.log('Search results received:', searchResults);
-        
-        // Get detailed information for each movie
-        const detailedMovies = await Promise.all(
-          searchResults.Search.slice(0, 10).map(async (movie) => {
-            try {
-              console.log('Fetching details for:', movie.imdbID);
-              return await omdbApi.getMovieDetails(movie.imdbID);
-            } catch (error) {
-              console.error(`Failed to fetch details for movie ${movie.imdbID}:`, error);
-              return null;
-            }
-          })
-        );
+      console.log('Starting search for:', query);
+      const searchResults = await omdbApi.searchMovies(query);
+      console.log('Search results received:', searchResults);
+      
+      // Get detailed information for each movie
+      const detailedMovies = await Promise.all(
+        searchResults.Search.slice(0, 10).map(async (movie) => {
+          try {
+            console.log('Fetching details for:', movie.imdbID);
+            return await omdbApi.getMovieDetails(movie.imdbID);
+          } catch (error) {
+            console.error(`Failed to fetch details for movie ${movie.imdbID}:`, error);
+            return null;
+          }
+        })
+      );
 
-        console.log('Detailed movies received:', detailedMovies);
-        setMovies(detailedMovies.filter((movie): movie is OMDBMovieDetails => movie !== null));
-      }
+      console.log('Detailed movies received:', detailedMovies);
+      setMovies(detailedMovies.filter((movie): movie is OMDBMovieDetails => movie !== null));
     } catch (err) {
       console.error('Search error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to search movies';
       
       if (errorMessage === 'Too many results.') {
-        setError('Please be more specific in your search.');
-      } else if (errorMessage.includes('Request limit reached')) {
-        setError('Search limit reached. Please try again later.');
+        try {
+          const exactSearchResults = await omdbApi.searchMovies(`"${query}"`);
+          const detailedExactMovies = await Promise.all(
+            exactSearchResults.Search.slice(0, 5).map(async (movie) => {
+              try {
+                return await omdbApi.getMovieDetails(movie.imdbID);
+              } catch (error) {
+                console.error(`Failed to fetch details for exact movie ${movie.imdbID}:`, error);
+                return null;
+              }
+            })
+          );
+          setMovies(detailedExactMovies.filter((movie): movie is OMDBMovieDetails => movie !== null));
+        } catch (exactSearchError) {
+          const exactErrorMessage = exactSearchError instanceof Error ? 
+            exactSearchError.message : 'Unknown error';
+          if (exactErrorMessage.includes('Too many results')) {
+            setError(`"${query}" is too broad a search term. Please be more specific by adding a year (e.g., "Batman 2022") or using the full movie title.`);
+          } else {
+            setError(`Search failed: ${exactErrorMessage}. Try being more specific with your search terms.`);
+          }
+        }
       } else {
         setError(errorMessage);
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getMovieRecommendations = async () => {
+    if (!user) {
+      setAiError('Please sign in to get personalized recommendations');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError(null);
+    setShowingMovieRecs(false);
+    setShowingTVRecs(false);
+
+    try {
+      const recs = await getSimpleClaudeRecommendations(user.id);
+      setRecommendations(recs);
+      setShowingMovieRecs(true);
+    } catch (error) {
+      console.error('Failed to get movie recommendations:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get recommendations';
+      setAiError(errorMessage);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const getTVRecommendations = async () => {
+    if (!user) {
+      setAiError('Please sign in to get personalized recommendations');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError(null);
+    setShowingMovieRecs(false);
+    setShowingTVRecs(false);
+
+    try {
+      const recs = await getSimpleClaudeRecommendations(user.id);
+      setRecommendations(recs);
+      setShowingTVRecs(true);
+    } catch (error) {
+      console.error('Failed to get TV recommendations:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get recommendations';
+      setAiError(errorMessage);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -125,81 +167,123 @@ export function SearchPage() {
             <Film className="h-12 w-12 text-blue-600" />
             <h1 className="text-4xl font-bold text-slate-900">Discover Movies</h1>
           </div>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-8">
-            Search for specific movies or get instant AI recommendations
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Search for specific movies or get instant AI recommendations based on your watchlist
           </p>
-          
-          {/* Quick Action Buttons */}
-          <div className="flex flex-wrap justify-center gap-4 mb-6">
-            <button
-              onClick={() => handleQuickAction('movies')}
-              disabled={loading}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <Film className="h-5 w-5" />
-              <span>Movies You May Like</span>
-            </button>
-            
-            <button
-              onClick={() => handleQuickAction('tv')}
-              disabled={loading}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <Bot className="h-5 w-5" />
-              <span>TV You May Like</span>
-            </button>
-            
-            <button
-              onClick={() => handleQuickAction('popular')}
-              disabled={loading}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <Sparkles className="h-5 w-5" />
-              <span>What's Trending</span>
-            </button>
-          </div>
         </div>
         
         <div className="mb-12">
           <SearchBar onSearch={handleSearch} loading={loading} />
-          
-          {/* AI Response Display */}
-          {aiResponse && (
-            <div className="mt-8 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
-              <div className="flex items-start space-x-3">
-                <Bot className="h-6 w-6 text-purple-600 mt-1 flex-shrink-0" />
+        </div>
+
+        {/* AI Recommendation Section */}
+        <div className="mb-12 bg-white rounded-2xl shadow-lg p-8 border border-slate-200">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center space-x-3 mb-4">
+              <Brain className="h-8 w-8 text-purple-600" />
+              <h2 className="text-2xl font-bold text-slate-900">AI Recommendation</h2>
+            </div>
+            <p className="text-slate-600 max-w-xl mx-auto mb-6">
+              Get instant AI recommendations based on your watchlist and ratings
+            </p>
+
+            {/* AI Recommendation Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={getMovieRecommendations}
+                disabled={aiLoading || !isAuthenticated}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+              >
+                <Sparkles className="h-5 w-5" />
+                <span>{aiLoading ? 'Getting Recommendations...' : 'Movies You May Like'}</span>
+              </button>
+              
+              <button
+                onClick={getTVRecommendations}
+                disabled={aiLoading || !isAuthenticated}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+              >
+                <TrendingUp className="h-5 w-5" />
+                <span>{aiLoading ? 'Getting Recommendations...' : 'TV You May Like'}</span>
+              </button>
+
+              <button
+                onClick={() => window.open('/ai-suggests', '_blank')}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+              >
+                <Users className="h-5 w-5" />
+                <span>AI Recommendations</span>
+              </button>
+            </div>
+
+            {!isAuthenticated && (
+              <p className="text-sm text-gray-500 mt-4">
+                Sign in to get personalized AI recommendations
+              </p>
+            )}
+          </div>
+
+          {/* AI Error Display */}
+          {aiError && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-2">AI Recommendation</h3>
-                  <p className="text-slate-700">{aiResponse}</p>
+                  <p className="text-red-700 font-medium">AI Recommendation Error</p>
+                  <p className="text-red-600 text-sm mt-1">{aiError}</p>
                 </div>
               </div>
             </div>
           )}
-          
-          {/* Search Mode Indicator */}
-          {hasSearched && (
-            <div className="flex justify-center mt-4">
-              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
-                searchMode === 'ai' 
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                {searchMode === 'ai' ? (
-                  <>
-                    <Bot className="h-4 w-4" />
-                    <span>AI Recommendations</span>
-                  </>
-                ) : (
-                  <>
-                    <Film className="h-4 w-4" />
-                    <span>Search Results</span>
-                  </>
-                )}
+
+          {/* AI Loading State */}
+          {aiLoading && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-slate-600">Claude AI is analyzing your preferences...</p>
+            </div>
+          )}
+
+          {/* AI Recommendations Display */}
+          {(showingMovieRecs || showingTVRecs) && !aiLoading && (
+            <div className="mt-8">
+              <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center">
+                <Sparkles className="h-6 w-6 text-purple-600 mr-2" />
+                {showingMovieRecs ? 'Movie Recommendations' : 'TV Series Recommendations'}
+              </h3>
+              
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {(showingMovieRecs ? recommendations.movies : recommendations.tv_series).map((rec, index) => (
+                  <div key={index} className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <h4 className="font-semibold text-slate-900 mb-2">{rec.title}</h4>
+                    <p className="text-sm text-slate-600 mb-3">{rec.reason}</p>
+                    {rec.imdbID && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-slate-500">IMDb ID: {rec.imdbID}</p>
+                        <a 
+                          href={`https://www.imdb.com/title/${rec.imdbID}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          View on IMDb →
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+
+              {(showingMovieRecs ? recommendations.movies : recommendations.tv_series).length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-slate-500">No recommendations available. Add more rated items to your watchlist for better suggestions.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
+        {/* Search Error Display */}
         {error && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4">
             <div className="flex items-center space-x-3">
@@ -209,79 +293,32 @@ export function SearchPage() {
           </div>
         )}
 
+        {/* Search Loading State */}
         {loading && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-slate-600">
-              {searchMode === 'ai' ? 'AI is thinking...' : 'Searching for movies...'}
-            </p>
+            <p className="text-slate-600">Searching for movies...</p>
           </div>
         )}
 
+        {/* Search Results Empty State */}
         {!loading && hasSearched && movies.length === 0 && !error && (
           <div className="text-center py-12">
             <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-slate-900 mb-2">No movies found</h3>
-            <p className="text-slate-600 mb-6">
-              {searchMode === 'ai' 
-                ? "Try a different request or ask for specific genres."
-                : "Try a different search term or check your spelling."
-              }
-            </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={() => handleQuickAction('movies')}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-              >
-                Get Movie Recommendations
-              </button>
-              <button
-                onClick={() => handleQuickAction('tv')}
-                className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-              >
-                Get TV Recommendations
-              </button>
-            </div>
+            <p className="text-slate-500 text-lg">No movies or TV series found. Try a different search term.</p>
           </div>
         )}
 
+        {/* Search Results */}
         <div className="space-y-8">
           {movies.map((movie) => (
-            <div key={movie.imdbID} className="relative">
-              <MovieCard
-                movie={movie}
-                posterUrl={movie.Poster !== 'N/A' ? movie.Poster : null}
-                imdbUrl={omdbApi.getIMDbUrl(movie.imdbID)}
-              />
-              
-              {/* AI Pick Badge */}
-              {(movie as any).aiReason && (
-                <div className="absolute top-4 left-4 bg-purple-600 text-white text-xs px-2 py-1 rounded-full shadow-lg z-10">
-                  <div className="flex items-center space-x-1">
-                    <Sparkles className="h-3 w-3" />
-                    <span>AI Pick</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            <MovieCard
+              key={movie.imdbID}
+              movie={movie}
+              posterUrl={movie.Poster !== 'N/A' ? movie.Poster : undefined}
+            />
           ))}
         </div>
-
-        {movies.length > 0 && (
-          <div className="mt-12 text-center">
-            <p className="text-sm text-slate-500">
-              Movie data provided by{' '}
-              <a
-                href="http://www.omdbapi.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-700 font-medium"
-              >
-                The Open Movie Database (OMDb)
-              </a>
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
