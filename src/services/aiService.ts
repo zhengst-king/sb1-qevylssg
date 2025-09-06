@@ -1,4 +1,5 @@
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
+import { claudeRecommendationsApi } from '../lib/claude-recommendations';
 import { supabase } from '../lib/supabase';
 
 export interface AIResponse {
@@ -11,11 +12,6 @@ interface ClaudeRecommendation {
   title: string;
   reason: string;
   imdbID?: string;
-}
-
-interface ClaudeRecommendations {
-  movies: ClaudeRecommendation[];
-  tv_series: ClaudeRecommendation[];
 }
 
 interface UserWatchlistItem {
@@ -72,8 +68,9 @@ class AIService {
       return await this.getGeneralRecommendations(query);
     }
 
-    // Call your existing Supabase Edge Function
-    const claudeRecommendations = await this.callSupabaseEdgeFunction(watchlistData);
+    // Call Claude using your existing library
+    console.log('[AI Service] Calling Claude via claude-recommendations library');
+    const claudeRecommendations = await claudeRecommendationsApi.getRecommendations(watchlistData);
     
     // Filter out titles already in user's watchlist
     const filteredRecommendations = this.filterExistingWatchlistItems(claudeRecommendations, watchlistData);
@@ -132,8 +129,8 @@ class AIService {
       tv_series: []
     };
 
-    console.log('[AI Service] Calling Supabase Edge Function for general recommendations');
-    const claudeRecommendations = await this.callSupabaseEdgeFunction(generalWatchlist);
+    console.log('[AI Service] Calling Claude for general recommendations');
+    const claudeRecommendations = await claudeRecommendationsApi.getRecommendations(generalWatchlist);
     
     // Determine what to return based on query
     const queryLower = query.toLowerCase();
@@ -159,47 +156,10 @@ class AIService {
     };
   }
 
-  private async callSupabaseEdgeFunction(watchlistData: any): Promise<ClaudeRecommendations> {
-    try {
-      console.log('[AI Service] Calling Supabase Edge Function with watchlist data:', watchlistData);
-      
-      // Use Supabase client's functions.invoke method for proper authentication
-      const { data, error } = await supabase.functions.invoke('recommendations', {
-        body: { watchlistData }
-      });
-
-      console.log('[AI Service] Supabase Edge Function response:', { data, error });
-      
-      if (error) {
-        console.error('[AI Service] Supabase Edge Function error:', error);
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
-
-      if (!data) {
-        throw new Error('No data received from Edge Function');
-      }
-
-      // Validate the response structure
-      if (!data.movies && !data.tv_series) {
-        console.error('[AI Service] Invalid response structure:', data);
-        throw new Error('Invalid response format from Edge Function');
-      }
-      
-      return {
-        movies: data.movies || [],
-        tv_series: data.tv_series || []
-      };
-      
-    } catch (error) {
-      console.error('[AI Service] Error calling Supabase Edge Function:', error);
-      throw error;
-    }
-  }
-
   private filterExistingWatchlistItems(
-    recommendations: ClaudeRecommendations, 
+    recommendations: any, 
     watchlistData: { movies: UserWatchlistItem[]; tv_series: UserWatchlistItem[] }
-  ): ClaudeRecommendations {
+  ): any {
     console.log('[AI Service] Filtering out existing watchlist items');
     
     // Create sets of existing titles and IMDb IDs for quick lookup
@@ -218,7 +178,7 @@ class AIService {
     );
 
     // Filter movie recommendations
-    const filteredMovies = recommendations.movies.filter(rec => {
+    const filteredMovies = recommendations.movies.filter((rec: any) => {
       const titleMatch = existingMovieTitles.has(rec.title.toLowerCase().trim());
       const imdbMatch = rec.imdbID && existingMovieImdbIds.has(rec.imdbID);
       const shouldExclude = titleMatch || imdbMatch;
@@ -231,7 +191,7 @@ class AIService {
     });
 
     // Filter TV series recommendations  
-    const filteredTVSeries = recommendations.tv_series.filter(rec => {
+    const filteredTVSeries = recommendations.tv_series.filter((rec: any) => {
       const titleMatch = existingTVTitles.has(rec.title.toLowerCase().trim());
       const imdbMatch = rec.imdbID && existingTVImdbIds.has(rec.imdbID);
       const shouldExclude = titleMatch || imdbMatch;
