@@ -6,13 +6,10 @@ import { omdbApi } from '../lib/omdb';
 export class AIService {
   async getRecommendations(userId: string, limit: number = 10) {
     try {
-      // Fetch user's watchlist data
+      // Fetch user's watchlist data from movies table
       const { data: watchlistData, error: watchlistError } = await supabase
-        .from('watchlist_items')
-        .select(`
-          *,
-          movies (*)
-        `)
+        .from('movies')
+        .select('*')
         .eq('user_id', userId)
         .limit(50); // Get recent watchlist items for context
 
@@ -25,11 +22,11 @@ export class AIService {
       }
 
       // Extract movie titles and genres for recommendation context
-      const watchedMovies = watchlistData.map(item => ({
-        title: item.movies?.title || '',
-        genre: item.movies?.genre || '',
-        year: item.movies?.year || '',
-        rating: item.rating || 0
+      const watchedMovies = watchlistData.map(movie => ({
+        title: movie.title || '',
+        genre: movie.genre || '',
+        year: movie.year || '',
+        rating: movie.rating || 0
       }));
 
       let recommendedTitles: string[] = [];
