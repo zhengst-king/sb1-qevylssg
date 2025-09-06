@@ -109,7 +109,8 @@ Please respond with a JSON object containing "movies" and "tv_series" arrays.`;
       headers: {
         'x-api-key': claudeApiKey,
         'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
+        'User-Agent': 'Supabase-Edge-Function/1.0'
       },
       body: JSON.stringify({
         model: 'claude-3-haiku-20240307',
