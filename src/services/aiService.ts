@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { claudeRecommendationsApi } from '../lib/claude-recommendations';
 import { geminiRecommendationsApi } from '../lib/gemini-recommendations';
 import { omdbApi } from '../lib/omdb';
 
@@ -46,7 +45,18 @@ export class AIService {
 
       // Try Claude first, then fallback to Gemini
       try {
-        const claudeResult = await claudeRecommendationsApi.getRecommendations(userWatchlistData);
+        // Call Supabase Edge Function for Claude recommendations
+        const { data: claudeResult, error: claudeError } = await supabase.functions.invoke('recommendations', {
+          body: { 
+            watchlistData: userWatchlistData,
+            query: query
+          }
+        });
+        
+        if (claudeError) {
+          throw new Error(`Edge function error: ${claudeError.message}`);
+        }
+        
         aiResponse = `Based on your query "${query}", here are some recommendations:`;
         
         // Get movie details from OMDb for Claude recommendations
