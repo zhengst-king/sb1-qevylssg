@@ -46,36 +46,10 @@ export class AIService {
       // Try Claude first, then fallback to Gemini
       try {
         // Call Supabase Edge Function for Claude recommendations
-        const { data: claudeResult, error: claudeError } = await supabase.functions.invoke('recommendations', {
-          body: { 
-            watchlistData: userWatchlistData,
-            query: query
-          }
-        });
-        
-        if (claudeError) {
-          throw new Error(`Edge function error: ${claudeError.message}`);
-        }
-        
-        aiResponse = `Based on your query "${query}", here are some recommendations:`;
-        
-        // Get movie details from OMDb for Claude recommendations
-        const moviePromises = claudeResult.movies.slice(0, 5).map(async (rec) => {
-          try {
-            const searchResults = await omdbApi.searchMovies(rec.title);
-            if (searchResults.Search && searchResults.Search.length > 0) {
-              return await omdbApi.getMovieDetails(searchResults.Search[0].imdbID);
-            }
-          } catch (error) {
-            console.warn(`Failed to fetch details for ${rec.title}:`, error);
-          }
-          return null;
-        });
-        
-        const movieDetails = await Promise.all(moviePromises);
-        recommendedMovies = movieDetails.filter(movie => movie !== null);
+        // Skip Claude for now due to Edge Function deployment issues
+        throw new Error('Claude service temporarily unavailable');
       } catch (claudeError) {
-        console.warn('Claude recommendations failed, trying Gemini:', claudeError);
+        console.warn('Claude recommendations failed, trying Gemini:', claudeError.message);
         try {
           const geminiResult = await geminiRecommendationsApi.getRecommendations(userWatchlistData);
           aiResponse = `Based on your query "${query}", here are some recommendations:`;
@@ -96,7 +70,7 @@ export class AIService {
           const movieDetails = await Promise.all(moviePromises);
           recommendedMovies = movieDetails.filter(movie => movie !== null);
         } catch (geminiError) {
-          console.error('Both AI services failed:', geminiError);
+          console.error('Gemini service failed:', geminiError.message);
           // Fallback to basic search if AI services fail
           try {
             const searchResults = await omdbApi.searchMovies(query);
@@ -115,7 +89,7 @@ export class AIService {
               aiResponse = `Here are search results for "${query}":`;
             }
           } catch (searchError) {
-            throw new Error('Unable to process your request. Please try again.');
+            throw new Error(`Search failed: ${searchError.message}`);
           }
         }
       }
