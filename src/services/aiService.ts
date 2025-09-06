@@ -27,20 +27,19 @@ interface UserWatchlistItem {
 }
 
 class AIService {
-  private readonly SUPABASE_URL = 'https://ofzcqugxmlazjwbwikxb.supabase.co';
   
   async getRecommendations(query: string, userId?: string): Promise<AIResponse> {
     console.log('[AI Service] Starting recommendations for query:', query);
     console.log('[AI Service] User ID:', userId);
     
     try {
-      // For logged-in users, always try to get personalized recommendations first
+      // For logged-in users, try to get personalized recommendations
       if (userId) {
         console.log('[AI Service] User is logged in, attempting personalized recommendations');
         return await this.getPersonalizedRecommendations(query, userId);
       } else {
-        console.log('[AI Service] User not logged in, using general Claude recommendations');
-        return await this.getGeneralClaudeRecommendations(query);
+        console.log('[AI Service] User not logged in, using general recommendations');
+        return await this.getGeneralRecommendations(query);
       }
       
     } catch (error) {
@@ -69,14 +68,14 @@ class AIService {
     });
     
     if (watchlistData.movies.length === 0 && watchlistData.tv_series.length === 0) {
-      console.log('[AI Service] No watchlist data found, using general Claude recommendations');
-      return await this.getGeneralClaudeRecommendations(query);
+      console.log('[AI Service] No watchlist data found, using general recommendations');
+      return await this.getGeneralRecommendations(query);
     }
 
-    // Call your existing Claude recommendations API
-    const claudeRecommendations = await this.callClaudeRecommendationsAPI(watchlistData);
+    // Call your existing Supabase Edge Function
+    const claudeRecommendations = await this.callSupabaseEdgeFunction(watchlistData);
     
-    // Filter out titles already in user's watchlist (additional safety check)
+    // Filter out titles already in user's watchlist
     const filteredRecommendations = this.filterExistingWatchlistItems(claudeRecommendations, watchlistData);
     
     // Determine which type of recommendations to return based on query
@@ -121,29 +120,20 @@ class AIService {
     };
   }
 
-  private async getGeneralClaudeRecommendations(query: string): Promise<AIResponse> {
-    console.log('[AI Service] Getting general Claude recommendations for query:', query);
+  private async getGeneralRecommendations(query: string): Promise<AIResponse> {
+    console.log('[AI Service] Getting general recommendations for query:', query);
     
     // Simulate AI thinking time
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Create a general watchlist to send to Claude for context
+    // Create minimal watchlist for general recommendations
     const generalWatchlist = {
-      movies: [
-        { title: "Popular Movie Example", user_rating: 8, status: "Watched", imdb_id: "tt0111161" }
-      ],
-      tv_series: [
-        { title: "Popular TV Example", user_rating: 8, status: "Watched", imdb_id: "tt0903747" }
-      ]
+      movies: [],
+      tv_series: []
     };
 
-    // Modify the prompt to include the specific query
-    const modifiedWatchlist = {
-      ...generalWatchlist,
-      query_context: query
-    };
-
-    const claudeRecommendations = await this.callClaudeRecommendationsAPI(modifiedWatchlist);
+    console.log('[AI Service] Calling Supabase Edge Function for general recommendations');
+    const claudeRecommendations = await this.callSupabaseEdgeFunction(generalWatchlist);
     
     // Determine what to return based on query
     const queryLower = query.toLowerCase();
@@ -167,6 +157,43 @@ class AIService {
       movies: detailedMovies,
       mode: 'ai'
     };
+  }
+
+  private async callSupabaseEdgeFunction(watchlistData: any): Promise<ClaudeRecommendations> {
+    try {
+      console.log('[AI Service] Calling Supabase Edge Function with watchlist data:', watchlistData);
+      
+      // Use Supabase client's functions.invoke method for proper authentication
+      const { data, error } = await supabase.functions.invoke('recommendations', {
+        body: { watchlistData }
+      });
+
+      console.log('[AI Service] Supabase Edge Function response:', { data, error });
+      
+      if (error) {
+        console.error('[AI Service] Supabase Edge Function error:', error);
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('No data received from Edge Function');
+      }
+
+      // Validate the response structure
+      if (!data.movies && !data.tv_series) {
+        console.error('[AI Service] Invalid response structure:', data);
+        throw new Error('Invalid response format from Edge Function');
+      }
+      
+      return {
+        movies: data.movies || [],
+        tv_series: data.tv_series || []
+      };
+      
+    } catch (error) {
+      console.error('[AI Service] Error calling Supabase Edge Function:', error);
+      throw error;
+    }
   }
 
   private filterExistingWatchlistItems(
@@ -268,50 +295,6 @@ class AIService {
     } catch (error) {
       console.error('[AI Service] Error fetching watchlist data:', error);
       return { movies: [], tv_series: [] };
-    }
-  }
-
-  private async callClaudeRecommendationsAPI(watchlistData: any): Promise<ClaudeRecommendations> {
-    try {
-      console.log('[AI Service] Calling Claude recommendations API with data:', watchlistData);
-      
-      const endpoint = `${this.SUPABASE_URL}/functions/v1/recommendations`;
-      console.log('[AI Service] API endpoint:', endpoint);
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ watchlistData }),
-      });
-
-      console.log('[AI Service] Claude API response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[AI Service] Claude API error response:', errorText);
-        throw new Error(`Claude API responded with status: ${response.status} - ${errorText}`);
-      }
-
-      const recommendations = await response.json();
-      console.log('[AI Service] Claude recommendations received:', recommendations);
-      
-      // Validate the response structure
-      if (!recommendations || (!recommendations.movies && !recommendations.tv_series)) {
-        console.error('[AI Service] Invalid Claude API response structure:', recommendations);
-        throw new Error('Invalid response format from Claude API');
-      }
-      
-      return {
-        movies: recommendations.movies || [],
-        tv_series: recommendations.tv_series || []
-      };
-      
-    } catch (error) {
-      console.error('[AI Service] Error calling Claude API:', error);
-      throw error;
     }
   }
 
