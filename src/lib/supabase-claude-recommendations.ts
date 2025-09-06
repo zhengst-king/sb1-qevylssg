@@ -167,3 +167,22 @@ export async function testClaudeRecommendationsService(): Promise<{ success: boo
     };
   }
 }
+
+/**
+ * Get a simplified version of Claude recommendations for the SearchPage
+ */
+export async function getSimpleClaudeRecommendations(userId: string): Promise<{ 
+  movies: ClaudeRecommendation[], 
+  tv_series: ClaudeRecommendation[] 
+}> {
+  try {
+    const recommendations = await getClaudeRecommendations(userId);
+    return {
+      movies: recommendations.movies.slice(0, 5), // Limit to 5 for SearchPage
+      tv_series: recommendations.tv_series.slice(0, 5)
+    };
+  } catch (error) {
+    console.error('[Supabase Claude] Error getting simple recommendations:', error);
+    throw error;
+  }
+}
