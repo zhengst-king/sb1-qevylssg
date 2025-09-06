@@ -2,13 +2,34 @@ import React, { useState } from 'react';
 import { SearchBar } from './SearchBar';
 import { MovieCard } from './MovieCard';
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
-import { AlertCircle, Film } from 'lucide-react';
+import { AlertCircle, Film, Bot, Tv, Sparkles } from 'lucide-react';
+import { aiService } from '../services/aiService';
+import { useAuth } from '../hooks/useAuth';
 
 export function SearchPage() {
+  const detectAIQuery = (query: string): boolean => {
+    const aiPatterns = [
+      /recommend.*movies?/i,
+      /find.*movies?.*like/i,
+      /suggest.*movies?/i,
+      /what.*should.*watch/i,
+      /movies?.*about/i,
+      /scary.*movies?/i,
+      /funny.*movies?/i,
+      /action.*movies?/i,
+      /comedy.*movies?/i,
+      /tv.*shows?/i,
+      /series.*like/i
+    ];
+    return aiPatterns.some(pattern => pattern.test(query));
+  };
   const [movies, setMovies] = useState<OMDBMovieDetails[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchMode, setSearchMode] = useState<'traditional' | 'ai'>('traditional');
+  const [aiResponse, setAiResponse] = useState<string>('');
+  const { user } = useAuth();
 
   const handleSearch = async (query: string) => {
     if (!query) {
@@ -20,8 +41,22 @@ export function SearchPage() {
     setLoading(true);
     setError(null);
     setHasSearched(true);
+    setAiResponse('');
+
+    // Detect if this should be an AI query
+    const isAIQuery = detectAIQuery(query);
+    setSearchMode(isAIQuery ? 'ai' : 'traditional');
 
     try {
+      if (isAIQuery) {
+        console.log('[SearchPage] Processing AI query:', query);
+        const aiResult = await aiService.getRecommendations(query, user?.id);
+        setAiResponse(aiResult.response);
+        setMovies(aiResult.movies);
+        setLoading(false);
+        return;
+      }
+      
       console.log('Starting search for:', query);
       const searchResults = await omdbApi.searchMovies(query);
       console.log('Search results received:', searchResults);
@@ -106,6 +141,42 @@ export function SearchPage() {
         
         <div className="mb-12">
           <SearchBar onSearch={handleSearch} loading={loading} />
+
+          {/* AI Response Display */}
+          {aiResponse && (
+            <div className="mt-8 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
+              <div className="flex items-start space-x-3">
+                <Bot className="h-6 w-6 text-purple-600 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-2">AI Recommendation</h3>
+                  <p className="text-slate-700">{aiResponse}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search Mode Indicator */}
+          {hasSearched && (
+            <div className="flex justify-center mt-4">
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                searchMode === 'ai'
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {searchMode === 'ai' ? (
+                  <>
+                    <Bot className="h-4 w-4" />
+                    <span>AI Recommendations</span>
+                  </>
+                ) : (
+                  <>
+                    <Film className="h-4 w-4" />
+                    <span>Search Results</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (
