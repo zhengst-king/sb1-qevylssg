@@ -1,5 +1,4 @@
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
-import { claudeRecommendationsApi } from '../lib/claude-recommendations';
 import { supabase } from '../lib/supabase';
 
 export interface AIResponse {
@@ -14,6 +13,11 @@ interface ClaudeRecommendation {
   imdbID?: string;
 }
 
+interface ClaudeRecommendations {
+  movies: ClaudeRecommendation[];
+  tv_series: ClaudeRecommendation[];
+}
+
 interface UserWatchlistItem {
   title: string;
   user_rating?: number;
@@ -23,10 +27,21 @@ interface UserWatchlistItem {
 }
 
 class AIService {
+  private readonly CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+  private readonly CLAUDE_BASE_URL = 'https://api.anthropic.com/v1/messages';
   
   async getRecommendations(query: string, userId?: string): Promise<AIResponse> {
     console.log('[AI Service] Starting recommendations for query:', query);
     console.log('[AI Service] User ID:', userId);
+    console.log('[AI Service] Claude API Key configured:', !!this.CLAUDE_API_KEY);
+    
+    if (!this.CLAUDE_API_KEY) {
+      return {
+        response: `Claude API key is not configured. Please add VITE_CLAUDE_API_KEY to your environment variables.`,
+        movies: [],
+        mode: 'ai'
+      };
+    }
     
     try {
       // For logged-in users, try to get personalized recommendations
@@ -43,7 +58,7 @@ class AIService {
       
       // Return error response instead of fallback recommendations
       return {
-        response: `I'm unable to get AI recommendations right now due to a service error: ${error.message}. Please try again later or contact support if the issue persists.`,
+        response: `I'm unable to get AI recommendations right now due to a service error: ${error.message}. Please try again later.`,
         movies: [],
         mode: 'ai'
       };
@@ -68,9 +83,9 @@ class AIService {
       return await this.getGeneralRecommendations(query);
     }
 
-    // Call Claude using your existing library
-    console.log('[AI Service] Calling Claude via claude-recommendations library');
-    const claudeRecommendations = await claudeRecommendationsApi.getRecommendations(watchlistData);
+    // Call Claude API directly
+    console.log('[AI Service] Calling Claude API directly');
+    const claudeRecommendations = await this.callClaudeAPI(watchlistData, query);
     
     // Filter out titles already in user's watchlist
     const filteredRecommendations = this.filterExistingWatchlistItems(claudeRecommendations, watchlistData);
@@ -129,8 +144,8 @@ class AIService {
       tv_series: []
     };
 
-    console.log('[AI Service] Calling Claude for general recommendations');
-    const claudeRecommendations = await claudeRecommendationsApi.getRecommendations(generalWatchlist);
+    console.log('[AI Service] Calling Claude API for general recommendations');
+    const claudeRecommendations = await this.callClaudeAPI(generalWatchlist, query);
     
     // Determine what to return based on query
     const queryLower = query.toLowerCase();
@@ -156,10 +171,111 @@ class AIService {
     };
   }
 
+  private async callClaudeAPI(watchlistData: any, query: string): Promise<ClaudeRecommendations> {
+    try {
+      console.log('[AI Service] Making direct Claude API call');
+      
+      const formatWatchlistText = (items: any[]): string => {
+        return items
+          .filter(item => item.user_rating && item.user_rating > 0)
+          .map(item => {
+            const imdbPart = item.imdb_id ? ` (${item.imdb_id})` : '';
+            const ratingPart = item.user_rating ? `: ${item.user_rating}/10` : '';
+            return `• ${item.title}${imdbPart}${ratingPart}`;
+          })
+          .join('\n');
+      };
+
+      const watchedMoviesText = formatWatchlistText(watchlistData.movies);
+      const watchedSeriesText = formatWatchlistText(watchlistData.tv_series);
+
+      const prompt = `Based on this user's viewing history and the query "${query}", recommend movies and TV series they would enjoy.
+
+Watched Movies:
+${watchedMoviesText || 'No movies in watchlist yet'}
+
+Watched TV Series:
+${watchedSeriesText || 'No TV series in watchlist yet'}
+
+Please respond with a JSON object containing "movies" and "tv_series" arrays. Each item should have:
+- title: The movie/series title
+- reason: 1-2 sentences explaining why this is recommended
+- imdbID: The IMDb ID if known (optional)
+
+Focus on titles that match their preferences and avoid titles already in their watchlist.`;
+
+      const response = await fetch(this.CLAUDE_BASE_URL, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.CLAUDE_API_KEY,
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 2000,
+          temperature: 0.7,
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are a film and television recommendation engine. Always respond with valid JSON containing movies and tv_series arrays.' 
+            },
+            { 
+              role: 'user', 
+              content: prompt 
+            }
+          ]
+        })
+      });
+
+      console.log('[AI Service] Claude API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AI Service] Claude API error:', errorText);
+        throw new Error(`Claude API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('[AI Service] Claude API response received');
+      
+      const content = data.content?.[0]?.text;
+      if (!content) {
+        throw new Error('No content received from Claude API');
+      }
+
+      let recommendations: ClaudeRecommendations;
+      try {
+        // Extract JSON from the response (Claude might wrap it in markdown)
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        const jsonString = jsonMatch ? jsonMatch[0] : content;
+        recommendations = JSON.parse(jsonString);
+      } catch (parseError) {
+        console.error('[AI Service] Failed to parse Claude response:', content);
+        throw new Error('Invalid response format from Claude API');
+      }
+
+      // Validate the response structure
+      if (!recommendations || (!recommendations.movies && !recommendations.tv_series)) {
+        console.error('[AI Service] Invalid Claude API response structure:', recommendations);
+        throw new Error('Invalid response format from Claude API');
+      }
+      
+      return {
+        movies: recommendations.movies || [],
+        tv_series: recommendations.tv_series || []
+      };
+      
+    } catch (error) {
+      console.error('[AI Service] Error calling Claude API:', error);
+      throw error;
+    }
+  }
+
   private filterExistingWatchlistItems(
-    recommendations: any, 
+    recommendations: ClaudeRecommendations, 
     watchlistData: { movies: UserWatchlistItem[]; tv_series: UserWatchlistItem[] }
-  ): any {
+  ): ClaudeRecommendations {
     console.log('[AI Service] Filtering out existing watchlist items');
     
     // Create sets of existing titles and IMDb IDs for quick lookup
@@ -178,7 +294,7 @@ class AIService {
     );
 
     // Filter movie recommendations
-    const filteredMovies = recommendations.movies.filter((rec: any) => {
+    const filteredMovies = recommendations.movies.filter(rec => {
       const titleMatch = existingMovieTitles.has(rec.title.toLowerCase().trim());
       const imdbMatch = rec.imdbID && existingMovieImdbIds.has(rec.imdbID);
       const shouldExclude = titleMatch || imdbMatch;
@@ -191,7 +307,7 @@ class AIService {
     });
 
     // Filter TV series recommendations  
-    const filteredTVSeries = recommendations.tv_series.filter((rec: any) => {
+    const filteredTVSeries = recommendations.tv_series.filter(rec => {
       const titleMatch = existingTVTitles.has(rec.title.toLowerCase().trim());
       const imdbMatch = rec.imdbID && existingTVImdbIds.has(rec.imdbID);
       const shouldExclude = titleMatch || imdbMatch;
