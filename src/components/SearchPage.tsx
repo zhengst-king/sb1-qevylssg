@@ -1,4 +1,4 @@
-// src/components/SearchPage.tsx (Temporary fix - using direct Claude API)
+// src/components/SearchPage.tsx (Complete file with debug)
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from './SearchBar';
 import { MovieCard } from './MovieCard';
@@ -7,6 +7,8 @@ import { AlertCircle, Film, Brain, Sparkles, Users, TrendingUp } from 'lucide-re
 import { useAuth } from '../hooks/useAuth';
 import { claudeRecommendationsApi, type AIRecommendations } from '../lib/claude-recommendations';
 import { supabase } from '../lib/supabase';
+
+// Debug environment variables
 console.log('[Debug] VITE_CLAUDE_API_KEY:', import.meta.env.VITE_CLAUDE_API_KEY);
 console.log('[Debug] All env vars:', import.meta.env);
 
@@ -36,14 +38,22 @@ export function SearchPage() {
   }, [isAuthenticated]);
 
   const testClaudeService = async () => {
+    console.log('[Claude Test] Starting connection test...');
+    console.log('[Claude Test] API Key available:', !!claudeRecommendationsApi);
+    console.log('[Claude Test] Environment key present:', !!import.meta.env.VITE_CLAUDE_API_KEY);
+    
     try {
       const result = await claudeRecommendationsApi.testConnection();
+      console.log('[Claude Test] Test result:', result);
+      
       setClaudeConfigured(result.success);
       if (!result.success) {
-        console.warn('Claude service test failed:', result.error);
+        console.error('[Claude Test] Test failed:', result.error);
+      } else {
+        console.log('[Claude Test] Test successful!');
       }
     } catch (error) {
-      console.warn('Claude service test error:', error);
+      console.error('[Claude Test] Test error:', error);
       setClaudeConfigured(false);
     }
   };
@@ -115,12 +125,15 @@ export function SearchPage() {
   };
 
   const getClaudeRecommendations = async (showMovies: boolean = true) => {
+    console.log('[Claude Recs] Starting recommendation request...');
+    
     if (!user) {
       setAiError('Please sign in to get personalized recommendations');
       return;
     }
 
     if (!claudeConfigured) {
+      console.error('[Claude Recs] Claude not configured');
       setAiError('Claude API is not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
       return;
     }
@@ -131,13 +144,18 @@ export function SearchPage() {
     setShowingTVRecs(false);
 
     try {
+      console.log('[Claude Recs] Fetching user watchlist...');
+      
       // Get user's watchlist from Supabase
       const { data: userMovies, error: moviesError } = await supabase
         .from('movies')
         .select('*')
         .eq('user_id', user.id);
 
+      console.log('[Claude Recs] Watchlist data:', userMovies);
+
       if (moviesError) {
+        console.error('[Claude Recs] Supabase error:', moviesError);
         throw new Error(`Failed to fetch watchlist: ${moviesError.message}`);
       }
 
@@ -166,14 +184,21 @@ export function SearchPage() {
           imdb_id: m.imdb_id
         }));
 
+      console.log('[Claude Recs] Prepared data:', { movies: movies.length, tv_series: tv_series.length });
+
       if (movies.length === 0 && tv_series.length === 0) {
         throw new Error('No rated movies or TV series found. Please rate some items in your watchlist first.');
       }
 
       const watchlistData = { movies, tv_series };
       
+      console.log('[Claude Recs] Calling Claude API...');
+      
       // Call Claude API directly
       const recs = await claudeRecommendationsApi.getRecommendations(watchlistData);
+      
+      console.log('[Claude Recs] Received recommendations:', recs);
+      
       setRecommendations(recs);
       
       if (showMovies) {
@@ -182,7 +207,7 @@ export function SearchPage() {
         setShowingTVRecs(true);
       }
     } catch (error) {
-      console.error('Failed to get Claude recommendations:', error);
+      console.error('[Claude Recs] Failed to get recommendations:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to get recommendations';
       setAiError(errorMessage);
     } finally {
