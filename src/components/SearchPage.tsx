@@ -1,16 +1,22 @@
-// src/components/SearchPage.tsx (Complete file with debug)
+// src/components/SearchPage.tsx (Using Supabase Edge Functions)
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from './SearchBar';
 import { MovieCard } from './MovieCard';
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
 import { AlertCircle, Film, Brain, Sparkles, Users, TrendingUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { claudeRecommendationsApi, type AIRecommendations } from '../lib/claude-recommendations';
 import { supabase } from '../lib/supabase';
 
-// Debug environment variables
-console.log('[Debug] VITE_CLAUDE_API_KEY:', import.meta.env.VITE_CLAUDE_API_KEY);
-console.log('[Debug] All env vars:', import.meta.env);
+interface ClaudeRecommendation {
+  title: string;
+  reason: string;
+  imdbID?: string;
+}
+
+interface ClaudeRecommendations {
+  movies: ClaudeRecommendation[];
+  tv_series: ClaudeRecommendation[];
+}
 
 export function SearchPage() {
   const { user, isAuthenticated } = useAuth();
@@ -20,7 +26,7 @@ export function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
 
   // AI Recommendations state
-  const [recommendations, setRecommendations] = useState<AIRecommendations>({
+  const [recommendations, setRecommendations] = useState<ClaudeRecommendations>({
     movies: [],
     tv_series: []
   });
@@ -30,30 +36,50 @@ export function SearchPage() {
   const [showingTVRecs, setShowingTVRecs] = useState(false);
   const [claudeConfigured, setClaudeConfigured] = useState(false);
 
-  // Test Claude service on mount
+  // Test Supabase Edge Functions on mount
   useEffect(() => {
     if (isAuthenticated) {
-      testClaudeService();
+      testSupabaseEdgeFunction();
     }
   }, [isAuthenticated]);
 
-  const testClaudeService = async () => {
-    console.log('[Claude Test] Starting connection test...');
-    console.log('[Claude Test] API Key available:', !!claudeRecommendationsApi);
-    console.log('[Claude Test] Environment key present:', !!import.meta.env.VITE_CLAUDE_API_KEY);
+  const testSupabaseEdgeFunction = async () => {
+    console.log('[Supabase Edge] Testing Edge Function connection...');
     
     try {
-      const result = await claudeRecommendationsApi.testConnection();
-      console.log('[Claude Test] Test result:', result);
+      // Test with minimal data
+      const testData = {
+        watchlistData: {
+          movies: [{
+            title: "Test Movie",
+            user_rating: 8,
+            status: "Watched",
+            imdb_id: "tt0111161"
+          }],
+          tv_series: []
+        }
+      };
+
+      console.log('[Supabase Edge] Calling recommendations function...');
       
-      setClaudeConfigured(result.success);
-      if (!result.success) {
-        console.error('[Claude Test] Test failed:', result.error);
+      const { data, error } = await supabase.functions.invoke('recommendations', {
+        body: testData
+      });
+
+      console.log('[Supabase Edge] Response:', { data, error });
+
+      if (error) {
+        console.error('[Supabase Edge] Test failed:', error);
+        setClaudeConfigured(false);
+      } else if (data && data.movies && data.tv_series) {
+        console.log('[Supabase Edge] Test successful!');
+        setClaudeConfigured(true);
       } else {
-        console.log('[Claude Test] Test successful!');
+        console.error('[Supabase Edge] Invalid response format:', data);
+        setClaudeConfigured(false);
       }
     } catch (error) {
-      console.error('[Claude Test] Test error:', error);
+      console.error('[Supabase Edge] Test error:', error);
       setClaudeConfigured(false);
     }
   };
@@ -125,7 +151,7 @@ export function SearchPage() {
   };
 
   const getClaudeRecommendations = async (showMovies: boolean = true) => {
-    console.log('[Claude Recs] Starting recommendation request...');
+    console.log('[Claude Recs] Starting recommendation request via Supabase...');
     
     if (!user) {
       setAiError('Please sign in to get personalized recommendations');
@@ -133,8 +159,8 @@ export function SearchPage() {
     }
 
     if (!claudeConfigured) {
-      console.error('[Claude Recs] Claude not configured');
-      setAiError('Claude API is not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
+      console.error('[Claude Recs] Supabase Edge Functions not working');
+      setAiError('Claude AI service is not available. The Edge Function connection failed.');
       return;
     }
 
@@ -190,16 +216,32 @@ export function SearchPage() {
         throw new Error('No rated movies or TV series found. Please rate some items in your watchlist first.');
       }
 
-      const watchlistData = { movies, tv_series };
+      const requestData = {
+        watchlistData: { movies, tv_series }
+      };
       
-      console.log('[Claude Recs] Calling Claude API...');
+      console.log('[Claude Recs] Calling Supabase Edge Function...');
       
-      // Call Claude API directly
-      const recs = await claudeRecommendationsApi.getRecommendations(watchlistData);
+      // Call Supabase Edge Function (which calls Claude internally)
+      const { data, error } = await supabase.functions.invoke('recommendations', {
+        body: requestData
+      });
       
-      console.log('[Claude Recs] Received recommendations:', recs);
+      console.log('[Claude Recs] Supabase response:', { data, error });
+
+      if (error) {
+        console.error('[Claude Recs] Supabase Edge Function error:', error);
+        throw new Error(`Recommendation service error: ${error.message}`);
+      }
+
+      if (!data || !data.movies || !data.tv_series) {
+        console.error('[Claude Recs] Invalid response format:', data);
+        throw new Error('Invalid response format from recommendation service');
+      }
       
-      setRecommendations(recs);
+      console.log('[Claude Recs] Received recommendations:', data);
+      
+      setRecommendations(data);
       
       if (showMovies) {
         setShowingMovieRecs(true);
@@ -250,7 +292,7 @@ export function SearchPage() {
             <div className="flex items-center justify-center space-x-2 mb-6">
               <div className={`w-3 h-3 rounded-full ${claudeConfigured ? 'bg-green-500' : 'bg-red-500'}`} />
               <span className="text-sm text-gray-600">
-                Claude API: {claudeConfigured ? 'Configured' : 'Not Configured'}
+                Claude AI Service: {claudeConfigured ? 'Connected via Supabase' : 'Connection Failed'}
               </span>
             </div>
 
@@ -291,7 +333,7 @@ export function SearchPage() {
 
             {!claudeConfigured && isAuthenticated && (
               <p className="text-sm text-red-500 mt-4">
-                Claude API key not configured. Add VITE_CLAUDE_API_KEY to your .env file.
+                Edge Function connection failed. Check your Supabase setup.
               </p>
             )}
           </div>
