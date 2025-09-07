@@ -1,11 +1,12 @@
-// src/components/SearchPage.tsx (Updated with AI Recommendations)
+// src/components/SearchPage.tsx (Temporary fix - using direct Claude API)
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from './SearchBar';
 import { MovieCard } from './MovieCard';
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
 import { AlertCircle, Film, Brain, Sparkles, Users, TrendingUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { getSimpleClaudeRecommendations, testClaudeRecommendationsService, type ClaudeRecommendation } from '../lib/supabase-claude-recommendations';
+import { claudeRecommendationsApi, type AIRecommendations } from '../lib/claude-recommendations';
+import { supabase } from '../lib/supabase';
 
 export function SearchPage() {
   const { user, isAuthenticated } = useAuth();
@@ -15,10 +16,7 @@ export function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
 
   // AI Recommendations state
-  const [recommendations, setRecommendations] = useState<{
-    movies: ClaudeRecommendation[];
-    tv_series: ClaudeRecommendation[];
-  }>({
+  const [recommendations, setRecommendations] = useState<AIRecommendations>({
     movies: [],
     tv_series: []
   });
@@ -26,6 +24,7 @@ export function SearchPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [showingMovieRecs, setShowingMovieRecs] = useState(false);
   const [showingTVRecs, setShowingTVRecs] = useState(false);
+  const [claudeConfigured, setClaudeConfigured] = useState(false);
 
   // Test Claude service on mount
   useEffect(() => {
@@ -36,12 +35,14 @@ export function SearchPage() {
 
   const testClaudeService = async () => {
     try {
-      const result = await testClaudeRecommendationsService();
+      const result = await claudeRecommendationsApi.testConnection();
+      setClaudeConfigured(result.success);
       if (!result.success) {
         console.warn('Claude service test failed:', result.error);
       }
     } catch (error) {
       console.warn('Claude service test error:', error);
+      setClaudeConfigured(false);
     }
   };
 
@@ -111,9 +112,14 @@ export function SearchPage() {
     }
   };
 
-  const getMovieRecommendations = async () => {
+  const getClaudeRecommendations = async (showMovies: boolean = true) => {
     if (!user) {
       setAiError('Please sign in to get personalized recommendations');
+      return;
+    }
+
+    if (!claudeConfigured) {
+      setAiError('Claude API is not configured. Please add VITE_CLAUDE_API_KEY to your .env file.');
       return;
     }
 
@@ -123,11 +129,58 @@ export function SearchPage() {
     setShowingTVRecs(false);
 
     try {
-      const recs = await getSimpleClaudeRecommendations(user.id);
+      // Get user's watchlist from Supabase
+      const { data: userMovies, error: moviesError } = await supabase
+        .from('movies')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (moviesError) {
+        throw new Error(`Failed to fetch watchlist: ${moviesError.message}`);
+      }
+
+      if (!userMovies || userMovies.length === 0) {
+        throw new Error('No watchlist data found. Please add some movies and rate them first.');
+      }
+
+      // Prepare watchlist data for Claude
+      const movies = userMovies
+        .filter(m => m.media_type === 'movie' && m.user_rating && m.user_rating > 0)
+        .map(m => ({
+          title: m.title,
+          user_rating: m.user_rating,
+          status: m.status,
+          date_watched: m.date_watched,
+          imdb_id: m.imdb_id
+        }));
+
+      const tv_series = userMovies
+        .filter(m => m.media_type === 'series' && m.user_rating && m.user_rating > 0)
+        .map(m => ({
+          title: m.title,
+          user_rating: m.user_rating,
+          status: m.status,
+          date_watched: m.date_watched,
+          imdb_id: m.imdb_id
+        }));
+
+      if (movies.length === 0 && tv_series.length === 0) {
+        throw new Error('No rated movies or TV series found. Please rate some items in your watchlist first.');
+      }
+
+      const watchlistData = { movies, tv_series };
+      
+      // Call Claude API directly
+      const recs = await claudeRecommendationsApi.getRecommendations(watchlistData);
       setRecommendations(recs);
-      setShowingMovieRecs(true);
+      
+      if (showMovies) {
+        setShowingMovieRecs(true);
+      } else {
+        setShowingTVRecs(true);
+      }
     } catch (error) {
-      console.error('Failed to get movie recommendations:', error);
+      console.error('Failed to get Claude recommendations:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to get recommendations';
       setAiError(errorMessage);
     } finally {
@@ -135,29 +188,8 @@ export function SearchPage() {
     }
   };
 
-  const getTVRecommendations = async () => {
-    if (!user) {
-      setAiError('Please sign in to get personalized recommendations');
-      return;
-    }
-
-    setAiLoading(true);
-    setAiError(null);
-    setShowingMovieRecs(false);
-    setShowingTVRecs(false);
-
-    try {
-      const recs = await getSimpleClaudeRecommendations(user.id);
-      setRecommendations(recs);
-      setShowingTVRecs(true);
-    } catch (error) {
-      console.error('Failed to get TV recommendations:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get recommendations';
-      setAiError(errorMessage);
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  const getMovieRecommendations = () => getClaudeRecommendations(true);
+  const getTVRecommendations = () => getClaudeRecommendations(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -184,14 +216,22 @@ export function SearchPage() {
               <h2 className="text-2xl font-bold text-slate-900">AI Recommendation</h2>
             </div>
             <p className="text-slate-600 max-w-xl mx-auto mb-6">
-              Get instant AI recommendations based on your watchlist and ratings
+              Get instant Claude AI recommendations based on your watchlist and ratings
             </p>
+
+            {/* Configuration Status */}
+            <div className="flex items-center justify-center space-x-2 mb-6">
+              <div className={`w-3 h-3 rounded-full ${claudeConfigured ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-sm text-gray-600">
+                Claude API: {claudeConfigured ? 'Configured' : 'Not Configured'}
+              </span>
+            </div>
 
             {/* AI Recommendation Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={getMovieRecommendations}
-                disabled={aiLoading || !isAuthenticated}
+                disabled={aiLoading || !isAuthenticated || !claudeConfigured}
                 className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
               >
                 <Sparkles className="h-5 w-5" />
@@ -200,7 +240,7 @@ export function SearchPage() {
               
               <button
                 onClick={getTVRecommendations}
-                disabled={aiLoading || !isAuthenticated}
+                disabled={aiLoading || !isAuthenticated || !claudeConfigured}
                 className="flex items-center justify-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
               >
                 <TrendingUp className="h-5 w-5" />
@@ -208,7 +248,7 @@ export function SearchPage() {
               </button>
 
               <button
-                onClick={() => window.open('/ai-suggests', '_blank')}
+                onClick={() => window.open('#/ai-suggests', '_blank')}
                 className="flex items-center justify-center space-x-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
               >
                 <Users className="h-5 w-5" />
@@ -219,6 +259,12 @@ export function SearchPage() {
             {!isAuthenticated && (
               <p className="text-sm text-gray-500 mt-4">
                 Sign in to get personalized AI recommendations
+              </p>
+            )}
+
+            {!claudeConfigured && isAuthenticated && (
+              <p className="text-sm text-red-500 mt-4">
+                Claude API key not configured. Add VITE_CLAUDE_API_KEY to your .env file.
               </p>
             )}
           </div>
