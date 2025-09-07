@@ -70,6 +70,8 @@ export function SearchPage() {
 
       if (error) {
         console.error('[Supabase Edge] Test failed:', error);
+        // Don't set claudeConfigured to false immediately - the function might not be deployed
+        console.warn('[Supabase Edge] Edge Function may not be deployed or configured properly');
         setClaudeConfigured(false);
       } else if (data && data.movies && data.tv_series) {
         console.log('[Supabase Edge] Test successful!');
@@ -80,6 +82,8 @@ export function SearchPage() {
       }
     } catch (error) {
       console.error('[Supabase Edge] Test error:', error);
+      // Edge Function might not be deployed in development environment
+      console.warn('[Supabase Edge] This is expected in local development without deployed Edge Functions');
       setClaudeConfigured(false);
     }
   };

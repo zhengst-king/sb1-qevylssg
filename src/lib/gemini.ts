@@ -48,7 +48,12 @@ class GeminiApi {
     }
 
     if (!this.apiKey) {
-      throw new Error('Google Gemini API key is not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
+      throw new Error('Google Gemini API key is not configured. Please add a valid VITE_GEMINI_API_KEY to your .env file. Get one free at https://aistudio.google.com');
+    }
+
+    // Check if API key looks valid
+    if (!this.apiKey.startsWith('AIza')) {
+      throw new Error('Invalid Google Gemini API key format. The key should start with "AIza". Get a valid key at https://aistudio.google.com');
     }
 
     // Check rate limit
