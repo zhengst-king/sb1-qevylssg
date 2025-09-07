@@ -7,6 +7,8 @@ import { AlertCircle, Film, Brain, Sparkles, Users, TrendingUp } from 'lucide-re
 import { useAuth } from '../hooks/useAuth';
 import { claudeRecommendationsApi, type AIRecommendations } from '../lib/claude-recommendations';
 import { supabase } from '../lib/supabase';
+console.log('[Debug] VITE_CLAUDE_API_KEY:', import.meta.env.VITE_CLAUDE_API_KEY);
+console.log('[Debug] All env vars:', import.meta.env);
 
 export function SearchPage() {
   const { user, isAuthenticated } = useAuth();
