@@ -1,9 +1,10 @@
 import React from 'react';
-import { Search, Film, Tv, Star, Brain, User, LogOut } from 'lucide-react';
+import { Search, Film, Tv, Star, Brain, User, LogOut, Settings } from 'lucide-react'; // Add Settings import
 import { useAuth } from '../hooks/useAuth';
 import { signOut } from '../lib/supabase';
 
-type PageType = 'search' | 'movies' | 'tv-series' | 'ai-suggests';
+// Update the PageType to include 'settings'
+type PageType = 'search' | 'movies' | 'tv-series' | 'ai-suggests' | 'settings';
 
 interface NavigationProps {
   currentPage: PageType;
@@ -87,6 +88,22 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             >
               <Brain className="h-4 w-4" />
               <span>AI Suggests</span>
+            </button>
+            
+            {/* Add Settings Button */}
+            <button
+              onClick={() => onPageChange('settings')}
+              disabled={!isAuthenticated}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                currentPage === 'settings'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : isAuthenticated 
+                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    : 'text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Settings</span>
             </button>
             
             <div className="ml-4 pl-4 border-l border-slate-600">
