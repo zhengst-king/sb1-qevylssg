@@ -4,12 +4,11 @@ import { AuthModal } from './components/AuthModal';
 import { SearchPage } from './components/SearchPage';
 import { MovieWatchlistPage } from './components/MovieWatchlistPage';
 import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
-import { AISuggestsPage } from './components/AISuggestsPage';
 import { SettingsPage } from './components/SettingsPage'; // Add this import
 import { useAuth } from './hooks/useAuth';
 
 // Update the PageType to include 'settings'
-type PageType = 'search' | 'movies' | 'tv-series' | 'ai-suggests' | 'settings';
+type PageType = 'search' | 'movies' | 'tv-series' | 'settings';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
@@ -18,7 +17,7 @@ function App() {
 
   const handlePageChange = (page: PageType) => {
     // Redirect to sign in for protected pages (settings is protected too)
-    if (!isAuthenticated && (page === 'movies' || page === 'tv-series' || page === 'ai-suggests' || page === 'settings')) {
+    if (!isAuthenticated && (page === 'movies' || page === 'tv-series' || page === 'settings')) {
       setShowAuthModal(true);
       return;
     }
@@ -47,7 +46,6 @@ function App() {
       {currentPage === 'search' && <SearchPage />}
       {currentPage === 'movies' && <MovieWatchlistPage />}
       {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
-      {currentPage === 'ai-suggests' && <AISuggestsPage />}
       {currentPage === 'settings' && <SettingsPage />} {/* Add this line */}
       
       <AuthModal 

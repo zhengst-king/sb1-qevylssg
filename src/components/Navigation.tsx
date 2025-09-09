@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { signOut } from '../lib/supabase';
 
 // Update the PageType to include 'settings'
-type PageType = 'search' | 'movies' | 'tv-series' | 'ai-suggests' | 'settings';
+type PageType = 'search' | 'movies' | 'tv-series' | 'settings';
 
 interface NavigationProps {
   currentPage: PageType;
@@ -73,21 +73,6 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             >
               <Tv className="h-4 w-4" />
               <span>My TV Series</span>
-            </button>
-            
-            <button
-              onClick={() => onPageChange('ai-suggests')}
-              disabled={!isAuthenticated}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-                currentPage === 'ai-suggests'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : isAuthenticated 
-                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                    : 'text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              <Brain className="h-4 w-4" />
-              <span>AI Suggests</span>
             </button>
             
             {/* Add Settings Button */}

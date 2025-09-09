@@ -320,13 +320,6 @@ export function SearchPage() {
                 <span>{aiLoading ? 'Getting Recommendations...' : 'TV You May Like'}</span>
               </button>
 
-              <button
-                onClick={() => window.open('#/ai-suggests', '_blank')}
-                className="flex items-center justify-center space-x-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
-              >
-                <Users className="h-5 w-5" />
-                <span>AI Recommendations</span>
-              </button>
             </div>
 
             {!isAuthenticated && (
