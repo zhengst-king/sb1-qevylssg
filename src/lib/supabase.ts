@@ -107,6 +107,26 @@ export interface Movie {
   last_modified_at?: string;
 };
 
+export interface PhysicalMediaCollection {
+  id: string;
+  user_id: string;
+  imdb_id?: string;
+  title: string;
+  year?: number;
+  genre?: string;
+  director?: string;
+  poster_url?: string;
+  format: 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
+  purchase_date?: string;
+  purchase_price?: number;
+  purchase_location?: string;
+  condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
+  personal_rating?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export interface ImportHistory {
   id: string;
   user_id: string;
