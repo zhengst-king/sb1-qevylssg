@@ -112,7 +112,7 @@ export function useHARImport() {
       'framework', 'library', 'plugin', 'extension', 'addon', 'widget',
       
       // Operating systems
-      'windows', 'macos', 'linux', 'ubuntu', 'android', 'ios',
+      'windows', 'macos', 'linux', 'ubuntu', 'android', 'ios','mac',
       
       // Software/Apps
       'microsoft office', 'google docs', 'photoshop', 'excel', 'powerpoint',
