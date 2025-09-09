@@ -1,9 +1,23 @@
 // src/components/SettingsPage.tsx
-import React, { useState } from 'react';
-import { User, Download, Upload, Trash2, Key, Shield, Palette, Monitor, Moon, Sun, CheckCircle, AlertCircle, X, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Download, Upload, Trash2, Key, Shield, Palette, Monitor, Moon, Sun, CheckCircle, AlertCircle, X, FileText, Clock, List } from 'lucide-react';
 import { useHARImport } from '../hooks/useHARImport';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+
+interface ImportHistoryRecord {
+  id: string;
+  upload_datetime: string;
+  streaming_service: string;
+  default_status: string;
+  har_filename: string;
+  movies_added: number;
+  tv_series_added: number;
+  total_imported: number;
+}
 
 export function SettingsPage() {
+  const { user } = useAuth();
   const [theme, setTheme] = useState('light');
   const [cardsPerRow, setCardsPerRow] = useState('4');
   const [showRatings, setShowRatings] = useState(true);
@@ -15,12 +29,71 @@ export function SettingsPage() {
   const [defaultWatchStatus, setDefaultWatchStatus] = useState<'To Watch' | 'Watching' | 'Watched'>('To Watch');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
+  // Import history state
+  const [importHistory, setImportHistory] = useState<ImportHistoryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  
   const { isImporting, progress, result, error, importFromHAR, resetState } = useHARImport();
 
   const handleImportMyLists = () => {
     resetState();
     setSelectedFile(null);
     setImportModalOpen(true);
+    fetchImportHistory(); // Fetch history when modal opens
+  };
+
+  const fetchImportHistory = async () => {
+    if (!user) return;
+    
+    setHistoryLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('import_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('upload_datetime', { ascending: false })
+        .limit(20); // Show last 20 imports
+
+      if (error) {
+        console.error('Error fetching import history:', error);
+      } else {
+        setImportHistory(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching import history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getServiceIcon = (service: string) => {
+    switch (service.toLowerCase()) {
+      case 'netflix':
+        return '🎬';
+      case 'hulu':
+        return '📺';
+      case 'disney':
+        return '🏰';
+      case 'prime':
+        return '📦';
+      default:
+        return '🎭';
+    }
+  };
+
+  const getProgressPercentage = () => {
+    if (!progress) return 0;
+    return Math.round((progress.current / progress.total) * 100);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,8 +113,12 @@ export function SettingsPage() {
         defaultWatchStatus,
         file: selectedFile
       });
+      
+      // Refresh history after successful import
+      if (result) {
+        fetchImportHistory();
+      }
     } catch (error) {
-      // Error is handled by the hook
       console.error('Import failed:', error);
     }
   };
@@ -51,63 +128,56 @@ export function SettingsPage() {
       setImportModalOpen(false);
       resetState();
       setSelectedFile(null);
+      setImportHistory([]);
     }
   };
 
   const handleExportWatchlists = () => {
-    // Export functionality to be implemented
     console.log('Exporting watchlists...');
   };
 
   const handleBackupData = () => {
-    // Backup functionality to be implemented
     console.log('Creating backup...');
   };
 
   const handleClearAllData = () => {
     if (window.confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
-      // Clear data functionality to be implemented
       console.log('Clearing all data...');
     }
   };
 
-  const getProgressPercentage = () => {
-    if (!progress) return 0;
-    return Math.round((progress.current / progress.total) * 100);
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024 * 1024) {
-      return `${Math.round(bytes / 1024)}KB`;
-    }
-    return `${Math.round(bytes / 1024 / 1024)}MB`;
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-slate-900 mb-8">Settings</h1>
-        
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-slate-900 mb-4">Settings</h1>
+          <p className="text-lg text-slate-600">Customize your movie tracking experience</p>
+        </div>
+
         <div className="space-y-8">
-          {/* Account & Profile Section */}
+          {/* User Profile Section */}
           <section className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center mb-4">
               <User className="w-5 h-5 text-slate-600 mr-2" />
-              <h2 className="text-xl font-semibold text-slate-900">Account & Profile</h2>
+              <h2 className="text-xl font-semibold text-slate-900">User Profile</h2>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Profile Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Display Name
+                </label>
                 <input 
                   type="text" 
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your name"
+                  placeholder="Enter your display name"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Email
+                </label>
                 <input 
                   type="email" 
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -152,9 +222,9 @@ export function SettingsPage() {
               
               <button 
                 onClick={handleBackupData}
-                className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                className="flex items-center justify-center px-4 py-3 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
               >
-                <Shield className="w-4 h-4 mr-2" />
+                <FileText className="w-4 h-4 mr-2" />
                 Backup Data
               </button>
               
@@ -167,171 +237,12 @@ export function SettingsPage() {
               </button>
             </div>
           </section>
-
-          {/* Display Settings Section */}
-          <section className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <Palette className="w-5 h-5 text-slate-600 mr-2" />
-              <h2 className="text-xl font-semibold text-slate-900">Display Settings</h2>
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Theme</label>
-                <div className="flex space-x-4">
-                  <button 
-                    onClick={() => setTheme('light')}
-                    className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
-                      theme === 'light' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Sun className="w-4 h-4 mr-2" />
-                    Light
-                  </button>
-                  <button 
-                    onClick={() => setTheme('dark')}
-                    className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
-                      theme === 'dark' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Moon className="w-4 h-4 mr-2" />
-                    Dark
-                  </button>
-                  <button 
-                    onClick={() => setTheme('auto')}
-                    className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
-                      theme === 'auto' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Monitor className="w-4 h-4 mr-2" />
-                    Auto
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Cards per row</label>
-                <select 
-                  value={cardsPerRow}
-                  onChange={(e) => setCardsPerRow(e.target.value)}
-                  className="w-48 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="2">2 cards</option>
-                  <option value="3">3 cards</option>
-                  <option value="4">4 cards</option>
-                  <option value="5">5 cards</option>
-                  <option value="6">6 cards</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Poster size</label>
-                <select 
-                  value={posterSize}
-                  onChange={(e) => setPosterSize(e.target.value)}
-                  className="w-48 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                </select>
-              </div>
-              
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="showRatings"
-                  checked={showRatings}
-                  onChange={(e) => setShowRatings(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="showRatings" className="ml-2 text-sm font-medium text-slate-700">
-                  Show ratings on cards
-                </label>
-              </div>
-            </div>
-          </section>
-
-          {/* API & Services Section */}
-          <section className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <Key className="w-5 h-5 text-slate-600 mr-2" />
-              <h2 className="text-xl font-semibold text-slate-900">API & Services</h2>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">OMDb API Key (Optional)</label>
-                <input 
-                  type="password" 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter your OMDb API key for better performance"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Providing your own API key removes rate limits and improves performance
-                </p>
-              </div>
-              
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="enableExternalRatings"
-                  defaultChecked
-                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="enableExternalRatings" className="ml-2 text-sm font-medium text-slate-700">
-                  Enable external rating sources
-                </label>
-              </div>
-            </div>
-          </section>
-
-          {/* Privacy & Security Section */}
-          <section className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <Shield className="w-5 h-5 text-slate-600 mr-2" />
-              <h2 className="text-xl font-semibold text-slate-900">Privacy & Security</h2>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="shareData"
-                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="shareData" className="ml-2 text-sm font-medium text-slate-700">
-                  Allow anonymous usage data collection
-                </label>
-              </div>
-              
-              <div className="space-y-2">
-                <button className="text-blue-600 hover:text-blue-800 text-sm">
-                  View active sessions
-                </button>
-                <br />
-                <button className="text-blue-600 hover:text-blue-800 text-sm">
-                  Privacy policy
-                </button>
-                <br />
-                <button className="text-red-600 hover:text-red-800 text-sm">
-                  Delete account
-                </button>
-              </div>
-            </div>
-          </section>
         </div>
 
-        {/* Import Modal */}
+        {/* ✅ UPDATED: Import Modal with History Table */}
         {importModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">Import My Lists</h3>
                 {!isImporting && (
@@ -371,102 +282,180 @@ export function SettingsPage() {
                 </div>
               )}
 
-              {/* Import form */}
-              {!result && (
-                <>
-                  <p className="text-slate-600 mb-4">
-                    Import your watchlists from streaming services using HAR files.
-                  </p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column: Import Form */}
+                <div>
+                  <h4 className="text-md font-medium text-slate-900 mb-4">New Import</h4>
                   
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Select streaming service:
-                      </label>
-                      <select 
-                        value={selectedService}
-                        onChange={(e) => setSelectedService(e.target.value as any)}
-                        disabled={isImporting}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-                      >
-                        <option value="netflix">Netflix</option>
-                        <option value="hulu" disabled>Hulu (Coming Soon)</option>
-                        <option value="disney" disabled>Disney+ (Coming Soon)</option>
-                        <option value="prime" disabled>Prime Video (Coming Soon)</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Default status for imported titles:
-                      </label>
-                      <select 
-                        value={defaultWatchStatus}
-                        onChange={(e) => setDefaultWatchStatus(e.target.value as any)}
-                        disabled={isImporting}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-                      >
-                        <option value="To Watch">To Watch</option>
-                        <option value="Watching">Currently Watching</option>
-                        <option value="Watched">Already Watched</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Upload HAR file:
-                      </label>
-                      <input 
-                        type="file" 
-                        accept=".har"
-                        onChange={handleFileSelect}
-                        disabled={isImporting}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-                      />
-                      <div className="flex justify-between items-center mt-1">
-                        <p className="text-xs text-slate-500">
-                          Max file size: 200MB
-                        </p>
-                        {selectedFile && (
-                          <div className="flex items-center text-xs text-slate-600">
-                            <FileText className="w-3 h-3 mr-1" />
-                            {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                          </div>
-                        )}
+                  {!result && (
+                    <>
+                      <p className="text-slate-600 mb-4 text-sm">
+                        Import your watchlists from streaming services using HAR files.
+                      </p>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Select streaming service:
+                          </label>
+                          <select 
+                            value={selectedService}
+                            onChange={(e) => setSelectedService(e.target.value as any)}
+                            disabled={isImporting}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
+                          >
+                            <option value="netflix">Netflix</option>
+                            <option value="hulu" disabled>Hulu (Coming Soon)</option>
+                            <option value="disney" disabled>Disney+ (Coming Soon)</option>
+                            <option value="prime" disabled>Prime Video (Coming Soon)</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Default status for imported titles:
+                          </label>
+                          <select 
+                            value={defaultWatchStatus}
+                            onChange={(e) => setDefaultWatchStatus(e.target.value as any)}
+                            disabled={isImporting}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
+                          >
+                            <option value="To Watch">To Watch</option>
+                            <option value="Watching">Currently Watching</option>
+                            <option value="Watched">Already Watched</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Select HAR file:
+                          </label>
+                          <input
+                            type="file"
+                            accept=".har"
+                            onChange={handleFileSelect}
+                            disabled={isImporting}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          {selectedFile && (
+                            <p className="text-sm text-slate-600 mt-1">
+                              Selected: {selectedFile.name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Progress indicator */}
+                  {isImporting && progress && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-700">
+                          {progress.message}
+                        </span>
+                        <span className="text-sm text-slate-500">
+                          {getProgressPercentage()}%
+                        </span>
+                      </div>
+                      
+                      <div className="w-full bg-slate-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${getProgressPercentage()}%` }}
+                        ></div>
+                      </div>
+                      
+                      <div className="text-xs text-slate-500">
+                        {progress.currentTitle && `Processing: ${progress.currentTitle}`}
+                      </div>
+                      
+                      <div className="text-xs text-slate-500">
+                        Phase: {progress.phase} ({progress.current}/{progress.total})
                       </div>
                     </div>
-                  </div>
-                </>
-              )}
-
-              {/* Progress indicator */}
-              {isImporting && progress && (
-                <div className="mt-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-slate-700">
-                      {progress.message}
-                    </span>
-                    <span className="text-sm text-slate-500">
-                      {getProgressPercentage()}%
-                    </span>
-                  </div>
-                  
-                  <div className="w-full bg-slate-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${getProgressPercentage()}%` }}
-                    ></div>
-                  </div>
-                  
-                  <div className="text-xs text-slate-500">
-                    {progress.currentTitle && `Processing: ${progress.currentTitle}`}
-                  </div>
-                  
-                  <div className="text-xs text-slate-500">
-                    Phase: {progress.phase} ({progress.current}/{progress.total})
-                  </div>
+                  )}
                 </div>
-              )}
+
+                {/* Right Column: Import History */}
+                <div>
+                  <div className="flex items-center mb-4">
+                    <List className="w-4 h-4 text-slate-600 mr-2" />
+                    <h4 className="text-md font-medium text-slate-900">Import History</h4>
+                  </div>
+                  
+                  {historyLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-slate-500">Loading history...</p>
+                    </div>
+                  ) : importHistory.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500">
+                      <Clock className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm">No import history yet</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden border border-slate-200 rounded-lg">
+                      <div className="overflow-x-auto max-h-80">
+                        <table className="min-w-full divide-y divide-slate-200">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Upload Date/Time
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Streaming Service
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Default Status
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                HAR File Name
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Results
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-slate-200">
+                            {importHistory.map((record) => (
+                              <tr key={record.id} className="hover:bg-slate-50">
+                                <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900">
+                                  {formatDateTime(record.upload_datetime)}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-xs">
+                                  <div className="flex items-center">
+                                    <span className="mr-1">{getServiceIcon(record.streaming_service)}</span>
+                                    <span className="text-slate-900 capitalize">{record.streaming_service}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-xs">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                    {record.default_status}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600" title={record.har_filename}>
+                                  {record.har_filename.length > 20 
+                                    ? `${record.har_filename.substring(0, 17)}...` 
+                                    : record.har_filename
+                                  }
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-600">
+                                  <div className="space-y-1">
+                                    <div>{record.movies_added}🎬 {record.tv_series_added}📺</div>
+                                    <div className="text-slate-400">({record.total_imported} total)</div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               
               {/* Action buttons */}
               <div className="flex justify-end space-x-3 mt-6">
