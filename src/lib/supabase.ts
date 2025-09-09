@@ -105,4 +105,17 @@ export interface Movie {
   status_updated_at?: string;
   rating_updated_at?: string;
   last_modified_at?: string;
+};
+
+export interface ImportHistory {
+  id: string;
+  user_id: string;
+  upload_datetime: string;
+  streaming_service: 'netflix' | 'hulu' | 'disney' | 'prime';
+  default_status: 'To Watch' | 'Watching' | 'Watched';
+  har_filename: string;
+  movies_added: number;
+  tv_series_added: number;
+  total_imported: number;
+  created_at: string;
 }
