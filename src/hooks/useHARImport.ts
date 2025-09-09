@@ -593,13 +593,7 @@ const saveImportHistory = async (options: ImportOptions, result: ImportResult) =
       });
 
       // ✅ ADD THIS: Save import history
-      await saveImportHistory(options, {
-        summary: {
-          moviesAdded: movieCount,
-          tvSeriesAdded: seriesCount,
-          enrichmentFailed: titlesWithStatus.filter(t => t.enrichmentStatus === 'failed').length
-        }
-      });
+      await saveImportHistory(options, movieCount, seriesCount);
   
   const importFromHAR = async (options: ImportOptions) => {
     if (!user) {
