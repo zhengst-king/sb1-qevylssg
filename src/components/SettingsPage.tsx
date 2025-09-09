@@ -237,9 +237,133 @@ export function SettingsPage() {
               </button>
             </div>
           </section>
+
+          {/* ✅ RESTORED: Display Settings Section */}
+          <section className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center mb-4">
+              <Palette className="w-5 h-5 text-slate-600 mr-2" />
+              <h2 className="text-xl font-semibold text-slate-900">Display Settings</h2>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Theme</label>
+                <div className="flex space-x-4">
+                  <button 
+                    onClick={() => setTheme('light')}
+                    className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                      theme === 'light' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Sun className="w-4 h-4 mr-2" />
+                    Light
+                  </button>
+                  <button 
+                    onClick={() => setTheme('dark')}
+                    className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                      theme === 'dark' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Moon className="w-4 h-4 mr-2" />
+                    Dark
+                  </button>
+                  <button 
+                    onClick={() => setTheme('auto')}
+                    className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                      theme === 'auto' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Monitor className="w-4 h-4 mr-2" />
+                    Auto
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Cards per row</label>
+                <select 
+                  value={cardsPerRow}
+                  onChange={(e) => setCardsPerRow(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="2">2 cards</option>
+                  <option value="3">3 cards</option>
+                  <option value="4">4 cards</option>
+                  <option value="5">5 cards</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Poster size</label>
+                <select 
+                  value={posterSize}
+                  onChange={(e) => setPosterSize(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  id="showRatings"
+                  checked={showRatings}
+                  onChange={(e) => setShowRatings(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="showRatings" className="ml-2 text-sm font-medium text-slate-700">
+                  Show ratings from external sources
+                </label>
+              </div>
+            </div>
+          </section>
+
+          {/* ✅ RESTORED: Privacy & Security Section */}
+          <section className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center mb-4">
+              <Shield className="w-5 h-5 text-slate-600 mr-2" />
+              <h2 className="text-xl font-semibold text-slate-900">Privacy & Security</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  id="shareData"
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="shareData" className="ml-2 text-sm font-medium text-slate-700">
+                  Allow anonymous usage data collection
+                </label>
+              </div>
+              
+              <div className="space-y-2">
+                <button className="text-blue-600 hover:text-blue-800 text-sm">
+                  View active sessions
+                </button>
+                <br />
+                <button className="text-blue-600 hover:text-blue-800 text-sm">
+                  Privacy policy
+                </button>
+                <br />
+                <button className="text-red-600 hover:text-red-800 text-sm">
+                  Delete account
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* ✅ UPDATED: Import Modal with History Table */}
+        {/* ✅ ENHANCED: Import Modal with History Table */}
         {importModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
