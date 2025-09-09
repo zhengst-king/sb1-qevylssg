@@ -1,10 +1,9 @@
 // src/components/MyCollectionsPage.tsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { Disc3, Plus, Search, Filter, Package, Star, Calendar, DollarSign, MapPin } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Disc3, Plus, Search, Package } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { supabase, type PhysicalMediaCollection } from '../lib/supabase';
-import { omdbApi } from '../lib/omdb';
-import { blurayApi } from '../lib/blurayApi';
+import { useCollections } from '../hooks/useCollections';
+import type { PhysicalMediaCollection } from '../lib/supabase';
 import { AddToCollectionModal } from './AddToCollectionModal';
 import { CollectionItemCard } from './CollectionItemCard';
 
@@ -12,39 +11,14 @@ type SortOption = 'title' | 'year' | 'purchase_date' | 'personal_rating' | 'form
 type FormatFilter = 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
 
 export function MyCollectionsPage() {
-  const { user, isAuthenticated } = useAuth();
-  const [collections, setCollections] = useState<PhysicalMediaCollection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
+  const { collections, loading, addToCollection, removeFromCollection } = useCollections();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('title');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showAddModal, setShowAddModal] = useState(false);
-
-  // Fetch collections
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      fetchCollections();
-    }
-  }, [isAuthenticated, user]);
-
-  const fetchCollections = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('collections_with_specs') // Use the view we created
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCollections(data || []);
-    } catch (error) {
-      console.error('Error fetching collections:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Filter and sort collections
   const filteredAndSortedCollections = useMemo(() => {
@@ -100,35 +74,9 @@ export function MyCollectionsPage() {
     return stats;
   }, [collections]);
 
-  const handleSort = (newSortBy: SortOption) => {
-    if (sortBy === newSortBy) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortDirection('asc');
-    }
-  };
-
-  const handleAddToCollection = async (collectionData: Partial<PhysicalMediaCollection>) => {
+  const handleAddToCollection = async (collectionData: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Enhance with technical specs if available
-      if (collectionData.title && collectionData.year) {
-        console.log('Getting technical specs for:', collectionData.title);
-        const techSpecs = await blurayApi.getDiscSpecs(collectionData.title, collectionData.year);
-        if (techSpecs) {
-          collectionData.technical_specs_id = techSpecs.id;
-        }
-      }
-
-      const { data, error } = await supabase
-        .from('physical_media_collections')
-        .insert([{ ...collectionData, user_id: user!.id }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      await fetchCollections(); // Refresh the list
+      await addToCollection(collectionData);
       setShowAddModal(false);
     } catch (error: any) {
       console.error('Error adding to collection:', error);
@@ -286,7 +234,8 @@ export function MyCollectionsPage() {
               <CollectionItemCard
                 key={item.id}
                 item={item}
-                onUpdate={fetchCollections}
+                onUpdate={() => {}} // We don't need this anymore with the hook
+                onDelete={removeFromCollection}
               />
             ))}
           </div>
