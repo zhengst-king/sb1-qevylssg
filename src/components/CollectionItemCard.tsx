@@ -139,7 +139,7 @@ export function CollectionItemCard({ item, onUpdate, onEdit, onDelete }: Collect
         {/* IMDb Link */}
         {item.imdb_id && (
           <div className="mt-2 pt-2 border-t border-slate-100">
-            
+            <a
               href={`https://www.imdb.com/title/${item.imdb_id}/`}
               target="_blank"
               rel="noopener noreferrer"
