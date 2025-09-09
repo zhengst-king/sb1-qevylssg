@@ -3,24 +3,48 @@ import { useAuth } from './useAuth';
 import { supabase } from '../lib/supabase';
 import { omdbApi } from '../lib/omdb';
 
+// ✅ ENHANCED: Updated interface with all OMDb fields
 interface ProcessedTitle {
+  // Netflix data
+  netflixId?: string;
+  netflixTitle?: string;
+  netflixType: 'movie' | 'series';
+  netflixSynopsis?: string;
+  netflixImageUrl?: string;
+  
+  // ✅ Core OMDb enriched data (existing)
   title: string;
-  genre?: string;
   year?: number;
+  genre?: string;
   director?: string;
   actors?: string;
   plot?: string;
-  imdb_score?: number;
   imdb_id?: string;
+  imdb_score?: number;
   poster_url?: string;
-  netflixType: 'movie' | 'series';
+  
+  // ✅ ENHANCED: Additional OMDb fields for complete title cards
+  country?: string;
+  runtime?: number;
+  awards?: string;
+  metascore?: number;
+  imdb_votes?: string;
+  box_office?: number;
+  production?: string;
+  website?: string;
+  rated?: string;
+  released?: string;
+  language?: string;
+  writer?: string;
+  
+  // Import metadata
   watchStatus: 'To Watch' | 'Watching' | 'Watched';
-  netflixId?: string;
-  netflixTitle?: string;
-  netflixSynopsis?: string;
-  source: string;
-  enrichmentStatus?: 'success' | 'failed' | 'not_found';
   dateImported: Date;
+  source: 'netflix-import';
+  
+  // Processing status
+  enrichmentStatus: 'success' | 'failed' | 'not_found';
+  errorMessage?: string;
 }
 
 interface ImportProgress {
@@ -57,83 +81,6 @@ export function useHARImport() {
     setProgress(null);
     setResult(null);
     setError(null);
-  };
-
-  const checkForDuplicates = async (processedTitles: ProcessedTitle[]): Promise<ProcessedTitle[]> => {
-    if (!user) return processedTitles;
-
-    try {
-      const titles = processedTitles.map(t => t.title);
-      const { data: existingTitles } = await supabase
-        .from('movies')
-        .select('title')
-        .eq('user_id', user.id)
-        .in('title', titles);
-
-      const existingTitleSet = new Set(existingTitles?.map(t => t.title) || []);
-      return processedTitles.filter(title => !existingTitleSet.has(title.title));
-    } catch (error) {
-      console.error('Error checking for duplicates:', error);
-      return processedTitles;
-    }
-  };
-
-  const saveToSupabaseWatchlists = async (processedTitles: ProcessedTitle[]): Promise<void> => {
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Check for duplicates first
-    const uniqueTitles = await checkForDuplicates(processedTitles);
-    
-    if (uniqueTitles.length === 0) {
-      throw new Error('All titles already exist in your watchlist');
-    }
-
-    try {
-      // Prepare data for Supabase insert
-      const moviesToInsert = uniqueTitles.map(title => ({
-        user_id: user.id,
-        title: title.title,
-        genre: title.genre || null,
-        year: title.year || null,
-        director: title.director || null,
-        actors: title.actors || null,
-        plot: title.plot || null,
-        imdb_score: title.imdb_score || null,
-        imdb_id: title.imdb_id || null,
-        poster_url: title.poster_url || null,
-        media_type: title.netflixType,
-        status: title.watchStatus,
-        
-        // Netflix-specific metadata
-        netflix_id: title.netflixId,
-        netflix_title: title.netflixTitle,
-        netflix_synopsis: title.netflixSynopsis,
-        import_source: title.source,
-        enrichment_status: title.enrichmentStatus,
-        import_date: title.dateImported.toISOString(),
-        
-        created_at: new Date().toISOString()
-      }));
-
-      // Insert all titles in a single batch
-      const { data, error } = await supabase
-        .from('movies')
-        .insert(moviesToInsert)
-        .select();
-
-      if (error) {
-        console.error('[HAR Import] Supabase insert error:', error);
-        throw new Error(`Failed to save titles to database: ${error.message}`);
-      }
-
-      console.log(`[HAR Import] Successfully saved ${data?.length || 0} titles to Supabase`);
-
-    } catch (error) {
-      console.error('[HAR Import] Error saving to Supabase:', error);
-      throw error;
-    }
   };
 
   // Comprehensive junk title detection
@@ -225,7 +172,7 @@ export function useHARImport() {
     }
   };
 
-  // Enrich titles with OMDB data
+  // ✅ FIX 1: Only keep titles that successfully match with IMDB
   const enrichWithOMDB = async (titles: string[], onProgress?: (current: number, total: number, title: string) => void): Promise<ProcessedTitle[]> => {
     const enrichedTitles: ProcessedTitle[] = [];
     
@@ -255,6 +202,7 @@ export function useHARImport() {
           // Get detailed information
           const details = await omdbApi.getMovieDetails(bestMatch.imdbID);
           
+          // ✅ ONLY ADD TITLES THAT HAVE SUCCESSFUL IMDB MATCHES
           enrichedTitles.push({
             title: details.Title,
             genre: details.Genre !== 'N/A' ? details.Genre : undefined,
@@ -265,41 +213,161 @@ export function useHARImport() {
             imdb_score: details.imdbRating !== 'N/A' ? parseFloat(details.imdbRating) : undefined,
             imdb_id: details.imdbID,
             poster_url: details.Poster !== 'N/A' ? details.Poster : undefined,
-            netflixType: details.Type === 'series' ? 'series' : 'movie', // Use OMDB Type
+            netflixType: details.Type === 'series' ? 'series' : 'movie',
             watchStatus: 'To Watch',
             source: 'netflix-import',
             enrichmentStatus: 'success',
-            dateImported: new Date()
+            dateImported: new Date(),
+            
+            // ✅ ADD MISSING OMDB FIELDS FOR COMPLETE DATA
+            country: details.Country !== 'N/A' ? details.Country : undefined,
+            runtime: details.Runtime && details.Runtime !== 'N/A' ? parseInt(details.Runtime.replace(' min', '')) : undefined,
+            awards: details.Awards !== 'N/A' ? details.Awards : undefined,
+            metascore: details.Metascore !== 'N/A' ? parseInt(details.Metascore) : undefined,
+            imdb_votes: details.imdbVotes !== 'N/A' ? details.imdbVotes : undefined,
+            box_office: details.BoxOffice && details.BoxOffice !== 'N/A' ? parseFloat(details.BoxOffice.replace(/[$,]/g, '')) : undefined,
+            production: details.Production !== 'N/A' ? details.Production : undefined,
+            website: details.Website !== 'N/A' ? details.Website : undefined,
+            rated: details.Rated !== 'N/A' ? details.Rated : undefined,
+            released: details.Released !== 'N/A' ? details.Released : undefined,
+            language: details.Language !== 'N/A' ? details.Language : undefined,
+            writer: details.Writer !== 'N/A' ? details.Writer : undefined
           });
           
-        } else {
-          // No OMDB match found, keep as basic entry
-          enrichedTitles.push({
-            title: title,
-            netflixType: 'movie', // Default to movie if unknown
-            watchStatus: 'To Watch',
-            source: 'netflix-import',
-            enrichmentStatus: 'not_found',
-            dateImported: new Date()
-          });
         }
+        // ❌ REMOVED: No longer adding titles without IMDB matches
+        // This eliminates junk titles like "prs_g001-at006-ix", "aws-us-west-2", etc.
         
       } catch (error) {
         console.error(`[HAR Import] Failed to enrich "${title}":`, error);
-        
-        // Add as basic entry if enrichment fails
-        enrichedTitles.push({
-          title: title,
-          netflixType: 'movie',
-          watchStatus: 'To Watch',
-          source: 'netflix-import',
-          enrichmentStatus: 'failed',
-          dateImported: new Date()
-        });
+        // ❌ REMOVED: No longer adding failed enrichment titles
       }
     }
     
     return enrichedTitles;
+  };
+
+  const checkForDuplicates = async (processedTitles: ProcessedTitle[]): Promise<ProcessedTitle[]> => {
+    if (!user) return processedTitles;
+
+    try {
+      const titles = processedTitles.map(t => t.title);
+      const { data: existingTitles } = await supabase
+        .from('movies')
+        .select('title')
+        .eq('user_id', user.id)
+        .in('title', titles);
+
+      const existingTitleSet = new Set(existingTitles?.map(t => t.title) || []);
+      return processedTitles.filter(title => !existingTitleSet.has(title.title));
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      return processedTitles;
+    }
+  };
+
+  // ✅ FIX 2: Enhanced data fields for title cards
+  const saveToSupabaseWatchlists = async (processedTitles: ProcessedTitle[]): Promise<void> => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Check for duplicates first
+    const uniqueTitles = await checkForDuplicates(processedTitles);
+    
+    if (uniqueTitles.length === 0) {
+      throw new Error('All titles already exist in your watchlist');
+    }
+
+    try {
+      // ✅ ENHANCED: Include ALL OMDb fields for complete title cards
+      const moviesToInsert = uniqueTitles.map(title => ({
+        user_id: user.id,
+        title: title.title,
+        
+        // ✅ Core OMDb fields (existing)
+        genre: title.genre || null,
+        year: title.year || null,
+        director: title.director || null,
+        actors: title.actors || null,
+        plot: title.plot || null,
+        imdb_score: title.imdb_score || null,
+        imdb_id: title.imdb_id || null,
+        poster_url: title.poster_url || null,
+        media_type: title.netflixType,
+        status: title.watchStatus,
+        
+        // ✅ ENHANCED: Additional OMDb fields for rich title cards
+        country: title.country || null,
+        runtime: title.runtime || null,
+        awards: title.awards || null,
+        metascore: title.metascore || null,
+        imdb_votes: title.imdb_votes || null,
+        box_office: title.box_office || null,
+        production: title.production || null,
+        website: title.website || null,
+        rated: title.rated || null,
+        released: title.released || null,
+        language: title.language || null,
+        writer: title.writer || null,
+        
+        // ✅ ENHANCED: Generate IMDb URL for the "View on IMDb" button
+        imdb_url: title.imdb_id ? `https://www.imdb.com/title/${title.imdb_id}/` : null,
+        
+        // Netflix-specific metadata
+        netflix_id: title.netflixId,
+        netflix_title: title.netflixTitle,
+        netflix_synopsis: title.netflixSynopsis,
+        import_source: title.source,
+        enrichment_status: title.enrichmentStatus,
+        import_date: title.dateImported.toISOString(),
+        
+        created_at: new Date().toISOString()
+      }));
+
+      // Insert all titles in a single batch
+      const { data, error } = await supabase
+        .from('movies')
+        .insert(moviesToInsert)
+        .select();
+
+      if (error) {
+        console.error('[HAR Import] Supabase insert error:', error);
+        throw new Error(`Failed to save titles to database: ${error.message}`);
+      }
+
+      console.log(`[HAR Import] Successfully saved ${data?.length || 0} titles with enhanced data to Supabase`);
+
+    } catch (error) {
+      console.error('[HAR Import] Error saving to Supabase:', error);
+      throw error;
+    }
+  };
+
+  // Helper function to recursively extract titles from JSON objects
+  const extractTitlesFromObject = (obj: any, titles: Set<string>, depth = 0): void => {
+    if (depth > 5 || !obj || typeof obj !== 'object') return;
+    
+    if (Array.isArray(obj)) {
+      obj.forEach(item => extractTitlesFromObject(item, titles, depth + 1));
+      return;
+    }
+    
+    // Look for title-like properties
+    const titleKeys = ['title', 'name', 'displayName', 'itemTitle', 'showTitle'];
+    titleKeys.forEach(key => {
+      if (obj[key] && typeof obj[key] === 'string') {
+        let title = decodeTitle(obj[key]);
+        if (isValidTitle(title)) {
+          titles.add(title);
+        }
+      }
+    });
+    
+    // Recursively check nested objects
+    Object.values(obj).forEach(value => {
+      extractTitlesFromObject(value, titles, depth + 1);
+    });
   };
 
   const processHARFile = async (file: File, service: string): Promise<ProcessedTitle[]> => {
@@ -396,32 +464,6 @@ export function useHARImport() {
       
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsText(file);
-    });
-  };
-
-  // Helper function to recursively extract titles from JSON objects
-  const extractTitlesFromObject = (obj: any, titles: Set<string>, depth = 0): void => {
-    if (depth > 5 || !obj || typeof obj !== 'object') return;
-    
-    if (Array.isArray(obj)) {
-      obj.forEach(item => extractTitlesFromObject(item, titles, depth + 1));
-      return;
-    }
-    
-    // Look for title-like properties
-    const titleKeys = ['title', 'name', 'displayName', 'itemTitle', 'showTitle'];
-    titleKeys.forEach(key => {
-      if (obj[key] && typeof obj[key] === 'string') {
-        let title = decodeTitle(obj[key]);
-        if (isValidTitle(title)) {
-          titles.add(title);
-        }
-      }
-    });
-    
-    // Recursively check nested objects
-    Object.values(obj).forEach(value => {
-      extractTitlesFromObject(value, titles, depth + 1);
     });
   };
 
