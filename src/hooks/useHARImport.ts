@@ -92,6 +92,7 @@ export function useHARImport() {
       // Tech/Browser related
       'chrome', 'firefox', 'safari', 'edge', 'internet explorer',
       'browser', 'web browser', 'google chrome', 'mozilla firefox',
+      'mac', // macOS operating system
       
       // Educational/Technical content
       'API Cybersecurity 101', 'cybersecurity 101', 'api security',
@@ -112,7 +113,7 @@ export function useHARImport() {
       'framework', 'library', 'plugin', 'extension', 'addon', 'widget',
       
       // Operating systems
-      'windows', 'macos', 'linux', 'ubuntu', 'android', 'ios','mac',
+      'windows', 'macos', 'linux', 'ubuntu', 'android', 'ios',
       
       // Software/Apps
       'microsoft office', 'google docs', 'photoshop', 'excel', 'powerpoint',
@@ -426,6 +427,34 @@ export function useHARImport() {
     }
   };
 
+  // ✅ IMPORT HISTORY: Function to save import history
+  const saveImportHistory = async (options: ImportOptions, moviesAdded: number, tvSeriesAdded: number) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('import_history')
+        .insert([{
+          user_id: user.id,
+          upload_datetime: new Date().toISOString(),
+          streaming_service: options.streamingService,
+          default_status: options.defaultWatchStatus,
+          har_filename: options.file.name,
+          movies_added: moviesAdded,
+          tv_series_added: tvSeriesAdded,
+          total_imported: moviesAdded + tvSeriesAdded
+        }]);
+
+      if (error) {
+        console.error('[HAR Import] Failed to save import history:', error);
+      } else {
+        console.log('[HAR Import] Import history saved successfully');
+      }
+    } catch (error) {
+      console.error('[HAR Import] Error saving import history:', error);
+    }
+  };
+
   // Helper function to recursively extract titles from JSON objects
   const extractTitlesFromObject = (obj: any, titles: Set<string>, depth = 0): void => {
     if (depth > 5 || !obj || typeof obj !== 'object') return;
@@ -549,52 +578,6 @@ export function useHARImport() {
     });
   };
 
-  // Add this function to the useHARImport hook (around line 400, before the importFromHAR function)
-
-const saveImportHistory = async (options: ImportOptions, result: ImportResult) => {
-  if (!user) return;
-  
-  try {
-    const historyRecord = {
-      user_id: user.id,
-      upload_datetime: new Date().toISOString(),
-      streaming_service: options.streamingService,
-      default_status: options.defaultWatchStatus,
-      har_filename: options.file.name,
-      movies_added: result.summary.moviesAdded,
-      tv_series_added: result.summary.tvSeriesAdded,
-      total_imported: result.summary.moviesAdded + result.summary.tvSeriesAdded
-    };
-
-    const { error } = await supabase
-      .from('import_history')
-      .insert([historyRecord]);
-
-    if (error) {
-      console.error('[HAR Import] Failed to save import history:', error);
-      // Don't throw error - import was successful, just history saving failed
-    } else {
-      console.log('[HAR Import] Import history saved successfully');
-    }
-  } catch (error) {
-    console.error('[HAR Import] Error saving import history:', error);
-  }
-};
-
-// Then modify the importFromHAR function to call this after successful import
-// Find this section in the importFromHAR function (around line 450):
-
-      setResult({
-        summary: {
-          moviesAdded: movieCount,
-          tvSeriesAdded: seriesCount,
-          enrichmentFailed: titlesWithStatus.filter(t => t.enrichmentStatus === 'failed').length
-        }
-      });
-
-      // ✅ ADD THIS: Save import history
-      await saveImportHistory(options, movieCount, seriesCount);
-  
   const importFromHAR = async (options: ImportOptions) => {
     if (!user) {
       throw new Error('User not authenticated');
@@ -649,6 +632,9 @@ const saveImportHistory = async (options: ImportOptions, result: ImportResult) =
           enrichmentFailed: titlesWithStatus.filter(t => t.enrichmentStatus === 'failed').length
         }
       });
+
+      // ✅ SAVE IMPORT HISTORY
+      await saveImportHistory(options, movieCount, seriesCount);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
