@@ -96,7 +96,7 @@ export function useHARImport() {
       // Educational/Technical content
       'api cybersecurity 101', 'cybersecurity 101', 'api security',
       'programming 101', 'coding 101', 'python 101', 'javascript 101',
-      'web development', 'software engineering', 'computer science',
+      'web development', 'software engineering', 'computer science', 'API Cybersecurity 101'
       
       // Language/Communication
       'american english', 'british english', 'spanish', 'french', 'german',
