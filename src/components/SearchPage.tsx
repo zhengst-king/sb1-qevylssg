@@ -70,191 +70,109 @@ export function SearchPage() {
 
       if (error) {
         console.error('[Supabase Edge] Test failed:', error);
-        // Don't set claudeConfigured to false immediately - the function might not be deployed
         console.warn('[Supabase Edge] Edge Function may not be deployed or configured properly');
         setClaudeConfigured(false);
       } else if (data && data.movies && data.tv_series) {
         console.log('[Supabase Edge] Test successful!');
         setClaudeConfigured(true);
       } else {
-        console.error('[Supabase Edge] Invalid response format:', data);
+        console.warn('[Supabase Edge] Unexpected response format:', data);
         setClaudeConfigured(false);
       }
     } catch (error) {
-      console.error('[Supabase Edge] Test error:', error);
-      // Edge Function might not be deployed in development environment
-      console.warn('[Supabase Edge] This is expected in local development without deployed Edge Functions');
+      console.error('[Supabase Edge] Connection error:', error);
       setClaudeConfigured(false);
     }
   };
 
   const handleSearch = async (query: string) => {
-    if (!query) {
-      setMovies([]);
-      setHasSearched(false);
-      return;
-    }
+    if (!query.trim()) return;
 
     setLoading(true);
     setError(null);
+    setMovies([]);
     setHasSearched(true);
 
     try {
-      console.log('Starting search for:', query);
       const searchResults = await omdbApi.searchMovies(query);
-      console.log('Search results received:', searchResults);
       
-      // Get detailed information for each movie
-      const detailedMovies = await Promise.all(
-        searchResults.Search.slice(0, 10).map(async (movie) => {
-          try {
-            console.log('Fetching details for:', movie.imdbID);
-            return await omdbApi.getMovieDetails(movie.imdbID);
-          } catch (error) {
-            console.error(`Failed to fetch details for movie ${movie.imdbID}:`, error);
-            return null;
-          }
-        })
-      );
-
-      console.log('Detailed movies received:', detailedMovies);
-      setMovies(detailedMovies.filter((movie): movie is OMDBMovieDetails => movie !== null));
-    } catch (err) {
-      console.error('Search error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to search movies';
-      
-      if (errorMessage === 'Too many results.') {
-        try {
-          const exactSearchResults = await omdbApi.searchMovies(`"${query}"`);
-          const detailedExactMovies = await Promise.all(
-            exactSearchResults.Search.slice(0, 5).map(async (movie) => {
-              try {
-                return await omdbApi.getMovieDetails(movie.imdbID);
-              } catch (error) {
-                console.error(`Failed to fetch details for exact movie ${movie.imdbID}:`, error);
-                return null;
-              }
-            })
-          );
-          setMovies(detailedExactMovies.filter((movie): movie is OMDBMovieDetails => movie !== null));
-        } catch (exactSearchError) {
-          const exactErrorMessage = exactSearchError instanceof Error ? 
-            exactSearchError.message : 'Unknown error';
-          if (exactErrorMessage.includes('Too many results')) {
-            setError(`"${query}" is too broad a search term. Please be more specific by adding a year (e.g., "Batman 2022") or using the full movie title.`);
-          } else {
-            setError(`Search failed: ${exactErrorMessage}. Try being more specific with your search terms.`);
-          }
-        }
-      } else {
-        setError(errorMessage);
+      if (searchResults.Response === 'False') {
+        throw new Error(searchResults.Error || 'No results found');
       }
+
+      setMovies(searchResults.Search || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      setError(errorMessage);
+      setMovies([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getClaudeRecommendations = async (showMovies: boolean = true) => {
-    console.log('[Claude Recs] Starting recommendation request via Supabase...');
-    
-    if (!user) {
-      setAiError('Please sign in to get personalized recommendations');
-      return;
-    }
-
-    if (!claudeConfigured) {
-      console.error('[Claude Recs] Supabase Edge Functions not working');
-      setAiError('Claude AI service is not available. The Edge Function connection failed.');
+  const getClaudeRecommendations = async (isMovies: boolean) => {
+    if (!isAuthenticated || !user) {
+      setAiError('Please sign in to get AI recommendations');
       return;
     }
 
     setAiLoading(true);
     setAiError(null);
-    setShowingMovieRecs(false);
-    setShowingTVRecs(false);
 
     try {
-      console.log('[Claude Recs] Fetching user watchlist...');
-      
-      // Get user's watchlist from Supabase
-      const { data: userMovies, error: moviesError } = await supabase
+      // Get user's watchlist data
+      const { data: moviesData, error: moviesError } = await supabase
         .from('movies')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('media_type', 'movie');
 
-      console.log('[Claude Recs] Watchlist data:', userMovies);
+      const { data: tvData, error: tvError } = await supabase
+        .from('movies')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('media_type', 'series');
 
-      if (moviesError) {
-        console.error('[Claude Recs] Supabase error:', moviesError);
-        throw new Error(`Failed to fetch watchlist: ${moviesError.message}`);
+      if (moviesError || tvError) {
+        throw new Error('Failed to fetch watchlist data');
       }
 
-      if (!userMovies || userMovies.length === 0) {
-        throw new Error('No watchlist data found. Please add some movies and rate them first.');
-      }
-
-      // Prepare watchlist data for Claude
-      const movies = userMovies
-        .filter(m => m.media_type === 'movie' && m.user_rating && m.user_rating > 0)
-        .map(m => ({
-          title: m.title,
-          user_rating: m.user_rating,
-          status: m.status,
-          date_watched: m.date_watched,
-          imdb_id: m.imdb_id
-        }));
-
-      const tv_series = userMovies
-        .filter(m => m.media_type === 'series' && m.user_rating && m.user_rating > 0)
-        .map(m => ({
-          title: m.title,
-          user_rating: m.user_rating,
-          status: m.status,
-          date_watched: m.date_watched,
-          imdb_id: m.imdb_id
-        }));
-
-      console.log('[Claude Recs] Prepared data:', { movies: movies.length, tv_series: tv_series.length });
-
-      if (movies.length === 0 && tv_series.length === 0) {
-        throw new Error('No rated movies or TV series found. Please rate some items in your watchlist first.');
-      }
-
-      const requestData = {
-        watchlistData: { movies, tv_series }
+      const watchlistData = {
+        movies: moviesData || [],
+        tv_series: tvData || []
       };
-      
-      console.log('[Claude Recs] Calling Supabase Edge Function...');
-      
-      // Call Supabase Edge Function (which calls Claude internally)
+
+      console.log('[AI] Requesting recommendations for:', isMovies ? 'movies' : 'TV series');
+      console.log('[AI] Watchlist data:', watchlistData);
+
+      // Call Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('recommendations', {
-        body: requestData
+        body: { watchlistData }
       });
-      
-      console.log('[Claude Recs] Supabase response:', { data, error });
 
       if (error) {
-        console.error('[Claude Recs] Supabase Edge Function error:', error);
-        throw new Error(`Recommendation service error: ${error.message}`);
+        console.error('[AI] Edge Function error:', error);
+        throw new Error(error.message || 'Failed to get recommendations from service');
       }
 
       if (!data || !data.movies || !data.tv_series) {
-        console.error('[Claude Recs] Invalid response format:', data);
         throw new Error('Invalid response format from recommendation service');
       }
-      
-      console.log('[Claude Recs] Received recommendations:', data);
-      
+
+      console.log('[AI] Recommendations received:', data);
       setRecommendations(data);
       
-      if (showMovies) {
+      if (isMovies) {
         setShowingMovieRecs(true);
+        setShowingTVRecs(false);
       } else {
         setShowingTVRecs(true);
+        setShowingMovieRecs(false);
       }
-    } catch (error) {
-      console.error('[Claude Recs] Failed to get recommendations:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get recommendations';
+
+    } catch (err) {
+      console.error('[AI] Recommendation error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get recommendations';
       setAiError(errorMessage);
     } finally {
       setAiLoading(false);
@@ -308,61 +226,45 @@ export function SearchPage() {
                 className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
               >
                 <Sparkles className="h-5 w-5" />
-                <span>{aiLoading ? 'Getting Recommendations...' : 'Movies You May Like'}</span>
+                <span>{aiLoading ? 'Getting Recommendations...' : 'Get Movie Recommendations'}</span>
               </button>
               
               <button
                 onClick={getTVRecommendations}
                 disabled={aiLoading || !isAuthenticated || !claudeConfigured}
-                className="flex items-center justify-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
               >
                 <TrendingUp className="h-5 w-5" />
-                <span>{aiLoading ? 'Getting Recommendations...' : 'TV You May Like'}</span>
+                <span>{aiLoading ? 'Getting Recommendations...' : 'Get TV Recommendations'}</span>
               </button>
-
             </div>
 
             {!isAuthenticated && (
               <p className="text-sm text-gray-500 mt-4">
-                Sign in to get personalized AI recommendations
-              </p>
-            )}
-
-            {!claudeConfigured && isAuthenticated && (
-              <p className="text-sm text-red-500 mt-4">
-                Edge Function connection failed. Check your Supabase setup.
+                Sign in to get personalized AI recommendations based on your watchlist
               </p>
             )}
           </div>
 
           {/* AI Error Display */}
           {aiError && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
               <div className="flex items-center space-x-3">
                 <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-red-700 font-medium">AI Recommendation Error</p>
-                  <p className="text-red-600 text-sm mt-1">{aiError}</p>
-                </div>
+                <p className="text-red-700">{aiError}</p>
               </div>
             </div>
           )}
 
-          {/* AI Loading State */}
-          {aiLoading && (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-slate-600">Claude AI is analyzing your preferences...</p>
-            </div>
-          )}
-
           {/* AI Recommendations Display */}
-          {(showingMovieRecs || showingTVRecs) && !aiLoading && (
-            <div className="mt-8">
-              <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center">
-                <Sparkles className="h-6 w-6 text-purple-600 mr-2" />
-                {showingMovieRecs ? 'Movie Recommendations' : 'TV Series Recommendations'}
-              </h3>
+          {(showingMovieRecs || showingTVRecs) && (
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <Brain className="h-6 w-6 text-purple-600" />
+                <h3 className="text-xl font-bold text-slate-900">
+                  {showingMovieRecs ? 'Movie Recommendations' : 'TV Series Recommendations'}
+                </h3>
+              </div>
               
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(showingMovieRecs ? recommendations.movies : recommendations.tv_series).map((rec, index) => (
@@ -421,13 +323,14 @@ export function SearchPage() {
           </div>
         )}
 
-        {/* Search Results */}
+        {/* ✅ FIXED: Search Results with proper imdbUrl prop */}
         <div className="space-y-8">
           {movies.map((movie) => (
             <MovieCard
               key={movie.imdbID}
               movie={movie}
-              posterUrl={movie.Poster !== 'N/A' ? movie.Poster : undefined}
+              posterUrl={movie.Poster !== 'N/A' ? movie.Poster : null}
+              imdbUrl={movie.imdbID ? `https://www.imdb.com/title/${movie.imdbID}/` : null}
             />
           ))}
         </div>
