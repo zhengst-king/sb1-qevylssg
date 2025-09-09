@@ -70,7 +70,7 @@ export function SearchPage() {
 
       if (error) {
         console.error('[Supabase Edge] Test failed:', error);
-        console.warn('[Supabase Edge] Edge Function may not be deployed or configured properly');
+        console.warn('[Supabase Edge] Edge Function may not be deployed or Claude API key not configured in Supabase dashboard');
         setClaudeConfigured(false);
       } else if (data && data.movies && data.tv_series) {
         console.log('[Supabase Edge] Test successful!');
@@ -80,7 +80,7 @@ export function SearchPage() {
         setClaudeConfigured(false);
       }
     } catch (error) {
-      console.error('[Supabase Edge] Connection error:', error);
+      console.error('[Supabase Edge] Connection error - Edge Function may not be deployed:', error);
       setClaudeConfigured(false);
     }
   };
@@ -100,7 +100,23 @@ export function SearchPage() {
         throw new Error(searchResults.Error || 'No results found');
       }
 
-      setMovies(searchResults.Search || []);
+      // Fetch detailed information for each movie
+      const searchItems = searchResults.Search || [];
+      const detailedMovies: OMDBMovieDetails[] = [];
+      
+      for (const item of searchItems) {
+        try {
+          const details = await omdbApi.getMovieDetails(item.imdbID);
+          if (details.Response === 'True') {
+            detailedMovies.push(details);
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch details for ${item.Title}:`, error);
+          // Skip this movie if we can't get details
+        }
+      }
+      
+      setMovies(detailedMovies);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
       setError(errorMessage);
