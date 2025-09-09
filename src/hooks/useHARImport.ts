@@ -144,57 +144,175 @@ export function useHARImport() {
           const harContent = JSON.parse(event.target?.result as string);
           const entries = harContent.log?.entries || [];
           
-          // Simple Netflix extraction logic
+          console.log(`[HAR Import] Processing ${entries.length} total entries`);
+          
+          // Filter for Netflix entries
+          const netflixEntries = entries.filter((entry: any) => 
+            entry.request?.url?.includes('netflix.com')
+          );
+          
+          console.log(`[HAR Import] Found ${netflixEntries.length} Netflix entries`);
+          
           const titles: ProcessedTitle[] = [];
           
-          entries.forEach((entry: any) => {
+          // Navigation/interface elements to filter out
+          const filterOutList = new Set([
+            'netflix', 'movies', 'tv shows', 'home', 'browse', 'search',
+            'mylist', 'recently added', 'watchlist', 'continue watching',
+            'trending', 'popular', 'new releases', 'because you watched',
+            'top picks', 'made for you', 'more like this'
+          ]);
+          
+          netflixEntries.forEach((entry: any) => {
             const url = entry.request?.url || '';
             const response = entry.response;
             
-            // Look for Netflix API calls that contain title information
-            if (url.includes('netflix.com') && response?.content?.text) {
+            if (response?.content?.text) {
               try {
-                const responseText = response.content.text;
-                // This is a simplified extraction - in reality, you'd need more sophisticated parsing
-                if (responseText.includes('"title"') || responseText.includes('"name"')) {
-                  const mockTitle: ProcessedTitle = {
-                    title: `Sample Title ${titles.length + 1}`,
-                    netflixType: Math.random() > 0.5 ? 'movie' : 'series',
-                    watchStatus: 'To Watch',
-                    source: service,
-                    dateImported: new Date(),
-                    enrichmentStatus: 'not_found'
-                  };
-                  titles.push(mockTitle);
+                let responseText = response.content.text;
+                
+                // Handle Netflix's JSON format that might start with )]}' 
+                if (responseText.startsWith(')]}\'')) {
+                  responseText = responseText.substring(4);
                 }
+                
+                // Try to extract titles using multiple patterns
+                const titlePatterns = [
+                  /"title":\s*"([^"]+)"/g,
+                  /"name":\s*"([^"]+)"/g,
+                  /"displayName":\s*"([^"]+)"/g,
+                  /"summary":\s*{[^}]*"title":\s*"([^"]+)"/g,
+                  /"video":\s*{[^}]*"title":\s*"([^"]+)"/g
+                ];
+                
+                titlePatterns.forEach(pattern => {
+                  let match;
+                  while ((match = pattern.exec(responseText)) !== null) {
+                    let title = match[1];
+                    
+                    if (title) {
+                      // Decode URL encoding
+                      title = decodeTitle(title);
+                      
+                      // Filter out invalid/unwanted titles
+                      if (isValidTitle(title, filterOutList)) {
+                        // Check if we already have this title
+                        if (!titles.find(t => t.title === title)) {
+                          titles.push({
+                            title: title,
+                            netflixType: Math.random() > 0.7 ? 'series' : 'movie', // Default guess
+                            watchStatus: 'To Watch',
+                            source: service,
+                            dateImported: new Date(),
+                            enrichmentStatus: 'not_found'
+                          });
+                        }
+                      }
+                    }
+                  }
+                });
+                
+                // Try to parse as JSON for more structured extraction
+                try {
+                  const data = JSON.parse(responseText);
+                  extractTitlesFromObject(data, titles, service, filterOutList);
+                } catch (e) {
+                  // Not valid JSON, continue with pattern matching only
+                }
+                
               } catch (parseError) {
-                // Skip invalid JSON responses
+                // Skip entries that can't be processed
+                console.log('[HAR Import] Skipping unparseable entry');
               }
             }
           });
           
-          // If no titles found, create a sample for demonstration
+          console.log(`[HAR Import] Extracted ${titles.length} titles from HAR file`);
+          
           if (titles.length === 0) {
+            reject(new Error('No valid titles found in HAR file. Please ensure you browsed your Netflix "My List" while recording the HAR file.'));
+            return;
+          }
+          
+          resolve(titles);
+        } catch (error) {
+          console.error('[HAR Import] Error processing HAR file:', error);
+          reject(new Error('Invalid HAR file format or corrupted file.'));
+        }
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
+
+  // Helper function to decode URL-encoded titles
+  const decodeTitle = (title: string): string => {
+    try {
+      // Handle hex encoding (\x20) and URL encoding (%20)
+      let decoded = title
+        .replace(/\\x20/g, ' ')
+        .replace(/%20/g, ' ')
+        .replace(/\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/%([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .trim();
+      
+      return decoded;
+    } catch (e) {
+      return title; // Return original if decoding fails
+    }
+  };
+
+  // Helper function to validate if a title should be included
+  const isValidTitle = (title: string, filterOutList: Set<string>): boolean => {
+    if (!title || title.length < 2) return false;
+    if (/^[0-9]+$/.test(title)) return false; // Skip numeric-only strings
+    if (title.includes('http')) return false; // Skip URLs
+    if (title.includes('netflix.com')) return false; // Skip Netflix URLs
+    
+    const normalizedTitle = title.toLowerCase().trim();
+    if (filterOutList.has(normalizedTitle)) return false;
+    
+    // Skip very short titles or common interface elements
+    if (normalizedTitle.length < 3) return false;
+    if (['ok', 'yes', 'no', 'and', 'the', 'for', 'get', 'set'].includes(normalizedTitle)) return false;
+    
+    return true;
+  };
+
+  // Helper function to recursively extract titles from JSON objects
+  const extractTitlesFromObject = (obj: any, titles: ProcessedTitle[], service: string, filterOutList: Set<string>, depth = 0): void => {
+    if (depth > 5 || !obj || typeof obj !== 'object') return;
+    
+    if (Array.isArray(obj)) {
+      obj.forEach(item => extractTitlesFromObject(item, titles, service, filterOutList, depth + 1));
+      return;
+    }
+    
+    // Look for title-like properties
+    const titleKeys = ['title', 'name', 'displayName', 'itemTitle', 'showTitle'];
+    titleKeys.forEach(key => {
+      if (obj[key] && typeof obj[key] === 'string') {
+        let title = decodeTitle(obj[key]);
+        
+        if (isValidTitle(title, filterOutList)) {
+          if (!titles.find(t => t.title === title)) {
             titles.push({
-              title: 'Sample Netflix Title',
-              genre: 'Drama',
-              year: 2023,
-              netflixType: 'movie',
+              title: title,
+              netflixType: Math.random() > 0.7 ? 'series' : 'movie',
               watchStatus: 'To Watch',
               source: service,
               dateImported: new Date(),
               enrichmentStatus: 'not_found'
             });
           }
-          
-          resolve(titles);
-        } catch (error) {
-          reject(new Error('Invalid HAR file format'));
         }
-      };
-      
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
+      }
+    });
+    
+    // Recursively check nested objects
+    Object.values(obj).forEach(value => {
+      extractTitlesFromObject(value, titles, service, filterOutList, depth + 1);
     });
   };
 
