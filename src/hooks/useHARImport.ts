@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '../lib/supabase';
+import { omdbApi } from '../lib/omdb';
 
 interface ProcessedTitle {
   title: string;
@@ -102,8 +103,8 @@ export function useHARImport() {
         imdb_score: title.imdb_score || null,
         imdb_id: title.imdb_id || null,
         poster_url: title.poster_url || null,
-        media_type: title.netflixType, // 'movie' or 'series'
-        status: title.watchStatus, // 'To Watch', 'Watching', 'Watched'
+        media_type: title.netflixType,
+        status: title.watchStatus,
         
         // Netflix-specific metadata
         netflix_id: title.netflixId,
@@ -135,11 +136,177 @@ export function useHARImport() {
     }
   };
 
+  // Comprehensive junk title detection
+  const isJunkTitle = (title: string): boolean => {
+    const normalizedTitle = title.toLowerCase().trim();
+    
+    // Netflix interface elements
+    const interfaceElements = [
+      'netflix', 'movies', 'tv shows', 'home', 'browse', 'search', 'mylist', 'my list',
+      'recently added', 'watchlist', 'continue watching', 'trending', 'popular',
+      'new releases', 'because you watched', 'top picks', 'made for you', 'more like this',
+      'watch again', 'keep watching', 'trending now', 'new & popular'
+    ];
+    
+    // Genre/category tags
+    const genreTags = [
+      'drama', 'comedy', 'action', 'thriller', 'horror', 'romance', 'sci-fi', 'fantasy',
+      'documentary', 'crime', 'mystery', 'adventure', 'animation', 'family', 'war',
+      'western', 'musical', 'sport', 'biography', 'history', 'music', 'reality',
+      'talk show', 'game show', 'news', 'adult animation', 'anime', 'sitcom',
+      'social experiment', 'visually striking', 'critically acclaimed', 'award winning'
+    ];
+    
+    // Award/descriptor categories
+    const descriptors = [
+      'emmy nominee', 'oscar winner', 'golden globe', 'critically acclaimed',
+      'award winning', 'binge worthy', 'feel good', 'coming soon', 'new arrival',
+      'staff picks', 'viewer favorites', 'highly rated'
+    ];
+    
+    // Common people's names (actors, directors that appear as separate entries)
+    const commonNames = [
+      'masi oka', 'brenda song', 'maya erskine', 'john smith', 'sarah lee',
+      'michael chen', 'david kim', 'jennifer wu', 'robert johnson'
+    ];
+    
+    // Technical/URL patterns
+    if (normalizedTitle.includes('.')) {
+      if (normalizedTitle.includes('nflxvideo') || normalizedTitle.includes('netflix.com') ||
+          normalizedTitle.includes('http') || normalizedTitle.includes('www') ||
+          normalizedTitle.includes('.net') || normalizedTitle.includes('.com') ||
+          normalizedTitle.includes('.io') || normalizedTitle.includes('lax009') ||
+          normalizedTitle.includes('c172')) {
+        return true;
+      }
+    }
+    
+    // Check against all junk categories
+    const allJunkTerms = [...interfaceElements, ...genreTags, ...descriptors, ...commonNames];
+    if (allJunkTerms.includes(normalizedTitle)) return true;
+    
+    // Additional patterns
+    if (normalizedTitle.length < 3) return true; // Too short
+    if (/^[0-9]+$/.test(normalizedTitle)) return true; // Just numbers
+    if (/^[a-z]{1,2}$/.test(normalizedTitle)) return true; // Single/double letters
+    if (normalizedTitle.includes('episode')) return true; // Episode references
+    if (normalizedTitle.includes('season')) return true; // Season references
+    
+    return false;
+  };
+
+  // Improved title validation
+  const isValidTitle = (title: string): boolean => {
+    if (!title || title.length < 2) return false;
+    if (isJunkTitle(title)) return false;
+    
+    // Must have at least some letters
+    if (!/[a-zA-Z]/.test(title)) return false;
+    
+    // Reasonable length (most titles are 3-50 characters)
+    if (title.length > 100) return false;
+    
+    return true;
+  };
+
+  // Helper function to decode URL-encoded titles
+  const decodeTitle = (title: string): string => {
+    try {
+      let decoded = title
+        .replace(/\\x20/g, ' ')
+        .replace(/%20/g, ' ')
+        .replace(/\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/%([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .trim();
+      
+      return decoded;
+    } catch (e) {
+      return title;
+    }
+  };
+
+  // Enrich titles with OMDB data
+  const enrichWithOMDB = async (titles: string[], onProgress?: (current: number, total: number, title: string) => void): Promise<ProcessedTitle[]> => {
+    const enrichedTitles: ProcessedTitle[] = [];
+    
+    for (let i = 0; i < titles.length; i++) {
+      const title = titles[i];
+      
+      if (onProgress) {
+        onProgress(i + 1, titles.length, title);
+      }
+      
+      try {
+        // Add a small delay to respect OMDB rate limits
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        // Search for the title in OMDB
+        const searchResults = await omdbApi.searchMovies(title);
+        
+        if (searchResults.Search && searchResults.Search.length > 0) {
+          // Find the best match (prefer exact matches)
+          const exactMatch = searchResults.Search.find(result => 
+            result.Title.toLowerCase() === title.toLowerCase()
+          );
+          const bestMatch = exactMatch || searchResults.Search[0];
+          
+          // Get detailed information
+          const details = await omdbApi.getMovieDetails(bestMatch.imdbID);
+          
+          enrichedTitles.push({
+            title: details.Title,
+            genre: details.Genre !== 'N/A' ? details.Genre : undefined,
+            year: details.Year !== 'N/A' ? parseInt(details.Year) : undefined,
+            director: details.Director !== 'N/A' ? details.Director : undefined,
+            actors: details.Actors !== 'N/A' ? details.Actors : undefined,
+            plot: details.Plot !== 'N/A' ? details.Plot : undefined,
+            imdb_score: details.imdbRating !== 'N/A' ? parseFloat(details.imdbRating) : undefined,
+            imdb_id: details.imdbID,
+            poster_url: details.Poster !== 'N/A' ? details.Poster : undefined,
+            netflixType: details.Type === 'series' ? 'series' : 'movie', // Use OMDB Type
+            watchStatus: 'To Watch',
+            source: 'netflix-import',
+            enrichmentStatus: 'success',
+            dateImported: new Date()
+          });
+          
+        } else {
+          // No OMDB match found, keep as basic entry
+          enrichedTitles.push({
+            title: title,
+            netflixType: 'movie', // Default to movie if unknown
+            watchStatus: 'To Watch',
+            source: 'netflix-import',
+            enrichmentStatus: 'not_found',
+            dateImported: new Date()
+          });
+        }
+        
+      } catch (error) {
+        console.error(`[HAR Import] Failed to enrich "${title}":`, error);
+        
+        // Add as basic entry if enrichment fails
+        enrichedTitles.push({
+          title: title,
+          netflixType: 'movie',
+          watchStatus: 'To Watch',
+          source: 'netflix-import',
+          enrichmentStatus: 'failed',
+          dateImported: new Date()
+        });
+      }
+    }
+    
+    return enrichedTitles;
+  };
+
   const processHARFile = async (file: File, service: string): Promise<ProcessedTitle[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
           const harContent = JSON.parse(event.target?.result as string);
           const entries = harContent.log?.entries || [];
@@ -153,15 +320,7 @@ export function useHARImport() {
           
           console.log(`[HAR Import] Found ${netflixEntries.length} Netflix entries`);
           
-          const titles: ProcessedTitle[] = [];
-          
-          // Navigation/interface elements to filter out
-          const filterOutList = new Set([
-            'netflix', 'movies', 'tv shows', 'home', 'browse', 'search',
-            'mylist', 'recently added', 'watchlist', 'continue watching',
-            'trending', 'popular', 'new releases', 'because you watched',
-            'top picks', 'made for you', 'more like this'
-          ]);
+          const rawTitles = new Set<string>();
           
           netflixEntries.forEach((entry: any) => {
             const url = entry.request?.url || '';
@@ -176,65 +335,59 @@ export function useHARImport() {
                   responseText = responseText.substring(4);
                 }
                 
-                // Try to extract titles using multiple patterns
+                // Extract titles using multiple patterns
                 const titlePatterns = [
                   /"title":\s*"([^"]+)"/g,
                   /"name":\s*"([^"]+)"/g,
                   /"displayName":\s*"([^"]+)"/g,
-                  /"summary":\s*{[^}]*"title":\s*"([^"]+)"/g,
-                  /"video":\s*{[^}]*"title":\s*"([^"]+)"/g
                 ];
                 
                 titlePatterns.forEach(pattern => {
                   let match;
                   while ((match = pattern.exec(responseText)) !== null) {
-                    let title = match[1];
-                    
-                    if (title) {
-                      // Decode URL encoding
-                      title = decodeTitle(title);
-                      
-                      // Filter out invalid/unwanted titles
-                      if (isValidTitle(title, filterOutList)) {
-                        // Check if we already have this title
-                        if (!titles.find(t => t.title === title)) {
-                          titles.push({
-                            title: title,
-                            netflixType: Math.random() > 0.7 ? 'series' : 'movie', // Default guess
-                            watchStatus: 'To Watch',
-                            source: service,
-                            dateImported: new Date(),
-                            enrichmentStatus: 'not_found'
-                          });
-                        }
-                      }
+                    let title = decodeTitle(match[1]);
+                    if (isValidTitle(title)) {
+                      rawTitles.add(title);
                     }
                   }
                 });
                 
-                // Try to parse as JSON for more structured extraction
+                // Try structured JSON extraction too
                 try {
                   const data = JSON.parse(responseText);
-                  extractTitlesFromObject(data, titles, service, filterOutList);
+                  extractTitlesFromObject(data, rawTitles);
                 } catch (e) {
-                  // Not valid JSON, continue with pattern matching only
+                  // Not valid JSON, continue
                 }
                 
               } catch (parseError) {
                 // Skip entries that can't be processed
-                console.log('[HAR Import] Skipping unparseable entry');
               }
             }
           });
           
-          console.log(`[HAR Import] Extracted ${titles.length} titles from HAR file`);
+          const uniqueTitles = Array.from(rawTitles);
+          console.log(`[HAR Import] Extracted ${uniqueTitles.length} valid titles`);
           
-          if (titles.length === 0) {
-            reject(new Error('No valid titles found in HAR file. Please ensure you browsed your Netflix "My List" while recording the HAR file.'));
+          if (uniqueTitles.length === 0) {
+            reject(new Error('No valid titles found in HAR file. Please ensure you browsed your Netflix "My List" while recording.'));
             return;
           }
           
-          resolve(titles);
+          // Limit to reasonable number to avoid hitting API limits
+          const titlesToProcess = uniqueTitles.slice(0, 50);
+          console.log(`[HAR Import] Processing ${titlesToProcess.length} titles (limited from ${uniqueTitles.length})`);
+          
+          resolve(await enrichWithOMDB(titlesToProcess, (current, total, title) => {
+            setProgress({
+              phase: 'Enriching titles',
+              current: (current / total) * 75 + 25, // 25-100% of progress
+              total: 100,
+              message: `Enriching with OMDB data: ${title}`,
+              currentTitle: title
+            });
+          }));
+          
         } catch (error) {
           console.error('[HAR Import] Error processing HAR file:', error);
           reject(new Error('Invalid HAR file format or corrupted file.'));
@@ -246,46 +399,12 @@ export function useHARImport() {
     });
   };
 
-  // Helper function to decode URL-encoded titles
-  const decodeTitle = (title: string): string => {
-    try {
-      // Handle hex encoding (\x20) and URL encoding (%20)
-      let decoded = title
-        .replace(/\\x20/g, ' ')
-        .replace(/%20/g, ' ')
-        .replace(/\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
-        .replace(/%([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
-        .trim();
-      
-      return decoded;
-    } catch (e) {
-      return title; // Return original if decoding fails
-    }
-  };
-
-  // Helper function to validate if a title should be included
-  const isValidTitle = (title: string, filterOutList: Set<string>): boolean => {
-    if (!title || title.length < 2) return false;
-    if (/^[0-9]+$/.test(title)) return false; // Skip numeric-only strings
-    if (title.includes('http')) return false; // Skip URLs
-    if (title.includes('netflix.com')) return false; // Skip Netflix URLs
-    
-    const normalizedTitle = title.toLowerCase().trim();
-    if (filterOutList.has(normalizedTitle)) return false;
-    
-    // Skip very short titles or common interface elements
-    if (normalizedTitle.length < 3) return false;
-    if (['ok', 'yes', 'no', 'and', 'the', 'for', 'get', 'set'].includes(normalizedTitle)) return false;
-    
-    return true;
-  };
-
   // Helper function to recursively extract titles from JSON objects
-  const extractTitlesFromObject = (obj: any, titles: ProcessedTitle[], service: string, filterOutList: Set<string>, depth = 0): void => {
+  const extractTitlesFromObject = (obj: any, titles: Set<string>, depth = 0): void => {
     if (depth > 5 || !obj || typeof obj !== 'object') return;
     
     if (Array.isArray(obj)) {
-      obj.forEach(item => extractTitlesFromObject(item, titles, service, filterOutList, depth + 1));
+      obj.forEach(item => extractTitlesFromObject(item, titles, depth + 1));
       return;
     }
     
@@ -294,25 +413,15 @@ export function useHARImport() {
     titleKeys.forEach(key => {
       if (obj[key] && typeof obj[key] === 'string') {
         let title = decodeTitle(obj[key]);
-        
-        if (isValidTitle(title, filterOutList)) {
-          if (!titles.find(t => t.title === title)) {
-            titles.push({
-              title: title,
-              netflixType: Math.random() > 0.7 ? 'series' : 'movie',
-              watchStatus: 'To Watch',
-              source: service,
-              dateImported: new Date(),
-              enrichmentStatus: 'not_found'
-            });
-          }
+        if (isValidTitle(title)) {
+          titles.add(title);
         }
       }
     });
     
     // Recursively check nested objects
     Object.values(obj).forEach(value => {
-      extractTitlesFromObject(value, titles, service, filterOutList, depth + 1);
+      extractTitlesFromObject(value, titles, depth + 1);
     });
   };
 
@@ -336,15 +445,7 @@ export function useHARImport() {
 
       const processedTitles = await processHARFile(options.file, options.streamingService);
 
-      // Phase 2: Process titles
-      setProgress({
-        phase: 'Processing titles',
-        current: 25,
-        total: 100,
-        message: `Found ${processedTitles.length} titles to import...`
-      });
-
-      // Update watch status for all titles
+      // Phase 2: Update watch status
       const titlesWithStatus = processedTitles.map(title => ({
         ...title,
         watchStatus: options.defaultWatchStatus
@@ -353,7 +454,7 @@ export function useHARImport() {
       // Phase 3: Save to database
       setProgress({
         phase: 'Saving to database',
-        current: 75,
+        current: 90,
         total: 100,
         message: 'Saving titles to your watchlist...'
       });
