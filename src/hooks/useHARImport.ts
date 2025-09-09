@@ -549,6 +549,58 @@ export function useHARImport() {
     });
   };
 
+  // Add this function to the useHARImport hook (around line 400, before the importFromHAR function)
+
+const saveImportHistory = async (options: ImportOptions, result: ImportResult) => {
+  if (!user) return;
+  
+  try {
+    const historyRecord = {
+      user_id: user.id,
+      upload_datetime: new Date().toISOString(),
+      streaming_service: options.streamingService,
+      default_status: options.defaultWatchStatus,
+      har_filename: options.file.name,
+      movies_added: result.summary.moviesAdded,
+      tv_series_added: result.summary.tvSeriesAdded,
+      total_imported: result.summary.moviesAdded + result.summary.tvSeriesAdded
+    };
+
+    const { error } = await supabase
+      .from('import_history')
+      .insert([historyRecord]);
+
+    if (error) {
+      console.error('[HAR Import] Failed to save import history:', error);
+      // Don't throw error - import was successful, just history saving failed
+    } else {
+      console.log('[HAR Import] Import history saved successfully');
+    }
+  } catch (error) {
+    console.error('[HAR Import] Error saving import history:', error);
+  }
+};
+
+// Then modify the importFromHAR function to call this after successful import
+// Find this section in the importFromHAR function (around line 450):
+
+      setResult({
+        summary: {
+          moviesAdded: movieCount,
+          tvSeriesAdded: seriesCount,
+          enrichmentFailed: titlesWithStatus.filter(t => t.enrichmentStatus === 'failed').length
+        }
+      });
+
+      // ✅ ADD THIS: Save import history
+      await saveImportHistory(options, {
+        summary: {
+          moviesAdded: movieCount,
+          tvSeriesAdded: seriesCount,
+          enrichmentFailed: titlesWithStatus.filter(t => t.enrichmentStatus === 'failed').length
+        }
+      });
+  
   const importFromHAR = async (options: ImportOptions) => {
     if (!user) {
       throw new Error('User not authenticated');
