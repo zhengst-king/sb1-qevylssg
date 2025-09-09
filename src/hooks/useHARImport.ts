@@ -83,9 +83,54 @@ export function useHARImport() {
     setError(null);
   };
 
-  // Comprehensive junk title detection
+  // ✅ ENHANCED: Hard-coded junk title exclusions
   const isJunkTitle = (title: string): boolean => {
     const normalizedTitle = title.toLowerCase().trim();
+    
+    // ✅ HARD-CODED EXCLUSIONS: Titles that have IMDB presence but are clearly not entertainment
+    const hardCodedExclusions = [
+      // Tech/Browser related
+      'chrome', 'firefox', 'safari', 'edge', 'internet explorer',
+      'browser', 'web browser', 'google chrome', 'mozilla firefox',
+      
+      // Educational/Technical content
+      'api cybersecurity 101', 'cybersecurity 101', 'api security',
+      'programming 101', 'coding 101', 'python 101', 'javascript 101',
+      'web development', 'software engineering', 'computer science',
+      
+      // Language/Communication
+      'american english', 'british english', 'spanish', 'french', 'german',
+      'mandarin', 'language learning', 'english lessons', 'conversation',
+      
+      // Generic terms
+      'test', 'demo', 'sample', 'example', 'tutorial', 'guide', 'manual',
+      'documentation', 'help', 'support', 'faq', 'readme', 'license',
+      'terms', 'privacy', 'policy', 'about', 'contact', 'login', 'signup',
+      
+      // Tech infrastructure
+      'api', 'database', 'server', 'client', 'frontend', 'backend',
+      'framework', 'library', 'plugin', 'extension', 'addon', 'widget',
+      
+      // Operating systems
+      'windows', 'macos', 'linux', 'ubuntu', 'android', 'ios',
+      
+      // Software/Apps
+      'microsoft office', 'google docs', 'photoshop', 'excel', 'powerpoint',
+      'zoom', 'teams', 'slack', 'discord', 'whatsapp', 'telegram',
+      
+      // Generic content types
+      'trailer', 'preview', 'commercial', 'advertisement', 'ad', 'promo',
+      'behind the scenes', 'making of', 'deleted scenes', 'bloopers',
+      
+      // Streaming service UI elements
+      'continue watching', 'watch next', 'recommended', 'trending now',
+      'new releases', 'coming soon', 'expiring soon', 'added recently'
+    ];
+    
+    // Check hard-coded exclusions first
+    if (hardCodedExclusions.includes(normalizedTitle)) {
+      return true;
+    }
     
     // Netflix interface elements
     const interfaceElements = [
@@ -172,9 +217,43 @@ export function useHARImport() {
     }
   };
 
-  // ✅ FIX 1: Only keep titles that successfully match with IMDB
+  // ✅ ENHANCED: Preserve sequel numbers and only keep IMDB matches
   const enrichWithOMDB = async (titles: string[], onProgress?: (current: number, total: number, title: string) => void): Promise<ProcessedTitle[]> => {
     const enrichedTitles: ProcessedTitle[] = [];
+    
+    // ✅ Helper function to detect and preserve sequel/part numbers
+    const preserveSequelInfo = (originalTitle: string, omdbTitle: string): string => {
+      const sequelPatterns = [
+        /\b(II|III|IV|V|VI|VII|VIII|IX|X)\b/i,           // Roman numerals
+        /\b(Part\s+\d+)\b/i,                             // Part 1, Part 2, etc.
+        /\b(Volume\s+\d+)\b/i,                           // Volume 1, Volume 2, etc.
+        /\b(Season\s+\d+)\b/i,                           // Season 1, Season 2, etc.
+        /\b(\d+)\b/g,                                    // Numbers like 2, 3, etc.
+        /\b(Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\b/i // Written numbers
+      ];
+      
+      // Check if original has sequel info that OMDB result doesn't
+      for (const pattern of sequelPatterns) {
+        const originalMatch = originalTitle.match(pattern);
+        const omdbMatch = omdbTitle.match(pattern);
+        
+        if (originalMatch && !omdbMatch) {
+          // Check if the base titles are similar (without sequel info)
+          const originalBase = originalTitle.replace(pattern, '').trim();
+          const omdbBase = omdbTitle.replace(pattern, '').trim();
+          
+          // If base titles are very similar, use original title to preserve sequel info
+          if (originalBase.toLowerCase().includes(omdbBase.toLowerCase()) ||
+              omdbBase.toLowerCase().includes(originalBase.toLowerCase())) {
+            console.log(`[HAR Import] Preserving sequel info: "${originalTitle}" instead of "${omdbTitle}"`);
+            return originalTitle;
+          }
+        }
+      }
+      
+      // Default to OMDB title if no sequel preservation needed
+      return omdbTitle;
+    };
     
     for (let i = 0; i < titles.length; i++) {
       const title = titles[i];
@@ -202,9 +281,12 @@ export function useHARImport() {
           // Get detailed information
           const details = await omdbApi.getMovieDetails(bestMatch.imdbID);
           
+          // ✅ PRESERVE SEQUEL INFO: Use smart title matching
+          const finalTitle = preserveSequelInfo(title, details.Title);
+          
           // ✅ ONLY ADD TITLES THAT HAVE SUCCESSFUL IMDB MATCHES
           enrichedTitles.push({
-            title: details.Title,
+            title: finalTitle, // ✅ Use preserved title instead of raw OMDB title
             genre: details.Genre !== 'N/A' ? details.Genre : undefined,
             year: details.Year !== 'N/A' ? parseInt(details.Year) : undefined,
             director: details.Director !== 'N/A' ? details.Director : undefined,
