@@ -107,6 +107,72 @@ export interface Movie {
   last_modified_at?: string;
 };
 
+export interface BlurayTechnicalSpecs {
+  id: string;
+  title: string;
+  year?: number;
+  imdb_id?: string;
+  bluray_com_url?: string;
+  
+  // Video specifications
+  video_codec?: string;
+  video_resolution?: string;
+  hdr_format?: string[];
+  aspect_ratio?: string;
+  frame_rate?: string;
+  
+  // Audio specifications
+  audio_codecs?: string[];
+  audio_channels?: string[];
+  audio_languages?: string[];
+  
+  // Disc information
+  disc_format: string;
+  region_codes?: string[];
+  disc_count?: number;
+  studio?: string;
+  distributor?: string;
+  
+  // Additional information
+  special_features?: string[];
+  subtitles?: string[];
+  runtime_minutes?: number;
+  upc_code?: string;
+  
+  // Quality and metadata
+  data_quality: 'complete' | 'partial' | 'minimal';
+  last_scraped_at: string;
+  scrape_success: boolean;
+  scrape_error?: string;
+  
+  created_at: string;
+  updated_at: string;
+};
+
+export interface ScrapingJob {
+  id: string;
+  title: string;
+  year?: number;
+  imdb_id?: string;
+  search_query?: string;
+  
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'retry';
+  priority: number;
+  attempts: number;
+  max_attempts: number;
+  
+  technical_specs_id?: string;
+  error_message?: string;
+  
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  retry_after?: string;
+  
+  requested_by_user_id?: string;
+  collection_item_id?: string;
+};
+
 export interface PhysicalMediaCollection {
   id: string;
   user_id: string;
@@ -123,6 +189,7 @@ export interface PhysicalMediaCollection {
   condition: 'New' | 'Like New' | 'Good' | 'Fair' | 'Poor';
   personal_rating?: number;
   notes?: string;
+  technical_specs_id?: string;
   created_at: string;
   updated_at: string;
 };
