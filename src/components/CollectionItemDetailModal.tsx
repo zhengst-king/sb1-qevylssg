@@ -204,7 +204,7 @@ export function CollectionItemDetailModal({
               {/* External Links */}
               <div className="flex flex-wrap gap-3">
                 {item.imdb_id && (
-                  
+                  <a>
                     href={`https://www.imdb.com/title/${item.imdb_id}/`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -215,7 +215,7 @@ export function CollectionItemDetailModal({
                   </a>
                 )}
                 {specs?.bluray_com_url && (
-                  
+                  <a>
                     href={specs.bluray_com_url}
                     target="_blank"
                     rel="noopener noreferrer"
