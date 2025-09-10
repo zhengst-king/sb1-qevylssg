@@ -1,6 +1,10 @@
--- Migration: Create technical specifications tables and queue system (CORRECTED)
+-- Migration: Create technical specifications tables and queue system (DEPENDENCY-CORRECTED)
 
--- 1. Technical Specifications Cache Table
+-- 1. Drop any existing views that depend on technical_specs_id
+DROP VIEW IF EXISTS collections_with_specs CASCADE;
+DROP VIEW IF EXISTS collections_with_technical_specs CASCADE;
+
+-- 2. Technical Specifications Cache Table
 CREATE TABLE IF NOT EXISTS bluray_technical_specs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   
@@ -49,7 +53,7 @@ CREATE TABLE IF NOT EXISTS bluray_technical_specs (
   UNIQUE(title, year, disc_format)
 );
 
--- 2. Scraping Queue Table
+-- 3. Scraping Queue Table
 CREATE TABLE IF NOT EXISTS scraping_queue (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   
@@ -80,19 +84,23 @@ CREATE TABLE IF NOT EXISTS scraping_queue (
   collection_item_id UUID REFERENCES physical_media_collections(id)
 );
 
--- 3. Add technical_specs_id column to existing physical_media_collections table (only if it doesn't exist)
+-- 4. Fix technical_specs_id column type in physical_media_collections
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  -- Drop the column if it exists (now that we've removed dependent views)
+  IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'physical_media_collections' AND column_name = 'technical_specs_id'
   ) THEN
-    ALTER TABLE physical_media_collections 
-    ADD COLUMN technical_specs_id UUID REFERENCES bluray_technical_specs(id);
+    ALTER TABLE physical_media_collections DROP COLUMN technical_specs_id CASCADE;
   END IF;
+  
+  -- Add the column with correct UUID type
+  ALTER TABLE physical_media_collections 
+  ADD COLUMN technical_specs_id UUID REFERENCES bluray_technical_specs(id);
 END $$;
 
--- 4. Create Indexes (only if they don't exist)
+-- 5. Create Indexes (only if they don't exist)
 CREATE INDEX IF NOT EXISTS idx_bluray_specs_title_year ON bluray_technical_specs(title, year);
 CREATE INDEX IF NOT EXISTS idx_bluray_specs_imdb_id ON bluray_technical_specs(imdb_id);
 CREATE INDEX IF NOT EXISTS idx_bluray_specs_last_scraped ON bluray_technical_specs(last_scraped_at);
@@ -105,7 +113,7 @@ CREATE INDEX IF NOT EXISTS idx_scraping_queue_user ON scraping_queue(requested_b
 
 CREATE INDEX IF NOT EXISTS idx_physical_collections_tech_specs ON physical_media_collections(technical_specs_id);
 
--- 5. Row Level Security
+-- 6. Row Level Security
 ALTER TABLE bluray_technical_specs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scraping_queue ENABLE ROW LEVEL SECURITY;
 
@@ -132,7 +140,7 @@ CREATE POLICY "Users can request scraping" ON scraping_queue
 CREATE POLICY "Service can update scraping queue" ON scraping_queue
   FOR UPDATE TO service_role USING (true);
 
--- 6. Functions
+-- 7. Functions
 CREATE OR REPLACE FUNCTION update_technical_specs_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -149,9 +157,7 @@ CREATE TRIGGER update_bluray_specs_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_technical_specs_updated_at();
 
--- 7. Create/Replace View for collections with technical specs
-DROP VIEW IF EXISTS collections_with_technical_specs;
-
+-- 8. Create the view for collections with technical specs (recreated after column fix)
 CREATE VIEW collections_with_technical_specs AS
 SELECT 
   pmc.*,
