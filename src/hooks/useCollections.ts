@@ -20,7 +20,7 @@ export function useCollections() {
       setError(null);
       
       const { data, error } = await supabase
-        .from('physical_media_collections')
+        .from('collections_with_technical_specs')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
