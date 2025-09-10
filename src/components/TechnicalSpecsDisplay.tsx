@@ -53,7 +53,7 @@ export function TechnicalSpecsDisplay({ specs, compact = false }: TechnicalSpecs
             {specs.data_quality} specs
           </span>
           {specs.bluray_com_url && (
-            
+            <a
               href={specs.bluray_com_url}
               target="_blank"
               rel="noopener noreferrer"
@@ -207,7 +207,7 @@ export function TechnicalSpecsDisplay({ specs, compact = false }: TechnicalSpecs
           Updated {new Date(specs.last_scraped_at).toLocaleDateString()}
         </div>
         {specs.bluray_com_url && (
-          
+          <a
             href={specs.bluray_com_url}
             target="_blank"
             rel="noopener noreferrer"
