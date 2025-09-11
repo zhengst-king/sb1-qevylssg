@@ -18,7 +18,52 @@ import {
 import { useCollections } from '../hooks/useCollections';
 import { CollectionItemCard } from './CollectionItemCard';
 import { AddToCollectionModal } from './AddToCollectionModal';
-import { CollectionStatsCard } from './RatingDisplay';
+
+// Simple CollectionStatsCard component (inline)
+interface CollectionStatsCardProps {
+  label: string;
+  value: number | string;
+  icon?: React.ComponentType<{ className?: string }>;
+  color?: 'blue' | 'red' | 'green' | 'purple' | 'orange' | 'slate';
+}
+
+const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
+  label,
+  value,
+  icon: Icon,
+  color = 'blue'
+}) => {
+  const colorClasses = {
+    blue: 'text-blue-600 bg-blue-50 border-blue-200',
+    red: 'text-red-600 bg-red-50 border-red-200',
+    green: 'text-green-600 bg-green-50 border-green-200',
+    purple: 'text-purple-600 bg-purple-50 border-purple-200',
+    orange: 'text-orange-600 bg-orange-50 border-orange-200',
+    slate: 'text-slate-600 bg-slate-50 border-slate-200'
+  };
+
+  return (
+    <div className={`bg-white rounded-xl p-4 shadow-sm border transition-all hover:shadow-md ${colorClasses[color].split(' ')[2]}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          {Icon && (
+            <div className={`p-2 rounded-lg ${colorClasses[color].split(' ')[1]}`}>
+              <Icon className={`h-4 w-4 ${colorClasses[color].split(' ')[0]}`} />
+            </div>
+          )}
+          <div>
+            <div className={`text-2xl font-bold ${colorClasses[color].split(' ')[0]}`}>
+              {value}
+            </div>
+            <div className="text-xs text-slate-500 uppercase tracking-wide font-medium">
+              {label}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface MyCollectionsPageProps {}
 
@@ -28,7 +73,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'purchase_date' | 'rating'>('title');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showStats, setShowStats] = useState(true);
 
   // Enhanced collection statistics
@@ -206,6 +250,18 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             {/* Premium Features Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <CollectionStatsCard
+                label="Total Value"
+                value={`$${collectionStats.totalValue.toFixed(0)}`}
+                icon={DollarSign}
+                color="green"
+              />
+              <CollectionStatsCard
+                label="Avg Rating"
+                value={collectionStats.averageRating.toFixed(1)}
+                icon={Award}
+                color="blue"
+              />
+              <CollectionStatsCard
                 label="Dolby Atmos"
                 value={collectionStats.dolbyAtmos}
                 icon={Volume2}
@@ -216,18 +272,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                 value={collectionStats.hdr}
                 icon={Sparkles}
                 color="orange"
-              />
-              <CollectionStatsCard
-                label="High Rated"
-                value={collectionStats.highRated}
-                icon={Award}
-                color="purple"
-              />
-              <CollectionStatsCard
-                label="Avg Rating"
-                value={collectionStats.averageRating.toFixed(1)}
-                icon={Award}
-                color="blue"
               />
             </div>
           </div>
