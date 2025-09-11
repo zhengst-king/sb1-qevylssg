@@ -12,7 +12,8 @@ import {
   Volume2,
   Award,
   Eye,
-  BarChart3
+  BarChart3,
+  DollarSign
 } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { CollectionItemCard } from './CollectionItemCard';
