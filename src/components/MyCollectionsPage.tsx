@@ -1,117 +1,136 @@
-// src/components/MyCollectionsPage.tsx
 import React, { useState, useMemo } from 'react';
-import { Disc3, Plus, Search, Package } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { 
+  Plus, 
+  Search, 
+  Filter, 
+  SortAsc, 
+  Package, 
+  Disc3,
+  FileVideo,
+  Monitor,
+  Sparkles,
+  Volume2,
+  Award,
+  Eye,
+  BarChart3
+} from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
-import type { PhysicalMediaCollection } from '../lib/supabase';
-import { AddToCollectionModal } from './AddToCollectionModal';
 import { CollectionItemCard } from './CollectionItemCard';
+import { AddToCollectionModal } from './AddToCollectionModal';
+import { CollectionStatsCard } from './RatingDisplay';
 
-type SortOption = 'title' | 'year' | 'purchase_date' | 'personal_rating' | 'format';
-type FormatFilter = 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
+interface MyCollectionsPageProps {}
 
-export function MyCollectionsPage() {
-  const { isAuthenticated } = useAuth();
-  const { collections, loading, addToCollection, removeFromCollection } = useCollections();
-  
-  const [searchQuery, setSearchQuery] = useState('');
-  const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('title');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
+  const { collections, loading, error, addToCollection, removeFromCollection } = useCollections();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [formatFilter, setFormatFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'title' | 'year' | 'purchase_date' | 'rating'>('title');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showStats, setShowStats] = useState(true);
 
-  // Filter and sort collections
-  const filteredAndSortedCollections = useMemo(() => {
-    let filtered = collections.filter(item => {
-      const matchesSearch = searchQuery === '' || 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.director?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.genre?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesFormat = formatFilter === 'all' || item.format === formatFilter;
-      
-      return matchesSearch && matchesFormat;
-    });
-
-    // Sort
-    filtered.sort((a, b) => {
-      let aValue: any = a[sortBy];
-      let bValue: any = b[sortBy];
-
-      // Handle null/undefined values
-      if (aValue === null || aValue === undefined) aValue = '';
-      if (bValue === null || bValue === undefined) bValue = '';
-
-      // Special handling for dates
-      if (sortBy === 'purchase_date') {
-        aValue = new Date(aValue || '1900-01-01').getTime();
-        bValue = new Date(bValue || '1900-01-01').getTime();
-      }
-
-      let result = 0;
-      if (aValue < bValue) result = -1;
-      else if (aValue > bValue) result = 1;
-
-      return sortDirection === 'desc' ? -result : result;
-    });
-
-    return filtered;
-  }, [collections, searchQuery, formatFilter, sortBy, sortDirection]);
-
+  // Enhanced collection statistics
   const collectionStats = useMemo(() => {
     const stats = {
       total: collections.length,
-      dvd: collections.filter(c => c.format === 'DVD').length,
-      bluray: collections.filter(c => c.format === 'Blu-ray').length,
-      uhd: collections.filter(c => c.format === '4K UHD').length,
-      threeDee: collections.filter(c => c.format === '3D Blu-ray').length,
-      totalValue: collections.reduce((sum, c) => sum + (c.purchase_price || 0), 0),
-      averageRating: collections.filter(c => c.personal_rating).length > 0
-        ? collections.reduce((sum, c) => sum + (c.personal_rating || 0), 0) / 
-          collections.filter(c => c.personal_rating).length
+      dvd: collections.filter(item => item.format === 'DVD').length,
+      bluray: collections.filter(item => item.format === 'Blu-ray').length,
+      uhd: collections.filter(item => item.format === '4K UHD').length,
+      threeDee: collections.filter(item => item.format === '3D Blu-ray').length,
+      
+      // Enhanced stats
+      withSpecs: collections.filter(item => item.technical_specs_id).length,
+      dolbyAtmos: collections.filter(item => 
+        item.technical_specs?.audio_codecs?.some(codec => 
+          codec.includes('Dolby Atmos')
+        )
+      ).length,
+      hdr: collections.filter(item => 
+        item.technical_specs?.hdr_format?.length > 0
+      ).length,
+      highRated: collections.filter(item => 
+        (item.personal_rating && item.personal_rating >= 8) || 
+        (item.imdb_score && item.imdb_score >= 8)
+      ).length,
+      
+      // Value stats
+      totalValue: collections.reduce((sum, item) => sum + (item.purchase_price || 0), 0),
+      averageRating: collections.length > 0 
+        ? collections.reduce((sum, item) => sum + (item.personal_rating || item.imdb_score || 0), 0) / collections.length
         : 0
     };
+
     return stats;
   }, [collections]);
 
-  const handleAddToCollection = async (collectionData: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  // Enhanced filtering and sorting
+  const filteredAndSortedCollections = useMemo(() => {
+    let filtered = collections.filter(item => {
+      const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.director && item.director.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesFormat = formatFilter === 'all' || item.format === formatFilter;
+      return matchesSearch && matchesFormat;
+    });
+
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'year':
+          return (b.year || 0) - (a.year || 0);
+        case 'purchase_date':
+          return new Date(b.purchase_date || 0).getTime() - new Date(a.purchase_date || 0).getTime();
+        case 'rating':
+          const ratingA = a.personal_rating || a.imdb_score || 0;
+          const ratingB = b.personal_rating || b.imdb_score || 0;
+          return ratingB - ratingA;
+        case 'title':
+        default:
+          return a.title.localeCompare(b.title);
+      }
+    });
+  }, [collections, searchQuery, formatFilter, sortBy]);
+
+  const handleAddToCollection = async (movieData: any) => {
     try {
-      await addToCollection(collectionData);
+      await addToCollection(movieData);
       setShowAddModal(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding to collection:', error);
-      alert('Failed to add to collection: ' + error.message);
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <Disc3 className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-slate-600 mb-2">Sign in required</h3>
-          <p className="text-slate-500">Please sign in to view your physical media collection.</p>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <Disc3 className="h-16 w-16 text-blue-600 mx-auto mb-4 animate-spin" />
           <p className="text-slate-600">Loading your collection...</p>
         </div>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <Package className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">Error loading collection: {error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header */}
+        {/* Enhanced Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-3 mb-4">
             <Disc3 className="h-12 w-12 text-blue-600" />
@@ -121,54 +140,120 @@ export function MyCollectionsPage() {
             Track your physical media collection with enhanced technical specifications
           </p>
 
-          {/* Collection Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <div className="text-2xl font-bold text-blue-600">{collectionStats.total}</div>
-              <div className="text-xs text-slate-500 uppercase tracking-wide">Total Items</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <div className="text-2xl font-bold text-red-600">{collectionStats.dvd}</div>
-              <div className="text-xs text-slate-500 uppercase tracking-wide">DVD</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <div className="text-2xl font-bold text-blue-600">{collectionStats.bluray}</div>
-              <div className="text-xs text-slate-500 uppercase tracking-wide">Blu-ray</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <div className="text-2xl font-bold text-purple-600">{collectionStats.uhd}</div>
-              <div className="text-xs text-slate-500 uppercase tracking-wide">4K UHD</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <div className="text-2xl font-bold text-green-600">${collectionStats.totalValue.toFixed(0)}</div>
-              <div className="text-xs text-slate-500 uppercase tracking-wide">Total Value</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-              <div className="text-2xl font-bold text-yellow-600">{collectionStats.averageRating.toFixed(1)}</div>
-              <div className="text-xs text-slate-500 uppercase tracking-wide">Avg Rating</div>
-            </div>
+          {/* Quick Action Buttons */}
+          <div className="flex items-center justify-center space-x-4 mb-6">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Add Item</span>
+            </button>
+            <button
+              onClick={() => setShowStats(!showStats)}
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-white text-slate-700 rounded-lg hover:bg-slate-50 transition-colors shadow-sm border border-slate-200"
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span>{showStats ? 'Hide Stats' : 'Show Stats'}</span>
+            </button>
           </div>
+        </div>
 
-          {/* Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search your collection..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        {/* Enhanced Collection Stats */}
+        {showStats && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">Collection Overview</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+              <CollectionStatsCard
+                label="Total Items"
+                value={collectionStats.total}
+                icon={Package}
+                color="blue"
+              />
+              <CollectionStatsCard
+                label="DVD"
+                value={collectionStats.dvd}
+                icon={FileVideo}
+                color="red"
+              />
+              <CollectionStatsCard
+                label="Blu-ray"
+                value={collectionStats.bluray}
+                icon={Monitor}
+                color="blue"
+              />
+              <CollectionStatsCard
+                label="4K UHD"
+                value={collectionStats.uhd}
+                icon={Sparkles}
+                color="purple"
+              />
+              <CollectionStatsCard
+                label="3D Blu-ray"
+                value={collectionStats.threeDee}
+                icon={Eye}
+                color="green"
+              />
+              <CollectionStatsCard
+                label="With Specs"
+                value={collectionStats.withSpecs}
+                icon={BarChart3}
+                color="slate"
               />
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2">
+            {/* Premium Features Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <CollectionStatsCard
+                label="Dolby Atmos"
+                value={collectionStats.dolbyAtmos}
+                icon={Volume2}
+                color="green"
+              />
+              <CollectionStatsCard
+                label="HDR Content"
+                value={collectionStats.hdr}
+                icon={Sparkles}
+                color="orange"
+              />
+              <CollectionStatsCard
+                label="High Rated"
+                value={collectionStats.highRated}
+                icon={Award}
+                color="purple"
+              />
+              <CollectionStatsCard
+                label="Avg Rating"
+                value={collectionStats.averageRating.toFixed(1)}
+                icon={Award}
+                color="blue"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Search and Filter Controls */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search movies, directors..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Format Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <select
                 value={formatFilter}
-                onChange={(e) => setFormatFilter(e.target.value as FormatFilter)}
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => setFormatFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
               >
                 <option value="all">All Formats</option>
                 <option value="DVD">DVD</option>
@@ -176,31 +261,28 @@ export function MyCollectionsPage() {
                 <option value="4K UHD">4K UHD</option>
                 <option value="3D Blu-ray">3D Blu-ray</option>
               </select>
+            </div>
 
+            {/* Sort */}
+            <div className="relative">
+              <SortAsc className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
               <select
-                value={`${sortBy}-${sortDirection}`}
-                onChange={(e) => {
-                  const [field, direction] = e.target.value.split('-');
-                  setSortBy(field as SortOption);
-                  setSortDirection(direction as 'asc' | 'desc');
-                }}
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
               >
-                <option value="title-asc">Title A-Z</option>
-                <option value="title-desc">Title Z-A</option>
-                <option value="year-desc">Year (Newest)</option>
-                <option value="year-asc">Year (Oldest)</option>
-                <option value="purchase_date-desc">Recently Added</option>
-                <option value="personal_rating-desc">Highest Rated</option>
+                <option value="title">Title A-Z</option>
+                <option value="year">Year (Newest)</option>
+                <option value="purchase_date">Recently Added</option>
+                <option value="rating">Highest Rated</option>
               </select>
+            </div>
 
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add to Collection</span>
-              </button>
+            {/* Results Count */}
+            <div className="flex items-center justify-center md:justify-start">
+              <span className="text-sm text-slate-600 font-medium">
+                {filteredAndSortedCollections.length} of {collections.length} items
+              </span>
             </div>
           </div>
         </div>
@@ -229,12 +311,12 @@ export function MyCollectionsPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {filteredAndSortedCollections.map((item) => (
               <CollectionItemCard
                 key={item.id}
                 item={item}
-                onUpdate={() => {}} // We don't need this anymore with the hook
+                onUpdate={() => {}} // Handled by the hook
                 onDelete={removeFromCollection}
               />
             ))}
@@ -250,4 +332,4 @@ export function MyCollectionsPage() {
       </div>
     </div>
   );
-}
+};
