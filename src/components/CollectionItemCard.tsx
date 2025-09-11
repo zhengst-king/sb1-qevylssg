@@ -14,7 +14,8 @@ import {
   Eye
 } from 'lucide-react';
 import { CollectionItemDetailModal } from './CollectionItemDetailModal';
-import { TechnicalSpecsDisplay } from './TechnicalSpecsDisplay';
+// import { TechnicalSpecsDisplay } from './TechnicalSpecsDisplay';
+import type { PhysicalMediaCollection, BlurayTechnicalSpecs } from '../lib/supabase';
 
 interface CollectionItemCardProps {
   item: PhysicalMediaCollection & {
@@ -47,7 +48,6 @@ const StarRating: React.FC<StarRatingProps> = ({
   };
   
   const starSize = sizeClasses[size];
-  const starCount = variant === 'imdb' ? 5 : Math.min(Math.ceil(rating), 5);
   const normalizedRating = variant === 'imdb' ? (rating / 2) : (rating / 2); // Convert 10-scale to 5-scale
   
   const bgColors = {
@@ -91,7 +91,7 @@ const FormatBadge: React.FC<FormatBadgeProps> = ({ format, specs }) => {
   return (
     <div className="flex flex-wrap gap-1">
       {/* Main Format Badge */}
-      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format]}`}>
+      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format as keyof typeof formatBadgeColor]}`}>
         {format}
       </span>
       
@@ -276,7 +276,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
                 {item.year}
                 {item.director && ` • ${item.director.split(',')[0]}`}
               </span>
-              <span className={`text-xs font-medium ${conditionColor[item.condition]}`}>
+              <span className={`text-xs font-medium ${conditionColor[item.condition as keyof typeof conditionColor]}`}>
                 {item.condition}
               </span>
             </div>
@@ -306,13 +306,15 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
             </div>
           </div>
 
-          {/* Enhanced Technical Specs Section */}
+          {/* Technical Specs Preview */}
           {hasSpecs && specs && (
             <div className="pt-2 border-t border-slate-100">
-              <TechnicalSpecsDisplay 
-                specs={specs} 
-                compact={true}
-              />
+              <div className="text-xs text-slate-600">
+                <div className="flex items-center space-x-2">
+                  <Disc className="h-3 w-3" />
+                  <span>Enhanced specs available</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -334,17 +336,6 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
         onClose={() => setShowDetailModal(false)}
         item={item}
         onUpdate={onUpdate}
-      />
-
-      {/* Edit Modal */}
-      <EditCollectionItemModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        item={item}
-        onUpdate={() => {
-          onUpdate?.();
-          setShowEditModal(false);
-        }}
       />
     </>
   );
