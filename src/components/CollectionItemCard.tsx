@@ -335,6 +335,17 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
         item={item}
         onUpdate={onUpdate}
       />
+
+      {/* Edit Modal */}
+      <EditCollectionItemModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        item={item}
+        onUpdate={() => {
+          onUpdate?.();
+          setShowEditModal(false);
+        }}
+      />
     </>
   );
 };
