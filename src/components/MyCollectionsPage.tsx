@@ -68,7 +68,7 @@ const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
 interface MyCollectionsPageProps {}
 
 export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
-  const { collections, loading, error, addToCollection, removeFromCollection } = useCollections();
+  const { collections, loading, error, addToCollection, removeFromCollection, refetch } = useCollections();
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<string>('all');
