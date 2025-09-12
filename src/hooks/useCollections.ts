@@ -79,7 +79,7 @@ export function useCollections() {
     }
   };
 
-// IMPROVED: Enhanced delete function with better error handling
+// SAFE SOLUTION: Delete dependent records first, then the main record
 const removeFromCollection = async (itemId: string) => {
   if (!user) throw new Error('User not authenticated');
 
@@ -109,7 +109,38 @@ const removeFromCollection = async (itemId: string) => {
 
     console.log('[removeFromCollection] Found item to delete:', existingItem);
 
-    // Perform the delete operation
+    // STEP 1: Delete dependent records from scraping_queue first
+    console.log('[removeFromCollection] Cleaning up dependent records...');
+    
+    const { error: queueCleanupError } = await supabase
+      .from('scraping_queue')
+      .delete()
+      .eq('collection_item_id', itemId);
+
+    if (queueCleanupError) {
+      console.warn('[removeFromCollection] Warning: Could not clean up scraping queue:', queueCleanupError);
+      // Continue anyway - this might not be critical
+    } else {
+      console.log('[removeFromCollection] Successfully cleaned up scraping queue records');
+    }
+
+    // STEP 2: Clear the technical_specs_id reference if it exists
+    const { error: clearSpecsError } = await supabase
+      .from('physical_media_collections')
+      .update({ technical_specs_id: null })
+      .eq('id', itemId)
+      .eq('user_id', user.id);
+
+    if (clearSpecsError) {
+      console.warn('[removeFromCollection] Warning: Could not clear technical specs reference:', clearSpecsError);
+      // Continue anyway
+    } else {
+      console.log('[removeFromCollection] Cleared technical specs reference');
+    }
+
+    // STEP 3: Now delete the main record
+    console.log('[removeFromCollection] Deleting main record...');
+    
     const { error: deleteError } = await supabase
       .from('physical_media_collections')
       .delete()
@@ -121,7 +152,7 @@ const removeFromCollection = async (itemId: string) => {
       
       // Provide more specific error messages
       if (deleteError.code === '23503') {
-        throw new Error('Cannot delete: Item has dependent records');
+        throw new Error('Cannot delete: Item still has dependent records. Please contact support.');
       } else if (deleteError.code === '42501') {
         throw new Error('Permission denied: You cannot delete this item');
       } else {
