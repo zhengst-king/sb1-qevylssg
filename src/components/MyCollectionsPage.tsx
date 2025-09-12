@@ -72,12 +72,32 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   // FIXED: Add proper error handling for delete
 const handleDeleteFromCollection = async (itemId: string) => {
   try {
-    console.log('Attempting to delete item:', itemId);
+    console.log('[handleDeleteFromCollection] Attempting to delete item:', itemId);
+    
     await removeFromCollection(itemId);
-    console.log('Successfully deleted item:', itemId);
+    
+    console.log('[handleDeleteFromCollection] Successfully deleted item:', itemId);
+    
+    // Show success message
+    alert('Item deleted successfully!');
+    
+    // Optionally refresh the collection to ensure UI is in sync
+    await refetch();
+    
   } catch (error) {
-    console.error('Failed to delete item:', error);
-    alert('Failed to delete item. Please try again.');
+    console.error('[handleDeleteFromCollection] Failed to delete item:', error);
+    
+    // Show specific error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    alert(`Failed to delete item: ${errorMessage}`);
+    
+    // Optionally log additional debug info
+    console.log('[handleDeleteFromCollection] Debug info:', {
+      itemId,
+      errorType: typeof error,
+      errorName: error instanceof Error ? error.name : 'Unknown',
+      errorMessage
+    });
   }
 };
   const [showAddModal, setShowAddModal] = useState(false);
