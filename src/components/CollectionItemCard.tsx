@@ -14,6 +14,7 @@ import {
   Eye
 } from 'lucide-react';
 import { CollectionItemDetailModal } from './CollectionItemDetailModal';
+import { EditCollectionItemModal } from './EditCollectionItemModal';  // Add this import
 // import { TechnicalSpecsDisplay } from './TechnicalSpecsDisplay';
 import type { PhysicalMediaCollection, BlurayTechnicalSpecs } from '../lib/supabase';
 
@@ -153,6 +154,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
   onEdit
 }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false); // Add this state
 
   const conditionColor = {
     'New': 'text-green-600',
@@ -232,17 +234,17 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
 
           {/* Action Buttons */}
           <div className="absolute bottom-2 right-2 flex space-x-1">
-            {onEdit && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(item);
-                }}
-                className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-              >
-                <Edit className="h-3 w-3" />
-              </button>
-            )}
+            {/* Edit Button - Now functional! */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEditModal(true);  // Open the edit modal
+              }}
+              className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+              title="Edit item"
+            >
+              <Edit className="h-3 w-3" />
+            </button>
             {onDelete && (
               <button
                 onClick={(e) => {
@@ -250,6 +252,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
                   handleDelete();
                 }}
                 className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+                title="Delete item"
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -336,6 +339,17 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
         onClose={() => setShowDetailModal(false)}
         item={item}
         onUpdate={onUpdate}
+      />
+
+      {/* Edit Modal - Now integrated! */}
+      <EditCollectionItemModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        item={item}
+        onUpdate={() => {
+          onUpdate?.(); // Refresh the collections data
+          setShowEditModal(false); // Close the modal
+        }}
       />
     </>
   );
