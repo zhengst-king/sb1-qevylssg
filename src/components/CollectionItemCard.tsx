@@ -242,12 +242,12 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
 
   {/* Action Buttons - FIXED */}
   <div className="absolute bottom-2 right-2 flex space-x-1 z-10">
-    {onEdit && (
+    {/* FIXED: Always show edit button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
-          onEdit(item);
+          setShowEditModal(true);
         }}
         className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
       >
