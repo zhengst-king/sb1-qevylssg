@@ -79,28 +79,67 @@ export function useCollections() {
     }
   };
 
-  // Remove item from collection
-  const removeFromCollection = async (itemId: string) => {
-    if (!user) throw new Error('User not authenticated');
+// IMPROVED: Enhanced delete function with better error handling
+const removeFromCollection = async (itemId: string) => {
+  if (!user) throw new Error('User not authenticated');
 
-    try {
-      const { error: deleteError } = await supabase
-        .from('physical_media_collections')
-        .delete()
-        .eq('id', itemId)
-        .eq('user_id', user.id); // Security: only delete user's own items
+  try {
+    console.log('[removeFromCollection] Starting delete for itemId:', itemId);
+    console.log('[removeFromCollection] User ID:', user.id);
 
-      if (deleteError) {
-        throw deleteError;
+    // First, verify the item exists and belongs to the user
+    const { data: existingItem, error: checkError } = await supabase
+      .from('physical_media_collections')
+      .select('id, title, user_id')
+      .eq('id', itemId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (checkError) {
+      console.error('[removeFromCollection] Check error:', checkError);
+      if (checkError.code === 'PGRST116') {
+        throw new Error('Item not found or you do not have permission to delete it');
       }
-
-      // Update local state immediately
-      setCollections(prev => prev.filter(item => item.id !== itemId));
-    } catch (err) {
-      console.error('Error removing from collection:', err);
-      throw err;
+      throw checkError;
     }
-  };
+
+    if (!existingItem) {
+      throw new Error('Item not found');
+    }
+
+    console.log('[removeFromCollection] Found item to delete:', existingItem);
+
+    // Perform the delete operation
+    const { error: deleteError } = await supabase
+      .from('physical_media_collections')
+      .delete()
+      .eq('id', itemId)
+      .eq('user_id', user.id);
+
+    if (deleteError) {
+      console.error('[removeFromCollection] Delete error:', deleteError);
+      
+      // Provide more specific error messages
+      if (deleteError.code === '23503') {
+        throw new Error('Cannot delete: Item has dependent records');
+      } else if (deleteError.code === '42501') {
+        throw new Error('Permission denied: You cannot delete this item');
+      } else {
+        throw new Error(`Delete failed: ${deleteError.message}`);
+      }
+    }
+
+    console.log('[removeFromCollection] Successfully deleted item:', itemId);
+
+    // Update local state immediately
+    setCollections(prev => prev.filter(item => item.id !== itemId));
+    
+    return true;
+  } catch (err) {
+    console.error('[removeFromCollection] Error:', err);
+    throw err;
+  }
+};
 
   // Update single collection item
   const updateCollectionItem = async (itemId: string, updates: Partial<PhysicalMediaCollection>) => {
