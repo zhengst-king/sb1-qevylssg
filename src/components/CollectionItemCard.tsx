@@ -232,41 +232,41 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="absolute bottom-2 right-2 flex space-x-1">
-            {/* Edit Button - Now functional! */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowEditModal(true);  // Open the edit modal
-              }}
-              className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-              title="Edit item"
-            >
-              <Edit className="h-3 w-3" />
-            </button>
-            {onDelete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete();
-                }}
-                className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-                title="Delete item"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+{/* Action Buttons */}
+<div className="absolute bottom-2 right-2 flex space-x-1 z-10">
+  {onEdit && (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onEdit(item);
+      }}
+      className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+    >
+      <Edit className="h-3 w-3" />
+    </button>
+  )}
+  {onDelete && (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleDelete();
+      }}
+      className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  )}
+</div>
 
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center">
-            <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-medium flex items-center">
-              <Eye className="h-4 w-4 mr-2" />
-              View Details
-            </span>
-          </div>
-        </div>
+<div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center pointer-events-none">
+  <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-medium flex items-center pointer-events-auto">
+    <Eye className="h-4 w-4 mr-2" />
+    View Details
+  </span>
+</div>
 
         {/* Movie Details */}
         <div className="p-4 space-y-3">
