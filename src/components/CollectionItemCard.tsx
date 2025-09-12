@@ -253,7 +253,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
       >
         <Edit className="h-3 w-3" />
       </button>
-    )}
+    
     {onDelete && (
       <button
         onClick={(e) => {
