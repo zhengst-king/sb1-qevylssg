@@ -372,8 +372,8 @@ const handleDeleteFromCollection = async (itemId: string) => {
               <CollectionItemCard
                 key={item.id}
                 item={item}
-                onUpdate={() => {}} // Handled by the hook
-                onDelete={removeFromCollection}
+                onUpdate={refetch} // FIXED: Use refetch function
+                onDelete={handleDeleteFromCollection} // FIXED: Use wrapper with error handling
               />
             ))}
           </div>
