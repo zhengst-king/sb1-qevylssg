@@ -69,6 +69,17 @@ interface MyCollectionsPageProps {}
 
 export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   const { collections, loading, error, addToCollection, removeFromCollection, refetch } = useCollections();
+  // FIXED: Add proper error handling for delete
+const handleDeleteFromCollection = async (itemId: string) => {
+  try {
+    console.log('Attempting to delete item:', itemId);
+    await removeFromCollection(itemId);
+    console.log('Successfully deleted item:', itemId);
+  } catch (error) {
+    console.error('Failed to delete item:', error);
+    alert('Failed to delete item. Please try again.');
+  }
+};
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<string>('all');
