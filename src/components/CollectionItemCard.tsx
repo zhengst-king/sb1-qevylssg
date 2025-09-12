@@ -177,87 +177,96 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
     <>
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-200 group">
         {/* Movie Poster & Overlay Info */}
-        <div 
-          className="aspect-[2/3] relative bg-slate-100 cursor-pointer overflow-hidden"
-          onClick={() => setShowDetailModal(true)}
-        >
-          {/* Poster Image */}
-          {item.poster_url ? (
-            <img
-              src={item.poster_url}
-              alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-100 to-slate-200">
-              <div className="text-center">
-                <Disc className="h-8 w-8 mx-auto mb-2" />
-                <span className="text-sm">No Poster</span>
-              </div>
-            </div>
-          )}
-
-          {/* Top Badges Row */}
-          <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
-            <FormatBadge format={item.format} specs={specs} />
-            
-            {/* IMDB Rating */}
-            {item.imdb_score && (
-              <StarRating 
-                rating={item.imdb_score} 
-                variant="imdb" 
-                size="sm"
-              />
-            )}
-          </div>
-
-          {/* Personal Rating */}
-          {item.personal_rating && (
-            <div className="absolute top-12 right-2">
-              <StarRating 
-                rating={item.personal_rating} 
-                variant="personal" 
-                size="sm"
-              />
-            </div>
-          )}
-
-          {/* Audio Badges */}
-          {specs && (
-            <div className="absolute bottom-12 left-2 right-2">
-              <AudioBadges specs={specs} />
-            </div>
-          )}
-
-{/* Action Buttons */}
-<div className="absolute bottom-2 right-2 flex space-x-1 z-10">
-  {onEdit && (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        onEdit(item);
+<div 
+  className="aspect-[2/3] relative bg-slate-100 cursor-pointer overflow-hidden"
+  onClick={() => setShowDetailModal(true)}
+>
+  {/* Poster Image */}
+  {item.poster_url ? (
+    <img
+      src={item.poster_url}
+      alt={item.title}
+      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+      onError={(e) => {
+        e.currentTarget.style.display = 'none';
       }}
-      className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-    >
-      <Edit className="h-3 w-3" />
-    </button>
+    />
+  ) : (
+    <div className="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-100 to-slate-200">
+      <div className="text-center">
+        <Disc className="h-8 w-8 mx-auto mb-2" />
+        <span className="text-sm">No Poster</span>
+      </div>
+    </div>
   )}
-  {onDelete && (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        handleDelete();
-      }}
-      className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-    >
-      <Trash2 className="h-3 w-3" />
-    </button>
+
+  {/* Top Badges Row */}
+  <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
+    <FormatBadge format={item.format} specs={specs} />
+    
+    {/* IMDB Rating */}
+    {item.imdb_score && (
+      <StarRating 
+        rating={item.imdb_score} 
+        variant="imdb" 
+        size="sm"
+      />
+    )}
+  </div>
+
+  {/* Personal Rating */}
+  {item.personal_rating && (
+    <div className="absolute top-12 right-2">
+      <StarRating 
+        rating={item.personal_rating} 
+        variant="personal" 
+        size="sm"
+      />
+    </div>
   )}
+
+  {/* Audio Badges */}
+  {specs && (
+    <div className="absolute bottom-12 left-2 right-2">
+      <AudioBadges specs={specs} />
+    </div>
+  )}
+
+  {/* Hover overlay - FIXED */}
+  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center pointer-events-none">
+    <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity font-medium flex items-center pointer-events-auto">
+      <Eye className="h-4 w-4 mr-2" />
+      View Details
+    </span>
+  </div>
+
+  {/* Action Buttons - FIXED */}
+  <div className="absolute bottom-2 right-2 flex space-x-1 z-10">
+    {onEdit && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onEdit(item);
+        }}
+        className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+      >
+        <Edit className="h-3 w-3" />
+      </button>
+    )}
+    {onDelete && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          handleDelete();
+        }}
+        className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    )}
+  </div>
 </div>
 
           {/* Hover overlay */}
