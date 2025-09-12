@@ -80,94 +80,87 @@ export function useCollections() {
   };
 
 // SAFE SOLUTION: Delete dependent records first, then the main record
+// SIMPLIFIED: Use database function for safe deletion
 const removeFromCollection = async (itemId: string) => {
   if (!user) throw new Error('User not authenticated');
 
   try {
-    console.log('[removeFromCollection] Starting delete for itemId:', itemId);
+    console.log('[removeFromCollection] Using database function for itemId:', itemId);
     console.log('[removeFromCollection] User ID:', user.id);
 
-    // First, verify the item exists and belongs to the user
-    const { data: existingItem, error: checkError } = await supabase
-      .from('physical_media_collections')
-      .select('id, title, user_id')
-      .eq('id', itemId)
-      .eq('user_id', user.id)
-      .single();
+    // Method 1: Try using the database function (if available)
+    try {
+      const { data: dbResult, error: dbError } = await supabase
+        .rpc('safe_delete_collection_item', {
+          item_id: itemId,
+          user_id: user.id
+        });
 
-    if (checkError) {
-      console.error('[removeFromCollection] Check error:', checkError);
-      if (checkError.code === 'PGRST116') {
+      if (dbError) {
+        console.log('[removeFromCollection] Database function not available, falling back to manual method');
+        throw dbError;
+      }
+
+      if (!dbResult) {
         throw new Error('Item not found or you do not have permission to delete it');
       }
-      throw checkError;
-    }
 
-    if (!existingItem) {
-      throw new Error('Item not found');
-    }
-
-    console.log('[removeFromCollection] Found item to delete:', existingItem);
-
-    // STEP 1: Delete dependent records from scraping_queue first
-    console.log('[removeFromCollection] Cleaning up dependent records...');
-    
-    const { error: queueCleanupError } = await supabase
-      .from('scraping_queue')
-      .delete()
-      .eq('collection_item_id', itemId);
-
-    if (queueCleanupError) {
-      console.warn('[removeFromCollection] Warning: Could not clean up scraping queue:', queueCleanupError);
-      // Continue anyway - this might not be critical
-    } else {
-      console.log('[removeFromCollection] Successfully cleaned up scraping queue records');
-    }
-
-    // STEP 2: Clear the technical_specs_id reference if it exists
-    const { error: clearSpecsError } = await supabase
-      .from('physical_media_collections')
-      .update({ technical_specs_id: null })
-      .eq('id', itemId)
-      .eq('user_id', user.id);
-
-    if (clearSpecsError) {
-      console.warn('[removeFromCollection] Warning: Could not clear technical specs reference:', clearSpecsError);
-      // Continue anyway
-    } else {
-      console.log('[removeFromCollection] Cleared technical specs reference');
-    }
-
-    // STEP 3: Now delete the main record
-    console.log('[removeFromCollection] Deleting main record...');
-    
-    const { error: deleteError } = await supabase
-      .from('physical_media_collections')
-      .delete()
-      .eq('id', itemId)
-      .eq('user_id', user.id);
-
-    if (deleteError) {
-      console.error('[removeFromCollection] Delete error:', deleteError);
+      console.log('[removeFromCollection] ✅ Successfully deleted using database function');
       
-      // Provide more specific error messages
-      if (deleteError.code === '23503') {
-        throw new Error('Cannot delete: Item still has dependent records. Please contact support.');
-      } else if (deleteError.code === '42501') {
-        throw new Error('Permission denied: You cannot delete this item');
-      } else {
+      // Update local state
+      setCollections(prev => prev.filter(item => item.id !== itemId));
+      return true;
+
+    } catch (dbFunctionError) {
+      console.log('[removeFromCollection] Database function failed, trying manual cleanup...');
+      
+      // Method 2: Manual cleanup (fallback)
+      // First verify the item exists
+      const { data: existingItem, error: checkError } = await supabase
+        .from('physical_media_collections')
+        .select('id, title, user_id')
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (checkError || !existingItem) {
+        throw new Error('Item not found or you do not have permission to delete it');
+      }
+
+      // Clean up scraping queue records
+      await supabase
+        .from('scraping_queue')
+        .delete()
+        .eq('collection_item_id', itemId);
+
+      // Clear technical specs reference
+      await supabase
+        .from('physical_media_collections')
+        .update({ technical_specs_id: null })
+        .eq('id', itemId)
+        .eq('user_id', user.id);
+
+      // Delete the main record
+      const { error: deleteError } = await supabase
+        .from('physical_media_collections')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        console.error('[removeFromCollection] Manual delete failed:', deleteError);
         throw new Error(`Delete failed: ${deleteError.message}`);
       }
+
+      console.log('[removeFromCollection] ✅ Successfully deleted using manual cleanup');
+      
+      // Update local state
+      setCollections(prev => prev.filter(item => item.id !== itemId));
+      return true;
     }
 
-    console.log('[removeFromCollection] Successfully deleted item:', itemId);
-
-    // Update local state immediately
-    setCollections(prev => prev.filter(item => item.id !== itemId));
-    
-    return true;
   } catch (err) {
-    console.error('[removeFromCollection] Error:', err);
+    console.error('[removeFromCollection] ❌ Error:', err);
     throw err;
   }
 };
