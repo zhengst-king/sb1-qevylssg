@@ -1,4 +1,4 @@
-// src/components/MyCollectionsPage.tsx - COMPLETE UPDATE
+// src/components/MyCollectionsPage.tsx - COMPLETE WISHLIST INTEGRATION
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
@@ -14,29 +14,33 @@ import {
   Award,
   Eye,
   BarChart3,
-  DollarSign
+  DollarSign,
+  Heart,
+  UserCheck
 } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { CollectionItemCard } from './CollectionItemCard';
 import { AddToCollectionModal } from './AddToCollectionModal';
-// ADD THESE NEW IMPORTS:
 import { CollectionToolbar } from './CollectionToolbar';
+import { CollectionTypeManager } from './CollectionTypeManager';
 import { csvExportService } from '../services/csvExportService';
-import type { PhysicalMediaCollection } from '../lib/supabase';
+import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
-// Simple CollectionStatsCard component (inline)
+// Enhanced Collection Stats Card
 interface CollectionStatsCardProps {
   label: string;
   value: number | string;
   icon?: React.ComponentType<{ className?: string }>;
   color?: 'blue' | 'red' | 'green' | 'purple' | 'orange' | 'slate';
+  subtitle?: string;
 }
 
 const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
   label,
   value,
   icon: Icon,
-  color = 'blue'
+  color = 'blue',
+  subtitle
 }) => {
   const colorClasses = {
     blue: 'text-blue-600 bg-blue-50 border-blue-200',
@@ -63,6 +67,11 @@ const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
             <div className="text-xs text-slate-500 uppercase tracking-wide font-medium">
               {label}
             </div>
+            {subtitle && (
+              <div className="text-xs text-slate-400 mt-0.5">
+                {subtitle}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -73,15 +82,24 @@ const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
 interface MyCollectionsPageProps {}
 
 export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
+  // Collection type state
+  const [activeCollectionType, setActiveCollectionType] = useState<CollectionType | 'all'>('all');
+  
+  // Use enhanced collections hook with filtering
   const { 
     collections, 
     loading, 
     error, 
     addToCollection, 
     removeFromCollection, 
-    updateCollection,  // Make sure this exists in useCollections hook
+    updateCollection,
+    moveToCollectionType,
+    getCollectionStats,
     refetch 
-  } = useCollections();
+  } = useCollections({ 
+    collectionType: activeCollectionType,
+    includeAll: activeCollectionType === 'all'
+  });
 
   // Existing states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -89,46 +107,61 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   const [formatFilter, setFormatFilter] = useState<'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('all');
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'purchase_date' | 'personal_rating'>('title');
 
-  // ADD THESE NEW STATES FOR COLLECTION TOOLBAR:
+  // Collection toolbar states
   const [selectedItems, setSelectedItems] = useState<PhysicalMediaCollection[]>([]);
   const [duplicateGroups, setDuplicateGroups] = useState<PhysicalMediaCollection[][]>([]);
 
-  // Existing delete handler
+  // Get collection statistics
+  const collectionStats = getCollectionStats();
+
+  // Handle collection type change
+  const handleCollectionTypeChange = (newType: CollectionType | 'all') => {
+    setActiveCollectionType(newType);
+    setSelectedItems([]); // Clear selections when changing types
+    setSearchQuery(''); // Clear search when changing types
+  };
+
+  // Handle moving items between collection types
+  const handleMoveToType = async (itemId: string, newType: CollectionType) => {
+    try {
+      await moveToCollectionType(itemId, newType);
+      // Refresh collections if we're viewing all or the specific type
+      if (activeCollectionType === 'all' || activeCollectionType === newType) {
+        await refetch();
+      }
+    } catch (error) {
+      console.error('Failed to move item:', error);
+      alert('Failed to move item. Please try again.');
+    }
+  };
+
+  // Existing handlers
   const handleDeleteFromCollection = async (itemId: string) => {
     try {
-      console.log('Attempting to delete item:', itemId);
       await removeFromCollection(itemId);
-      console.log('Successfully deleted item:', itemId);
     } catch (error) {
       console.error('Failed to delete item:', error);
       alert('Failed to delete item. Please try again.');
     }
   };
 
-  // ADD THESE NEW HANDLERS FOR COLLECTION TOOLBAR:
-  
-  // Handle bulk updates
   const handleBulkUpdate = async (updates: any) => {
     try {
-      // Process bulk updates for selected items
       const updatePromises = selectedItems.map(item => 
         updateCollection(item.id, updates)
       );
       
       await Promise.all(updatePromises);
-      await refetch(); // Refresh data
-      setSelectedItems([]); // Clear selection
+      await refetch();
+      setSelectedItems([]);
     } catch (error) {
       console.error('Bulk update failed:', error);
       alert('Bulk update failed. Please try again.');
     }
   };
 
-  // Handle duplicate detection and merging
   const handleMergeDuplicates = async (itemsToMerge: string[], keepItemId: string): Promise<number> => {
     try {
-      // Logic to merge duplicates - you'll need to implement this in your useCollections hook
-      // For now, just remove the duplicate items except the one to keep
       const mergePromises = itemsToMerge
         .filter(id => id !== keepItemId)
         .map(id => removeFromCollection(id));
@@ -145,10 +178,8 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     }
   };
 
-  // Refresh duplicate detection
   const refreshDuplicates = async () => {
     try {
-      // Simple duplicate detection by title
       const titleMap = new Map<string, PhysicalMediaCollection[]>();
       
       collections.forEach(item => {
@@ -168,14 +199,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     }
   };
 
-  // Run duplicate detection when collections change
-  React.useEffect(() => {
-    if (collections.length > 0) {
-      refreshDuplicates();
-    }
-  }, [collections]);
-
-  // Existing add handler
   const handleAddToCollection = async (collectionData: any) => {
     try {
       await addToCollection(collectionData);
@@ -187,7 +210,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     }
   };
 
-  // Existing filtering and sorting logic
+  // Enhanced filtering and sorting with collection type awareness
   const filteredAndSortedCollections = useMemo(() => {
     let filtered = collections;
 
@@ -218,32 +241,33 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     });
   }, [collections, searchQuery, formatFilter, sortBy]);
 
-  // Existing stats calculations
-  const collectionStats = useMemo(() => {
-    const totalItems = collections.length;
-    const totalValue = collections.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+  // Enhanced stats calculations
+  const enhancedStats = useMemo(() => {
+    const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
+    const wishlistItems = collections.filter(item => item.collection_type === 'wishlist');
+    
+    const totalValue = ownedItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+    const wishlistValue = wishlistItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+    
     const formats = collections.reduce((acc, item) => {
       acc[item.format] = (acc[item.format] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
-    const mostCommonFormat = Object.entries(formats)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
-
-    const avgRating = collections
-      .filter(item => item.personal_rating)
-      .reduce((sum, item, _, arr) => sum + (item.personal_rating! / arr.length), 0);
 
     return {
-      totalItems,
       totalValue,
-      mostCommonFormat,
-      avgRating: avgRating ? avgRating.toFixed(1) : 'N/A',
-      dvdCount: formats['DVD'] || 0,
-      blurayCount: formats['Blu-ray'] || 0,
-      uhd4kCount: formats['4K UHD'] || 0,
-      bluray3dCount: formats['3D Blu-ray'] || 0,
+      wishlistValue,
+      formats,
+      avgRating: ownedItems
+        .filter(item => item.personal_rating)
+        .reduce((sum, item, _, arr) => sum + (item.personal_rating! / arr.length), 0)
     };
+  }, [collections]);
+
+  React.useEffect(() => {
+    if (collections.length > 0) {
+      refreshDuplicates();
+    }
   }, [collections]);
 
   if (loading) {
@@ -274,50 +298,64 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 mb-2">My Physical Media Collection</h1>
-        <p className="text-slate-600">Manage your movies and shows collection</p>
+        <p className="text-slate-600">
+          Manage your movies and shows collection across different categories
+        </p>
       </div>
 
-      {/* Collection Stats */}
+      {/* Collection Type Manager */}
+      <CollectionTypeManager
+        activeType={activeCollectionType}
+        onTypeChange={handleCollectionTypeChange}
+        stats={collectionStats}
+      />
+
+      {/* Enhanced Collection Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
         <CollectionStatsCard 
           label="Total Items" 
-          value={collectionStats.totalItems} 
+          value={collectionStats.total}
           icon={Package}
-          color="blue"
-        />
-        <CollectionStatsCard 
-          label="DVD" 
-          value={collectionStats.dvdCount} 
-          icon={Disc3}
           color="slate"
         />
         <CollectionStatsCard 
-          label="Blu-ray" 
-          value={collectionStats.blurayCount} 
-          icon={FileVideo}
+          label="Owned" 
+          value={collectionStats.owned}
+          icon={Package}
           color="blue"
+          subtitle="In collection"
         />
         <CollectionStatsCard 
-          label="4K UHD" 
-          value={collectionStats.uhd4kCount} 
-          icon={Monitor}
-          color="purple"
+          label="Wishlist" 
+          value={collectionStats.wishlist}
+          icon={Heart}
+          color="red"
+          subtitle="Want to buy"
+        />
+        <CollectionStatsCard 
+          label="For Sale" 
+          value={collectionStats.for_sale}
+          icon={DollarSign}
+          color="green"
+          subtitle="Selling"
         />
         <CollectionStatsCard 
           label="Collection Value" 
-          value={`$${collectionStats.totalValue.toFixed(0)}`} 
+          value={`$${enhancedStats.totalValue.toFixed(0)}`}
           icon={DollarSign}
           color="green"
+          subtitle="Owned items"
         />
         <CollectionStatsCard 
-          label="Avg Rating" 
-          value={collectionStats.avgRating} 
-          icon={Award}
-          color="orange"
+          label="Wishlist Value" 
+          value={`$${enhancedStats.wishlistValue.toFixed(0)}`}
+          icon={Heart}
+          color="red"
+          subtitle="Want to buy"
         />
       </div>
 
-      {/* ADD THE COLLECTION TOOLBAR HERE: */}
+      {/* Collection Toolbar */}
       <CollectionToolbar
         collections={filteredAndSortedCollections}
         selectedItems={selectedItems}
@@ -337,7 +375,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
             <input
               type="text"
-              placeholder="Search collection..."
+              placeholder={`Search ${activeCollectionType === 'all' ? 'all items' : activeCollectionType}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -384,12 +422,17 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-slate-600 mb-2">
-              {searchQuery || formatFilter !== 'all' ? 'No matches found' : 'Your collection is empty'}
+              {searchQuery || formatFilter !== 'all' 
+                ? 'No matches found' 
+                : activeCollectionType === 'all'
+                ? 'Your collection is empty'
+                : `Your ${activeCollectionType} is empty`
+              }
             </h3>
             <p className="text-slate-500 mb-4">
               {searchQuery || formatFilter !== 'all'
                 ? 'Try adjusting your search or filters'
-                : 'Start building your physical media collection'
+                : `Start building your ${activeCollectionType === 'all' ? 'collection' : activeCollectionType}`
               }
             </p>
             {!searchQuery && formatFilter === 'all' && (
@@ -410,7 +453,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                 item={item}
                 onUpdate={refetch}
                 onDelete={handleDeleteFromCollection}
-                // ADD SELECTION PROPS FOR BULK OPERATIONS:
                 isSelected={selectedItems.some(selected => selected.id === item.id)}
                 onSelect={(selected) => {
                   if (selected) {
@@ -419,6 +461,8 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                     setSelectedItems(prev => prev.filter(selected => selected.id !== item.id));
                   }
                 }}
+                // Add collection type actions
+                onMoveToType={(newType) => handleMoveToType(item.id, newType)}
               />
             ))}
           </div>
