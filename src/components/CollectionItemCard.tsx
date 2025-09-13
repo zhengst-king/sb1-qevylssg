@@ -24,6 +24,9 @@ interface CollectionItemCardProps {
   };
   onUpdate?: () => void;
   onDelete?: (id: string) => void;
+  isSelected?: boolean;
+  onSelect?: (selected: boolean) => void;
+}
   onEdit?: (item: PhysicalMediaCollection) => void;
 }
 
@@ -152,6 +155,8 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
   onUpdate,
   onDelete,
   onEdit
+  isSelected = false,
+  onSelect
 }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false); // Add this state
