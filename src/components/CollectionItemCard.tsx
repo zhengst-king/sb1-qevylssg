@@ -26,7 +26,6 @@ interface CollectionItemCardProps {
   onDelete?: (id: string) => void;
   isSelected?: boolean;
   onSelect?: (selected: boolean) => void;
-}
   onEdit?: (item: PhysicalMediaCollection) => void;
 }
 
@@ -154,7 +153,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
   item,
   onUpdate,
   onDelete,
-  onEdit
+  onEdit,
   isSelected = false,
   onSelect
 }) => {
