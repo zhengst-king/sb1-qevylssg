@@ -1,4 +1,4 @@
-// src/components/CollectionStatusBadge.tsx
+// src/components/CollectionStatusBadge.tsx - COMPLETE WITH ALL COLLECTION TYPES
 import React from 'react';
 import { 
   Package, 
@@ -90,7 +90,7 @@ export function CollectionStatusBadge({
   );
 }
 
-// Quick action buttons for collection type changes
+// FIXED: Complete Collection Type Actions with ALL collection types
 interface CollectionTypeActionsProps {
   currentType: CollectionType;
   onTypeChange: (newType: CollectionType) => void;
@@ -103,42 +103,60 @@ export function CollectionTypeActions({
   itemTitle
 }: CollectionTypeActionsProps) {
   
-  const quickActions = [
+  // ALL collection type actions - including the missing ones!
+  const allActions = [
     { 
       type: 'owned' as const, 
       label: 'Mark as Owned', 
       icon: Package,
-      colors: 'bg-blue-600 hover:bg-blue-700 text-white'
+      colors: 'bg-blue-600 hover:bg-blue-700 text-white',
+      description: 'Move to owned collection'
     },
     { 
       type: 'wishlist' as const, 
       label: 'Add to Wishlist', 
       icon: Heart,
-      colors: 'bg-red-600 hover:bg-red-700 text-white'
+      colors: 'bg-red-600 hover:bg-red-700 text-white',
+      description: 'Want to buy this item'
     },
     { 
       type: 'for_sale' as const, 
       label: 'Mark for Sale', 
       icon: DollarSign,
-      colors: 'bg-green-600 hover:bg-green-700 text-white'
+      colors: 'bg-green-600 hover:bg-green-700 text-white',
+      description: 'Put this item up for sale'
+    },
+    { 
+      type: 'loaned_out' as const, 
+      label: 'Mark as Loaned Out', 
+      icon: UserCheck,
+      colors: 'bg-orange-600 hover:bg-orange-700 text-white',
+      description: 'Lent to someone else'
+    },
+    { 
+      type: 'missing' as const, 
+      label: 'Mark as Missing', 
+      icon: AlertTriangle,
+      colors: 'bg-red-600 hover:bg-red-700 text-white',
+      description: 'Cannot find this item'
     }
-  ].filter(action => action.type !== currentType);
+  ].filter(action => action.type !== currentType); // Don't show current type
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {quickActions.map((action) => {
+    <div className="space-y-1">
+      {allActions.map((action) => {
         const Icon = action.icon;
         return (
           <button
             key={action.type}
             onClick={() => onTypeChange(action.type)}
             className={`
-              inline-flex items-center space-x-1 px-3 py-1.5 rounded-md text-xs font-medium
+              w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium
               transition-colors duration-200 ${action.colors}
             `}
-            title={`${action.label}${itemTitle ? ` "${itemTitle}"` : ''}`}
+            title={`${action.description}${itemTitle ? ` - "${itemTitle}"` : ''}`}
           >
-            <Icon className="h-3 w-3" />
+            <Icon className="h-4 w-4" />
             <span>{action.label}</span>
           </button>
         );
