@@ -1,7 +1,23 @@
+// src/components/AddToCollectionModal.tsx - COMPLETE REWRITE WITH COLLECTION TYPES
 import React, { useState } from 'react';
-import { X, Search, Calendar, DollarSign, MapPin, Star } from 'lucide-react';
+import { 
+  X, 
+  Search, 
+  Calendar, 
+  DollarSign, 
+  MapPin, 
+  Star, 
+  Package,
+  Disc,
+  Monitor,
+  FileVideo,
+  Heart,
+  UserCheck,
+  AlertTriangle
+} from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
-import type { PhysicalMediaCollection } from '../lib/supabase';
+import { CollectionStatusBadge } from './CollectionStatusBadge';
+import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
 interface AddToCollectionModalProps {
   isOpen: boolean;
@@ -16,7 +32,7 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  // Form state
+  // Enhanced form state with collection type
   const [format, setFormat] = useState<'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('Blu-ray');
   const [condition, setCondition] = useState<'New' | 'Like New' | 'Good' | 'Fair' | 'Poor'>('New');
   const [purchaseDate, setPurchaseDate] = useState('');
@@ -24,6 +40,7 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
   const [purchaseLocation, setPurchaseLocation] = useState('');
   const [personalRating, setPersonalRating] = useState('');
   const [notes, setNotes] = useState('');
+  const [collectionType, setCollectionType] = useState<CollectionType>('owned');
 
   if (!isOpen) return null;
 
@@ -39,6 +56,12 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
       alert('Search failed. Please try again.');
     } finally {
       setSearching(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !searching) {
+      handleSearch();
     }
   };
 
@@ -72,91 +95,139 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
         purchase_location: purchaseLocation || undefined,
         personal_rating: personalRating ? parseInt(personalRating) : undefined,
         notes: notes || undefined,
+        collection_type: collectionType  // Include collection type
       };
 
       await onAdd(collectionItem);
       handleClose();
-    } catch (error: any) {
-      console.error('Error adding to collection:', error);
-      alert('Failed to add to collection: ' + error.message);
+    } catch (error) {
+      console.error('Failed to add to collection:', error);
+      alert('Failed to add item to collection. Please try again.');
     } finally {
       setAdding(false);
     }
   };
 
   const handleClose = () => {
+    onClose();
+    setSelectedMovie(null);
     setSearchQuery('');
     setSearchResults([]);
-    setSelectedMovie(null);
     setFormat('Blu-ray');
-    setCondition('New');
     setPurchaseDate('');
     setPurchasePrice('');
     setPurchaseLocation('');
+    setCondition('New');
     setPersonalRating('');
     setNotes('');
-    onClose();
+    setCollectionType('owned');  // Reset collection type
   };
+
+  const getFormatIcon = (format: string) => {
+    switch (format) {
+      case 'DVD': return FileVideo;
+      case 'Blu-ray': return Disc;
+      case '4K UHD': return Monitor;
+      case '3D Blu-ray': return Package;
+      default: return Disc;
+    }
+  };
+
+  const collectionTypeOptions = [
+    { 
+      id: 'owned', 
+      label: 'Add to Collection', 
+      description: 'I own this item',
+      icon: Package,
+      color: 'blue' as const
+    },
+    { 
+      id: 'wishlist', 
+      label: 'Add to Wishlist', 
+      description: 'I want to buy this',
+      icon: Heart,
+      color: 'red' as const
+    },
+    { 
+      id: 'for_sale', 
+      label: 'Mark for Sale', 
+      description: 'I\'m selling this item',
+      icon: DollarSign,
+      color: 'green' as const
+    },
+    { 
+      id: 'loaned_out', 
+      label: 'Loaned Out', 
+      description: 'Someone borrowed this',
+      icon: UserCheck,
+      color: 'orange' as const
+    }
+  ];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-slate-900">Add to Collection</h2>
-            <button
-              onClick={handleClose}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+          <h2 className="text-2xl font-bold text-slate-900">Add to Collection</h2>
+          <button
+            onClick={handleClose}
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
 
-          {/* Movie Search */}
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+          {/* Movie Search Section */}
           {!selectedMovie && (
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Search for a movie or TV show..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <button
-                  onClick={handleSearch}
-                  disabled={searching || !searchQuery.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {searching ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  ) : (
-                    <Search className="h-5 w-5" />
-                  )}
-                </button>
+            <div className="p-6 border-b border-slate-200">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Search for Movie</h3>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Search by title (e.g., The Matrix)"
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    onClick={handleSearch}
+                    disabled={searching || !searchQuery.trim()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span>{searching ? 'Searching...' : 'Search'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Search Results */}
               {searchResults.length > 0 && (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
                   {searchResults.map((movie) => (
                     <div
                       key={movie.imdbID}
                       onClick={() => handleMovieSelect(movie)}
-                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors"
+                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
                     >
-                      {movie.Poster !== 'N/A' && (
+                      {movie.Poster && movie.Poster !== 'N/A' ? (
                         <img
                           src={movie.Poster}
                           alt={movie.Title}
-                          className="w-12 h-18 object-cover rounded"
+                          className="w-12 h-16 object-cover rounded"
                         />
+                      ) : (
+                        <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center">
+                          <Package className="h-6 w-6 text-slate-400" />
+                        </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-slate-900 truncate">{movie.Title}</h4>
-                        <p className="text-sm text-slate-500">{movie.Year} • {movie.Type}</p>
+                        <h4 className="font-semibold text-slate-900 truncate">{movie.Title}</h4>
+                        <p className="text-sm text-slate-600">{movie.Year}</p>
+                        <p className="text-xs text-slate-500">{movie.Type}</p>
                       </div>
                     </div>
                   ))}
@@ -165,53 +236,142 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
             </div>
           )}
 
-          {/* Selected Movie & Collection Details */}
+          {/* Selected Movie and Form */}
           {selectedMovie && (
-            <div className="space-y-6">
-              {/* Selected Movie Display */}
-              <div className="flex items-start space-x-4 p-4 bg-slate-50 rounded-lg">
-                {selectedMovie.Poster !== 'N/A' && (
-                  <img
-                    src={selectedMovie.Poster}
-                    alt={selectedMovie.Title}
-                    className="w-16 h-24 object-cover rounded"
-                  />
-                )}
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg text-slate-900">{selectedMovie.Title}</h3>
-                  <p className="text-slate-600">{selectedMovie.Year}</p>
-                  <p className="text-sm text-slate-500 mt-1">{selectedMovie.Genre}</p>
-                  <button
-                    onClick={() => setSelectedMovie(null)}
-                    className="text-blue-600 text-sm mt-2 hover:text-blue-700"
-                  >
-                    Change movie
-                  </button>
+            <div className="p-6 space-y-6">
+              {/* Selected Movie Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="flex items-start space-x-4">
+                  {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
+                    <img
+                      src={selectedMovie.Poster}
+                      alt={selectedMovie.Title}
+                      className="w-20 h-28 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-20 h-28 bg-slate-300 rounded-lg flex items-center justify-center">
+                      <Package className="h-8 w-8 text-slate-500" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-900">{selectedMovie.Title}</h3>
+                    <p className="text-slate-600">{selectedMovie.Year} • {selectedMovie.Genre}</p>
+                    {selectedMovie.Director && selectedMovie.Director !== 'N/A' && (
+                      <p className="text-sm text-slate-500">Directed by {selectedMovie.Director}</p>
+                    )}
+                    <button
+                      onClick={() => setSelectedMovie(null)}
+                      className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      ← Choose different movie
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Collection Details Form */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Collection Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  <Package className="inline h-4 w-4 mr-2" />
+                  Collection Type
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {collectionTypeOptions.map((type) => {
+                    const IconComponent = type.icon;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setCollectionType(type.id as CollectionType)}
+                        className={`
+                          p-4 rounded-lg border-2 text-left transition-all duration-200
+                          ${collectionType === type.id
+                            ? 'border-blue-500 bg-blue-50 text-blue-900'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <IconComponent className="h-4 w-4" />
+                            <span className="font-medium text-sm">{type.label}</span>
+                          </div>
+                          <CollectionStatusBadge 
+                            type={type.id as CollectionType} 
+                            size="sm" 
+                            showLabel={false} 
+                          />
+                        </div>
+                        <p className="text-xs text-slate-600">{type.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Collection Type Specific Tips */}
+                {collectionType === 'wishlist' && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 flex items-center">
+                      <Heart className="h-4 w-4 mr-2" />
+                      <span><strong>Wishlist Tip:</strong> Items in your wishlist won't count toward collection value calculations.</span>
+                    </p>
+                  </div>
+                )}
+                
+                {collectionType === 'for_sale' && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      <span><strong>Selling Tip:</strong> Consider setting your asking price in the purchase price field below.</span>
+                    </p>
+                  </div>
+                )}
+                
+                {collectionType === 'loaned_out' && (
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-700 flex items-center">
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      <span><strong>Loan Tip:</strong> Use the "Purchase Location" field to note who borrowed this item.</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Physical Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Format Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Format *
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <Disc className="inline h-4 w-4 mr-1" />
+                    Format
                   </label>
-                  <select
-                    value={format}
-                    onChange={(e) => setFormat(e.target.value as any)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="DVD">DVD</option>
-                    <option value="Blu-ray">Blu-ray</option>
-                    <option value="4K UHD">4K UHD</option>
-                    <option value="3D Blu-ray">3D Blu-ray</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['DVD', 'Blu-ray', '4K UHD', '3D Blu-ray'] as const).map((formatOption) => {
+                      const IconComponent = getFormatIcon(formatOption);
+                      return (
+                        <button
+                          key={formatOption}
+                          type="button"
+                          onClick={() => setFormat(formatOption)}
+                          className={`
+                            flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors
+                            ${format === formatOption
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-slate-300 text-slate-600 hover:border-slate-400'
+                            }
+                          `}
+                        >
+                          <IconComponent className="h-4 w-4" />
+                          <span className="text-sm font-medium">{formatOption}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* Condition */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Condition *
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
                   <select
                     value={condition}
                     onChange={(e) => setCondition(e.target.value as any)}
@@ -224,11 +384,14 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
                     <option value="Poor">Poor</option>
                   </select>
                 </div>
+              </div>
 
+              {/* Purchase Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     <Calendar className="inline h-4 w-4 mr-1" />
-                    Purchase Date
+                    {collectionType === 'wishlist' ? 'Target Date' : 'Purchase Date'}
                   </label>
                   <input
                     type="date"
@@ -241,14 +404,19 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     <DollarSign className="inline h-4 w-4 mr-1" />
-                    Purchase Price
+                    {collectionType === 'for_sale' 
+                      ? 'Asking Price' 
+                      : collectionType === 'wishlist' 
+                      ? 'Target Price' 
+                      : 'Purchase Price'
+                    }
                   </label>
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="0.00"
                     value={purchasePrice}
                     onChange={(e) => setPurchasePrice(e.target.value)}
+                    placeholder="0.00"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -256,17 +424,30 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     <MapPin className="inline h-4 w-4 mr-1" />
-                    Purchase Location
+                    {collectionType === 'loaned_out' 
+                      ? 'Loaned To' 
+                      : collectionType === 'for_sale' 
+                      ? 'Selling Platform' 
+                      : 'Purchase Location'
+                    }
                   </label>
                   <input
                     type="text"
-                    placeholder="Store, website, etc."
                     value={purchaseLocation}
                     onChange={(e) => setPurchaseLocation(e.target.value)}
+                    placeholder={
+                      collectionType === 'loaned_out' 
+                        ? 'Friend\'s name' 
+                        : collectionType === 'for_sale' 
+                        ? 'eBay, Facebook, etc.' 
+                        : 'Best Buy, Amazon, etc.'
+                    }
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     <Star className="inline h-4 w-4 mr-1" />
@@ -286,9 +467,7 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Notes
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -309,9 +488,24 @@ export function AddToCollectionModal({ isOpen, onClose, onAdd }: AddToCollection
                 <button
                   onClick={handleAddToCollection}
                   disabled={adding}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
                 >
-                  {adding ? 'Adding...' : 'Add to Collection'}
+                  {adding ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Package className="h-4 w-4" />
+                      <span>
+                        {collectionType === 'owned' && 'Add to Collection'}
+                        {collectionType === 'wishlist' && 'Add to Wishlist'}
+                        {collectionType === 'for_sale' && 'Mark for Sale'}
+                        {collectionType === 'loaned_out' && 'Mark as Loaned'}
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
