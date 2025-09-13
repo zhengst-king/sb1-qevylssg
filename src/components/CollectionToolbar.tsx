@@ -16,7 +16,7 @@ import type { PhysicalMediaCollection } from '../lib/supabase';
 import { BulkOperationsModal } from './BulkOperationsModal';
 import { DuplicateManagement } from './DuplicateManagement';
 import { csvExportService } from '../services/csvExportService';
-import { useAuth } from '@supabase/auth-helpers-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface CollectionToolbarProps {
   collections: PhysicalMediaCollection[];
