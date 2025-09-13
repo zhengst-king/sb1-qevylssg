@@ -12,11 +12,10 @@ import {
   UserCheck,
   Disc,
   Award,
-  Star
+  Star,
+  Sparkles,
+  Volume2
 } from 'lucide-react';
-import { StarRating } from './StarRating';
-import { FormatBadge } from './FormatBadge';
-import { TechnicalSpecsDisplay } from './TechnicalSpecsDisplay';
 import { CollectionItemDetailModal } from './CollectionItemDetailModal';
 import { EditCollectionItemModal } from './EditCollectionItemModal';
 import { CollectionStatusBadge, CollectionTypeActions } from './CollectionStatusBadge';
@@ -37,6 +36,95 @@ interface CollectionItemCardProps {
   onEdit?: (item: PhysicalMediaCollection) => void;
   onMoveToType?: (newType: CollectionType) => void;  // NEW: Collection type actions
 }
+
+// Inline StarRating component (since ./StarRating doesn't exist as separate file)
+interface StarRatingProps {
+  rating: number;
+  maxRating?: number;
+  size?: 'sm' | 'md' | 'lg';
+  showRating?: boolean;
+  variant?: 'default' | 'imdb' | 'personal';
+}
+
+const StarRating: React.FC<StarRatingProps> = ({ 
+  rating, 
+  maxRating = 10, 
+  size = 'sm', 
+  showRating = false,
+  variant = 'default'
+}) => {
+  const sizeClasses = {
+    sm: 'h-3 w-3',
+    md: 'h-4 w-4', 
+    lg: 'h-5 w-5'
+  };
+  
+  const starSize = sizeClasses[size];
+  const normalizedRating = variant === 'imdb' ? (rating / 2) : (rating / 2); // Convert 10-scale to 5-scale
+  
+  const bgColors = {
+    default: 'bg-black bg-opacity-75',
+    imdb: 'bg-yellow-600',
+    personal: 'bg-blue-600'
+  };
+
+  return (
+    <div className={`${bgColors[variant]} text-white px-2 py-1 rounded-full flex items-center space-x-1`}>
+      <div className="flex items-center">
+        {[...Array(Math.floor(normalizedRating))].map((_, i) => (
+          <Star key={i} className={`${starSize} fill-current`} />
+        ))}
+        {normalizedRating % 1 !== 0 && (
+          <Star className={`${starSize} fill-current opacity-50`} />
+        )}
+      </div>
+      {showRating && (
+        <span className="text-xs font-medium">
+          {variant === 'imdb' ? `${rating}/10` : `${rating}/10`}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// Inline FormatBadge component (since ./FormatBadge doesn't exist as separate file)
+interface FormatBadgeProps {
+  format: string;
+  specs?: BlurayTechnicalSpecs;
+}
+
+const FormatBadge: React.FC<FormatBadgeProps> = ({ format, specs }) => {
+  const formatBadgeColor = {
+    'DVD': 'bg-red-100 text-red-800 border-red-200',
+    'Blu-ray': 'bg-blue-100 text-blue-800 border-blue-200',
+    '4K UHD': 'bg-purple-100 text-purple-800 border-purple-200',
+    '3D Blu-ray': 'bg-green-100 text-green-800 border-green-200'
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {/* Main Format Badge */}
+      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format as keyof typeof formatBadgeColor]}`}>
+        {format}
+      </span>
+      
+      {/* Video Quality Badges */}
+      {specs?.video_resolution && (
+        <span className="px-2 py-1 text-xs font-medium bg-slate-700 text-white rounded-full">
+          {specs.video_resolution}
+        </span>
+      )}
+      
+      {/* HDR Badges */}
+      {specs?.hdr_format && specs.hdr_format.length > 0 && (
+        <span className="px-2 py-1 text-xs font-medium bg-orange-500 text-white rounded-full flex items-center">
+          <Sparkles className="h-2 w-2 mr-1" />
+          {specs.hdr_format[0]}
+        </span>
+      )}
+    </div>
+  );
+};
 
 export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
   item,
@@ -144,6 +232,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
                 rating={item.imdb_score} 
                 variant="imdb" 
                 size="sm"
+                showRating={false}
               />
             )}
           </div>
