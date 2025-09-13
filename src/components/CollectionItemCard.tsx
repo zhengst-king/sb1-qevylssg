@@ -249,6 +249,7 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
                 rating={item.rating} 
                 size="sm" 
                 showRating={true}
+                variant="default"
               />
             </div>
           )}
