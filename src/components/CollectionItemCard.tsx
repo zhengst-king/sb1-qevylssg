@@ -101,10 +101,11 @@ const FormatBadge: React.FC<FormatBadgeProps> = ({ format, specs }) => {
     '3D Blu-ray': 'bg-green-100 text-green-800 border-green-200'
   };
 
+  // Always show at least the main format badge
   return (
     <div className="flex flex-wrap gap-1">
-      {/* Main Format Badge */}
-      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format as keyof typeof formatBadgeColor]}`}>
+      {/* Main Format Badge - ALWAYS VISIBLE */}
+      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format as keyof typeof formatBadgeColor] || 'bg-slate-100 text-slate-800 border-slate-200'}`}>
         {format}
       </span>
       
