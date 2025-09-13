@@ -190,6 +190,7 @@ export interface PhysicalMediaCollection {
   personal_rating?: number;
   notes?: string;
   technical_specs_id?: string;
+  collection_type?: 'owned' | 'wishlist' | 'for_sale' | 'loaned_out' | 'missing';
   created_at: string;
   updated_at: string;
 };
