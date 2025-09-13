@@ -180,12 +180,34 @@ export const CollectionItemCard: React.FC<CollectionItemCardProps> = ({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-all duration-200 group">
+      <div className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-lg transition-all duration-200 group ${
+       isSelected 
+          ? 'border-blue-500 ring-2 ring-blue-500 bg-blue-50' 
+          : 'border-slate-200'
+      }`}>
         {/* Movie Poster & Overlay Info */}
 <div 
   className="aspect-[2/3] relative bg-slate-100 cursor-pointer overflow-hidden"
   onClick={() => setShowDetailModal(true)}
 >
+    {/* Selection Checkbox - ADD THIS ENTIRE BLOCK */}
+  {onSelect && (
+    <div className="absolute top-2 left-2 z-20">
+      <label className="flex items-center">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => {
+            e.stopPropagation();
+            onSelect(e.target.checked);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 bg-white/90 backdrop-blur-sm shadow-sm"
+        />
+      </label>
+    </div>
+  )}
+
   {/* Poster Image */}
   {item.poster_url ? (
     <img
