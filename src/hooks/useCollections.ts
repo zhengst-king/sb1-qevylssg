@@ -1,15 +1,34 @@
+// src/hooks/useCollections.ts - COMPLETE REWRITE WITH WISHLIST SEPARATION
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import type { PhysicalMediaCollection } from '../lib/supabase';
+import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
-export function useCollections() {
+// Enhanced interface for collection filtering
+interface UseCollectionsOptions {
+  collectionType?: CollectionType | 'all';
+  includeAll?: boolean;
+}
+
+// Collection statistics interface
+interface CollectionStats {
+  owned: number;
+  wishlist: number;
+  for_sale: number;
+  loaned_out: number;
+  missing: number;
+  total: number;
+}
+
+export function useCollections(options: UseCollectionsOptions = {}) {
   const { user } = useAuth();
   const [collections, setCollections] = useState<PhysicalMediaCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch collections from the database
+  const { collectionType = 'all', includeAll = false } = options;
+
+  // Fetch collections from the database with optional filtering
   const fetchCollections = async () => {
     if (!user) {
       setCollections([]);
@@ -21,32 +40,36 @@ export function useCollections() {
       setLoading(true);
       setError(null);
 
-      // Try to use the view first, fall back to direct table query
-      let { data, error: fetchError } = await supabase
-        .from('collections_with_technical_specs')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Build query with optional collection_type filter
+      let query = supabase
+        .from('physical_media_collections')
+        .select(`
+          *,
+          bluray_technical_specs:technical_specs_id(*)
+        `)
+        .eq('user_id', user.id);
 
-      // If the view doesn't exist, fall back to the direct table
-      if (fetchError && fetchError.message.includes('does not exist')) {
-        console.log('[useCollections] View not found, using direct table query');
-        const { data: directData, error: directError } = await supabase
-          .from('physical_media_collections')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        
-        data = directData;
-        fetchError = directError;
+      // Add collection_type filter if specified
+      if (collectionType !== 'all') {
+        query = query.eq('collection_type', collectionType);
       }
+
+      const { data, error: fetchError } = await query
+        .order('created_at', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
       }
 
-      setCollections(data || []);
-      console.log('[useCollections] Loaded', data?.length || 0, 'items');
+      // Ensure collection_type defaults to 'owned' for existing items
+      const processedData = (data || []).map(item => ({
+        ...item,
+        collection_type: item.collection_type || 'owned'
+      }));
+
+      setCollections(processedData);
+      console.log('[useCollections] Loaded', processedData?.length || 0, 'items', 
+                  collectionType !== 'all' ? `(type: ${collectionType})` : '(all types)');
     } catch (err) {
       console.error('Error fetching collections:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch collections');
@@ -55,166 +78,273 @@ export function useCollections() {
     }
   };
 
-  // Add new item to collection
-  const addToCollection = async (item: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  // Add item to collection
+  const addToCollection = async (
+    collectionData: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+  ) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const { data, error: addError } = await supabase
+      const { data, error } = await supabase
         .from('physical_media_collections')
-        .insert([{ ...item, user_id: user.id }])
+        .insert([{ 
+          ...collectionData, 
+          user_id: user.id,
+          collection_type: collectionData.collection_type || 'owned' // Default to 'owned'
+        }])
         .select()
         .single();
 
-      if (addError) {
-        throw addError;
+      if (error) throw error;
+
+      // Only add to local state if it matches the current filter
+      if (collectionType === 'all' || data.collection_type === collectionType) {
+        setCollections(prev => [data, ...prev]);
       }
 
-      // Refresh collections
-      await fetchCollections();
+      console.log('[useCollections] Added item:', data.title, 'type:', data.collection_type);
       return data;
-    } catch (err) {
-      console.error('Error adding to collection:', err);
-      throw err;
+    } catch (error) {
+      console.error('[useCollections] Add error:', error);
+      throw error;
     }
   };
 
-// SAFE SOLUTION: Delete dependent records first, then the main record
-// SIMPLIFIED: Use database function for safe deletion
-const removeFromCollection = async (itemId: string) => {
-  if (!user) throw new Error('User not authenticated');
+  // Update collection item
+  const updateCollection = async (
+    id: string, 
+    updates: Partial<PhysicalMediaCollection>
+  ) => {
+    if (!user) throw new Error('User not authenticated');
 
-  try {
-    console.log('[removeFromCollection] Using database function for itemId:', itemId);
-    console.log('[removeFromCollection] User ID:', user.id);
-
-    // Method 1: Try using the database function (if available)
     try {
-      const { data: dbResult, error: dbError } = await supabase
-        .rpc('safe_delete_collection_item', {
-          item_id: itemId,
-          user_id: user.id
-        });
-
-      if (dbError) {
-        console.log('[removeFromCollection] Database function not available, falling back to manual method');
-        throw dbError;
-      }
-
-      if (!dbResult) {
-        throw new Error('Item not found or you do not have permission to delete it');
-      }
-
-      console.log('[removeFromCollection] ✅ Successfully deleted using database function');
-      
-      // Update local state
-      setCollections(prev => prev.filter(item => item.id !== itemId));
-      return true;
-
-    } catch (dbFunctionError) {
-      console.log('[removeFromCollection] Database function failed, trying manual cleanup...');
-      
-      // Method 2: Manual cleanup (fallback)
-      // First verify the item exists
-      const { data: existingItem, error: checkError } = await supabase
+      const { data, error } = await supabase
         .from('physical_media_collections')
-        .select('id, title, user_id')
-        .eq('id', itemId)
+        .update(updates)
+        .eq('id', id)
         .eq('user_id', user.id)
-        .single();
-
-      if (checkError || !existingItem) {
-        throw new Error('Item not found or you do not have permission to delete it');
-      }
-
-      // Clean up scraping queue records
-      await supabase
-        .from('scraping_queue')
-        .delete()
-        .eq('collection_item_id', itemId);
-
-      // Clear technical specs reference
-      await supabase
-        .from('physical_media_collections')
-        .update({ technical_specs_id: null })
-        .eq('id', itemId)
-        .eq('user_id', user.id);
-
-      // Delete the main record
-      const { error: deleteError } = await supabase
-        .from('physical_media_collections')
-        .delete()
-        .eq('id', itemId)
-        .eq('user_id', user.id);
-
-      if (deleteError) {
-        console.error('[removeFromCollection] Manual delete failed:', deleteError);
-        throw new Error(`Delete failed: ${deleteError.message}`);
-      }
-
-      console.log('[removeFromCollection] ✅ Successfully deleted using manual cleanup');
-      
-      // Update local state
-      setCollections(prev => prev.filter(item => item.id !== itemId));
-      return true;
-    }
-
-  } catch (err) {
-    console.error('[removeFromCollection] ❌ Error:', err);
-    throw err;
-  }
-};
-
-  // Update single collection item
-  const updateCollectionItem = async (itemId: string, updates: Partial<PhysicalMediaCollection>) => {
-    if (!user) throw new Error('User not authenticated');
-
-    try {
-      const updateData = {
-        ...updates,
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error: updateError } = await supabase
-        .from('physical_media_collections')
-        .update(updateData)
-        .eq('id', itemId)
-        .eq('user_id', user.id) // Security: only update user's own items
         .select()
         .single();
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (error) throw error;
 
-      // Update local state immediately for better UX
-      setCollections(prev => 
-        prev.map(item => 
-          item.id === itemId 
-            ? { ...item, ...updateData }
-            : item
-        )
-      );
+      // Update local state
+      setCollections(prev => prev.map(item => 
+        item.id === id ? { ...item, ...data } : item
+      ));
 
+      console.log('[useCollections] Updated item:', data.title, 'changes:', Object.keys(updates));
       return data;
-    } catch (err) {
-      console.error('Error updating collection item:', err);
-      throw err;
+    } catch (error) {
+      console.error('[useCollections] Update error:', error);
+      throw error;
     }
   };
 
-  // Load collections on mount and when user changes
+  // Remove from collection
+  const removeFromCollection = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { error } = await supabase
+        .from('physical_media_collections')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setCollections(prev => prev.filter(item => item.id !== id));
+      console.log('[useCollections] Removed item:', id);
+    } catch (error) {
+      console.error('[useCollections] Remove error:', error);
+      throw error;
+    }
+  };
+
+  // Move item between collection types (e.g., wishlist to owned)
+  const moveToCollectionType = async (id: string, newType: CollectionType) => {
+    try {
+      const updatedItem = await updateCollection(id, { collection_type: newType });
+      
+      // If we're filtering by collection type and the item no longer matches, remove it from local state
+      if (collectionType !== 'all' && newType !== collectionType) {
+        setCollections(prev => prev.filter(item => item.id !== id));
+      }
+      
+      console.log('[useCollections] Moved item to:', newType);
+      return updatedItem;
+    } catch (error) {
+      console.error('[useCollections] Move to collection type error:', error);
+      throw error;
+    }
+  };
+
+  // Bulk update multiple items
+  const bulkUpdateCollections = async (
+    itemIds: string[],
+    updates: Partial<PhysicalMediaCollection>
+  ) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const updatePromises = itemIds.map(id => updateCollection(id, updates));
+      const results = await Promise.all(updatePromises);
+      
+      console.log('[useCollections] Bulk updated', results.length, 'items');
+      return results;
+    } catch (error) {
+      console.error('[useCollections] Bulk update error:', error);
+      throw error;
+    }
+  };
+
+  // Get all collections (ignoring current filter) for statistics
+  const getAllCollections = async (): Promise<PhysicalMediaCollection[]> => {
+    if (!user) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('physical_media_collections')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Ensure collection_type defaults to 'owned' for existing items
+      return (data || []).map(item => ({
+        ...item,
+        collection_type: item.collection_type || 'owned'
+      }));
+    } catch (error) {
+      console.error('[useCollections] Get all collections error:', error);
+      return [];
+    }
+  };
+
+  // Get collection statistics by type
+  const getCollectionStats = (): CollectionStats => {
+    // For accurate stats, we need to consider all collections, not just filtered ones
+    // This is a limitation - in a real app, you'd want to fetch stats separately
+    // or maintain a separate state for all collections
+    
+    const stats: CollectionStats = {
+      owned: 0,
+      wishlist: 0,
+      for_sale: 0,
+      loaned_out: 0,
+      missing: 0,
+      total: 0
+    };
+
+    // If we're viewing all collections, we can calculate accurate stats
+    if (collectionType === 'all') {
+      collections.forEach(item => {
+        const type = (item.collection_type || 'owned') as CollectionType;
+        stats[type]++;
+        stats.total++;
+      });
+    } else {
+      // If we're viewing a filtered set, we can only provide partial stats
+      // In a production app, you'd want to fetch stats separately
+      stats.total = collections.length;
+      collections.forEach(item => {
+        const type = (item.collection_type || 'owned') as CollectionType;
+        stats[type]++;
+      });
+    }
+
+    return stats;
+  };
+
+  // Get collection value statistics
+  const getCollectionValueStats = () => {
+    const ownedItems = collections.filter(item => 
+      (item.collection_type || 'owned') === 'owned'
+    );
+    const wishlistItems = collections.filter(item => 
+      item.collection_type === 'wishlist'
+    );
+    
+    const ownedValue = ownedItems.reduce((sum, item) => 
+      sum + (item.purchase_price || 0), 0
+    );
+    const wishlistValue = wishlistItems.reduce((sum, item) => 
+      sum + (item.purchase_price || 0), 0
+    );
+
+    return {
+      ownedValue,
+      wishlistValue,
+      totalItems: collections.length,
+      ownedItems: ownedItems.length,
+      wishlistItems: wishlistItems.length
+    };
+  };
+
+  // Get items by specific collection type
+  const getItemsByType = (type: CollectionType): PhysicalMediaCollection[] => {
+    return collections.filter(item => 
+      (item.collection_type || 'owned') === type
+    );
+  };
+
+  // Check if item already exists in collection
+  const itemExists = (imdbId: string, format?: string): boolean => {
+    return collections.some(item => 
+      item.imdb_id === imdbId && 
+      (!format || item.format === format)
+    );
+  };
+
+  // Search collections by title, director, genre, etc.
+  const searchCollections = (query: string): PhysicalMediaCollection[] => {
+    const searchTerm = query.toLowerCase().trim();
+    if (!searchTerm) return collections;
+
+    return collections.filter(item =>
+      item.title.toLowerCase().includes(searchTerm) ||
+      item.director?.toLowerCase().includes(searchTerm) ||
+      item.genre?.toLowerCase().includes(searchTerm) ||
+      item.notes?.toLowerCase().includes(searchTerm)
+    );
+  };
+
+  // Refetch collections (useful for refreshing data)
+  const refetch = async () => {
+    await fetchCollections();
+  };
+
+  // Initialize: Fetch collections when user or collection type changes
   useEffect(() => {
     fetchCollections();
-  }, [user]);
+  }, [user, collectionType]); // Refetch when user or collection type changes
 
   return {
+    // Data
     collections,
     loading,
     error,
+
+    // CRUD Operations  
     addToCollection,
+    updateCollection,
     removeFromCollection,
-    updateCollectionItem,
-    refetch: fetchCollections
+    bulkUpdateCollections,
+
+    // Collection Type Operations
+    moveToCollectionType,
+    getItemsByType,
+
+    // Statistics & Analytics
+    getCollectionStats,
+    getCollectionValueStats,
+
+    // Utility Functions
+    getAllCollections,
+    itemExists,
+    searchCollections,
+    refetch
   };
 }
