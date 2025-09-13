@@ -1,3 +1,4 @@
+// src/components/CollectionToolbar.tsx
 import React, { useState } from 'react';
 import { 
   Plus, 
@@ -8,11 +9,14 @@ import {
   Square,
   RotateCcw,
   Download,
-  Upload
+  Upload,
+  Loader
 } from 'lucide-react';
 import type { PhysicalMediaCollection } from '../lib/supabase';
 import { BulkOperationsModal } from './BulkOperationsModal';
 import { DuplicateManagement } from './DuplicateManagement';
+import { csvExportService } from '../services/csvExportService';
+import { useAuth } from '@supabase/auth-helpers-react';
 
 interface CollectionToolbarProps {
   collections: PhysicalMediaCollection[];
@@ -38,6 +42,9 @@ export function CollectionToolbar({
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const hasSelections = selectedItems.length > 0;
   const allSelected = collections.length > 0 && selectedItems.length === collections.length;
@@ -60,6 +67,42 @@ export function CollectionToolbar({
     await onBulkUpdate(updates);
     setShowBulkModal(false);
     handleClearSelection();
+  };
+
+  const handleCSVExport = async () => {
+    if (!user?.id) {
+      alert('Please log in to export your collection');
+      return;
+    }
+
+    if (collections.length === 0) {
+      alert('No collection items to export');
+      return;
+    }
+
+    setExportingCsv(true);
+    setExportSuccess(null);
+
+    try {
+      const result = await csvExportService.exportCollectionToCSV(user.id, {
+        includeHeaders: true,
+        includeTechnicalSpecs: true,
+        dateFormat: 'iso',
+        filename: 'my-physical-media-collection'
+      });
+
+      if (result.success) {
+        setExportSuccess(`Successfully exported ${result.recordCount} items to ${result.filename}`);
+        setTimeout(() => setExportSuccess(null), 5000); // Clear after 5 seconds
+      } else {
+        throw new Error(result.error || 'Export failed');
+      }
+    } catch (error) {
+      console.error('[Collection Toolbar] CSV export error:', error);
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setExportingCsv(false);
+    }
   };
 
   return (
@@ -155,11 +198,28 @@ export function CollectionToolbar({
             {/* Export/Import Actions */}
             <div className="flex items-center space-x-1">
               <button
-                onClick={() => {/* TODO: Implement CSV export */}}
-                className="p-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Export CSV"
+                onClick={handleCSVExport}
+                disabled={exportingCsv || collections.length === 0}
+                className={`p-2 rounded-lg transition-colors ${
+                  exportingCsv 
+                    ? 'text-blue-600 bg-blue-50 cursor-not-allowed'
+                    : collections.length === 0
+                    ? 'text-slate-400 cursor-not-allowed'
+                    : 'text-slate-600 hover:text-slate-700 hover:bg-slate-100'
+                }`}
+                title={
+                  exportingCsv 
+                    ? 'Exporting CSV...' 
+                    : collections.length === 0
+                    ? 'No items to export'
+                    : 'Export CSV'
+                }
               >
-                <Download className="h-4 w-4" />
+                {exportingCsv ? (
+                  <Loader className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
               </button>
               <button
                 onClick={() => {/* TODO: Implement CSV import */}}
@@ -171,6 +231,16 @@ export function CollectionToolbar({
             </div>
           </div>
         </div>
+
+        {/* Export Success Message */}
+        {exportSuccess && (
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">
+              <CheckSquare className="inline h-4 w-4 mr-1" />
+              {exportSuccess}
+            </p>
+          </div>
+        )}
 
         {/* Selection Mode Helper Text */}
         {selectionMode && !hasSelections && (
@@ -203,22 +273,23 @@ export function CollectionToolbar({
         )}
       </div>
 
-      {/* Bulk Operations Modal */}
-      <BulkOperationsModal
-        isOpen={showBulkModal}
-        onClose={() => setShowBulkModal(false)}
-        selectedItems={selectedItems}
-        onBulkUpdate={handleBulkUpdateComplete}
-      />
+      {/* Modals */}
+      {showBulkModal && (
+        <BulkOperationsModal
+          selectedItems={selectedItems}
+          onClose={() => setShowBulkModal(false)}
+          onUpdate={handleBulkUpdateComplete}
+        />
+      )}
 
-      {/* Duplicate Management Modal */}
-      <DuplicateManagement
-        isOpen={showDuplicateModal}
-        onClose={() => setShowDuplicateModal(false)}
-        duplicateGroups={duplicateGroups}
-        onMergeDuplicates={onMergeDuplicates}
-        onRefresh={onRefreshDuplicates}
-      />
+      {showDuplicateModal && (
+        <DuplicateManagement
+          duplicateGroups={duplicateGroups}
+          onClose={() => setShowDuplicateModal(false)}
+          onMerge={onMergeDuplicates}
+          onRefresh={onRefreshDuplicates}
+        />
+      )}
     </>
   );
 }
