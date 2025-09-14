@@ -207,8 +207,12 @@ export function useCollections(options: UseCollectionsOptions = {}) {
     try {
       const { data, error } = await supabase
         .from('physical_media_collections')
-        .select('*')
-        .eq('user_id', user.id);
+       .select(`
+          *,
+          bluray_technical_specs:technical_specs_id(*)
+        `)
+        .eq('user_id', user.id)
+        .order('title', { ascending: true }); // Sort by title for CSV exports
 
       if (error) throw error;
 
