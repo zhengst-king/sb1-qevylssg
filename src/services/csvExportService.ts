@@ -234,7 +234,7 @@ class CSVExportService {
    * Format a single data row for CSV
    */
   private formatDataRow(
-    item: any,
+    item: CollectionWithSpecs,
     config: Required<CSVExportOptions>
   ): string {
     const formatDate = (date: string | null) => {
