@@ -465,19 +465,41 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
 
   // CSV Export handler
   const handleExportCSV = async () => {
-    try {
-      setIsExporting(true);
-      const allCollections = await getAllCollections();
-      const csvData = csvExportService.generateCollectionCSV(
-        activeCollectionType === 'all' ? allCollections : collections
-      );
-      csvExportService.downloadCSV(
-        csvData, 
-        `collection-${activeCollectionType === 'all' ? 'all' : activeCollectionType}-${new Date().toISOString().split('T')[0]}.csv`
-      );
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export collection. Please try again.');
+  try {
+    setIsExporting(true);
+    
+    // Get collections data
+    const collectionsToExport = activeCollectionType === 'all' 
+      ? await getAllCollections() 
+      : collections;
+    
+    if (collectionsToExport.length === 0) {
+      alert('No items to export. Please add some items to your collection first.');
+      return;
+    }
+    
+    // Generate CSV
+    const csvData = csvExportService.generateCollectionCSV(collectionsToExport);
+    const filename = `collection-${activeCollectionType === 'all' ? 'all' : activeCollectionType}-${new Date().toISOString().split('T')[0]}.csv`;
+    
+    // Download CSV
+    csvExportService.downloadCSV(csvData, filename);
+    
+    // Show success message
+    console.log(`[Export] Successfully exported ${collectionsToExport.length} items to ${filename}`);
+    
+    // Optional: Show a temporary success message in the UI
+    // You could add a toast notification here
+    
+  } catch (error) {
+    console.error('Export failed:', error);
+    
+    // More detailed error message
+    if (error instanceof Error) {
+      alert(`Failed to export collection: ${error.message}\n\nTip: Try refreshing the page and trying again, or check your browser's download settings.`);
+    } else {
+      alert('Failed to export collection. Please try again or check your browser\'s download settings.');
+    }
     } finally {
       setIsExporting(false);
     }
