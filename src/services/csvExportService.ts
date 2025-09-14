@@ -1,4 +1,4 @@
-// src/services/csvExportService.ts
+// src/services/csvExportService.ts - COMPLETE IMPLEMENTATION
 import { supabase } from '../lib/supabase';
 import type { PhysicalMediaCollection } from '../lib/supabase';
 
@@ -25,7 +25,62 @@ class CSVExportService {
   };
 
   /**
-   * Export user's physical media collection to CSV
+   * Generate CSV content from collections array (used by MyCollectionsPage)
+   * This is the simple method that works directly with collections data
+   */
+  generateCollectionCSV(
+    collections: PhysicalMediaCollection[],
+    options: Partial<CSVExportOptions> = {}
+  ): string {
+    const config = { ...this.DEFAULT_OPTIONS, ...options };
+    
+    if (!collections || collections.length === 0) {
+      throw new Error('No collection items to export');
+    }
+
+    const csvLines: string[] = [];
+    
+    // Add headers if requested
+    if (config.includeHeaders) {
+      csvLines.push(this.getCSVHeaders(config.includeTechnicalSpecs).join(','));
+    }
+    
+    // Add data rows
+    collections.forEach(item => {
+      csvLines.push(this.formatDataRow(item, config));
+    });
+    
+    return csvLines.join('\n');
+  }
+
+  /**
+   * Download CSV content as file (used by MyCollectionsPage)
+   */
+  downloadCSV(csvContent: string, filename: string): void {
+    // Add BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { 
+      type: 'text/csv;charset=utf-8;' 
+    });
+    
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else {
+      // Fallback for browsers that don't support the download attribute
+      window.open(URL.createObjectURL(blob));
+    }
+  }
+
+  /**
+   * Export user's physical media collection to CSV (used by CollectionToolbar)
    */
   async exportCollectionToCSV(
     userId: string,
@@ -69,7 +124,7 @@ class CSVExportService {
   }
 
   /**
-   * Fetch collection data from Supabase
+   * Fetch collection data from Supabase (for CollectionToolbar usage)
    */
   private async fetchCollectionData(
     userId: string, 
@@ -111,7 +166,7 @@ class CSVExportService {
   }
 
   /**
-   * Generate CSV content from collection data
+   * Generate CSV content from collection data (for CollectionToolbar usage)
    */
   private generateCSVContent(
     data: any[],
@@ -139,6 +194,7 @@ class CSVExportService {
       'Title',
       'Year',
       'Format',
+      'Collection Type',
       'Genre',
       'Director',
       'Purchase Date',
@@ -216,10 +272,22 @@ class CSVExportService {
       return str;
     };
 
+    const formatCollectionType = (type: string | null) => {
+      const typeMap: { [key: string]: string } = {
+        'owned': 'My Collection',
+        'wishlist': 'Wishlist',
+        'for_sale': 'For Sale',
+        'loaned_out': 'Loaned Out',
+        'missing': 'Missing'
+      };
+      return typeMap[type || 'owned'] || 'My Collection';
+    };
+
     const baseFields = [
       escapeCSV(item.title || ''),
       escapeCSV(item.year || ''),
       escapeCSV(item.format || ''),
+      escapeCSV(formatCollectionType(item.collection_type)),
       escapeCSV(item.genre || ''),
       escapeCSV(item.director || ''),
       escapeCSV(formatDate(item.purchase_date)),
@@ -257,30 +325,7 @@ class CSVExportService {
   }
 
   /**
-   * Trigger CSV file download in browser
-   */
-  private downloadCSV(csvContent: string, filename: string): void {
-    // Add BOM for Excel compatibility
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { 
-      type: 'text/csv;charset=utf-8;' 
-    });
-    
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-  }
-
-  /**
-   * Get export progress for large collections
+   * Get export statistics for large collections
    */
   async getExportStats(userId: string): Promise<{
     totalItems: number;
