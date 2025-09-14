@@ -55,6 +55,111 @@ const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
     slate: 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'
   };
 
+// Format Distribution Filter Tabs (like Movie Watchlist status labels)
+interface FormatDistributionTabsProps {
+  collections: PhysicalMediaCollection[];
+  activeFormat: string;
+  onFormatChange: (format: 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray') => void;
+}
+
+const FormatDistributionTabs: React.FC<FormatDistributionTabsProps> = ({
+  collections,
+  activeFormat,
+  onFormatChange
+}) => {
+  const formatStats = useMemo(() => {
+    const stats = collections.reduce((acc, item) => {
+      acc[item.format] = (acc[item.format] || 0) + 1;
+      acc.total = (acc.total || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      total: stats.total || 0,
+      'DVD': stats['DVD'] || 0,
+      'Blu-ray': stats['Blu-ray'] || 0,
+      '4K UHD': stats['4K UHD'] || 0,
+      '3D Blu-ray': stats['3D Blu-ray'] || 0
+    };
+  }, [collections]);
+
+  const formatTabs = [
+    {
+      id: 'all' as const,
+      label: 'Total',
+      count: formatStats.total,
+      color: 'bg-slate-100 text-slate-800 border-slate-300',
+      activeColor: 'bg-slate-600 text-white border-slate-600'
+    },
+    {
+      id: 'DVD' as const,
+      label: 'DVD',
+      count: formatStats.DVD,
+      color: 'bg-red-100 text-red-800 border-red-300',
+      activeColor: 'bg-red-600 text-white border-red-600'
+    },
+    {
+      id: 'Blu-ray' as const,
+      label: 'Blu-ray',
+      count: formatStats['Blu-ray'],
+      color: 'bg-blue-100 text-blue-800 border-blue-300',
+      activeColor: 'bg-blue-600 text-white border-blue-600'
+    },
+    {
+      id: '4K UHD' as const,
+      label: '4K UHD',
+      count: formatStats['4K UHD'],
+      color: 'bg-purple-100 text-purple-800 border-purple-300',
+      activeColor: 'bg-purple-600 text-white border-purple-600'
+    },
+    {
+      id: '3D Blu-ray' as const,
+      label: '3D Blu-ray',
+      count: formatStats['3D Blu-ray'],
+      color: 'bg-green-100 text-green-800 border-green-300',
+      activeColor: 'bg-green-600 text-white border-green-600'
+    }
+  ];
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-slate-700">Format Distribution</h3>
+        <div className="text-xs text-slate-500">Click to filter by format</div>
+      </div>
+      
+      <div className="flex flex-wrap gap-2">
+        {formatTabs.map((tab) => {
+          const isActive = activeFormat === tab.id;
+          
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onFormatChange(tab.id)}
+              className={`
+                inline-flex items-center space-x-2 px-3 py-2 rounded-lg border text-sm font-medium
+                transition-all duration-200 min-w-[80px] justify-center
+                ${isActive ? tab.activeColor : tab.color + ' hover:bg-opacity-80'}
+              `}
+            >
+              <span>{tab.label}</span>
+              <span className={`
+                inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold
+                ${isActive 
+                  ? 'bg-white bg-opacity-20 text-white' 
+                  : 'bg-slate-200 text-slate-700'
+                }
+              `}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
   return (
     <div 
       className={`bg-white rounded-xl p-4 shadow-sm border transition-all cursor-pointer ${colorClasses[color]} ${
