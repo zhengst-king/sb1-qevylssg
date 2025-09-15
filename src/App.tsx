@@ -8,19 +8,12 @@ import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
 import { MyCollectionsPage } from './components/MyCollectionsPage';
 import { SettingsPage } from './components/SettingsPage';
 import { SmartRecommendationsWithActions } from './components/SmartRecommendationsWithActions';
-import { RecommendationPreferencesManager } from './components/RecommendationPreferencesManager';
+import { RecommendationAnalyticsDashboard } from './components/RecommendationAnalyticsDashboard';
+import { RecommendationHistory } from './components/RecommendationHistory';
 import { useAuth } from './hooks/useAuth';
 
-// Updated PageType to include recommendation preferences as separate page (Optional)
-// You can use either approach:
-// Approach 1: Integrate into Settings page (RECOMMENDED - cleaner navigation)
-// Approach 2: Separate page (shown in comments below)
-
-// For Approach 1 (Integration into Settings - RECOMMENDED):
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
-
-// For Approach 2 (Separate page - OPTIONAL):
-// type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations' | 'rec-preferences';
+// Updated PageType to include analytics and history
+type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations' | 'analytics' | 'history';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
@@ -34,8 +27,9 @@ function App() {
       'tv-series', 
       'collections', 
       'settings', 
-      'recommendations'
-      // 'rec-preferences' // Add this if using Approach 2
+      'recommendations',
+      'analytics',
+      'history'
     ];
     
     if (!isAuthenticated && protectedPages.includes(page)) {
@@ -71,11 +65,8 @@ function App() {
       {currentPage === 'collections' && <MyCollectionsPage />}
       {currentPage === 'settings' && <SettingsPage />}
       {currentPage === 'recommendations' && <SmartRecommendationsWithActions />}
-      
-      {/* 
-      APPROACH 2: Uncomment this line if you want recommendation preferences as a separate page
-      {currentPage === 'rec-preferences' && <RecommendationPreferencesManager />} 
-      */}
+      {currentPage === 'analytics' && <RecommendationAnalyticsDashboard />}
+      {currentPage === 'history' && <RecommendationHistory />}
       
       <AuthModal 
         isOpen={showAuthModal} 
