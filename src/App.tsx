@@ -5,11 +5,12 @@ import { SearchPage } from './components/SearchPage';
 import { MovieWatchlistPage } from './components/MovieWatchlistPage';
 import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
 import { MyCollectionsPage } from './components/MyCollectionsPage';
-import { SettingsPage } from './components/SettingsPage'; // Add this import
+import { SettingsPage } from './components/SettingsPage';
+import { SmartRecommendationsDemo } from './components/SmartRecommendationsDemo';
 import { useAuth } from './hooks/useAuth';
 
 // Update the PageType to include 'settings'
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings';
+type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
@@ -18,7 +19,7 @@ function App() {
 
   const handlePageChange = (page: PageType) => {
     // Redirect to sign in for protected pages (settings is protected too)
-    if (!isAuthenticated && (page === 'movies' || page === 'tv-series' || page === 'collections' || page === 'settings')) {
+    if (!isAuthenticated && (page === 'movies' || page === 'tv-series' || page === 'collections' || page === 'settings' || page === 'recommendations')) {
       setShowAuthModal(true);
       return;
     }
@@ -48,7 +49,8 @@ function App() {
       {currentPage === 'movies' && <MovieWatchlistPage />}
       {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
       {currentPage === 'collections' && <MyCollectionsPage />}
-      {currentPage === 'settings' && <SettingsPage />} {/* Add this line */}
+      {currentPage === 'settings' && <SettingsPage />}
+      {currentPage === 'recommendations' && <SmartRecommendationsDemo />}
       
       <AuthModal 
         isOpen={showAuthModal} 
