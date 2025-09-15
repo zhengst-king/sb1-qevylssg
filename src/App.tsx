@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useState } from 'react';
 import { Navigation } from './components/Navigation';
 import { AuthModal } from './components/AuthModal';
@@ -6,11 +7,20 @@ import { MovieWatchlistPage } from './components/MovieWatchlistPage';
 import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
 import { MyCollectionsPage } from './components/MyCollectionsPage';
 import { SettingsPage } from './components/SettingsPage';
-import { SmartRecommendationsDemo } from './components/SmartRecommendationsDemo';
+import { SmartRecommendationsWithActions } from './components/SmartRecommendationsWithActions';
+import { RecommendationPreferencesManager } from './components/RecommendationPreferencesManager';
 import { useAuth } from './hooks/useAuth';
 
-// Update the PageType to include 'settings'
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations' | 'recommendation-settings';
+// Updated PageType to include recommendation preferences as separate page (Optional)
+// You can use either approach:
+// Approach 1: Integrate into Settings page (RECOMMENDED - cleaner navigation)
+// Approach 2: Separate page (shown in comments below)
+
+// For Approach 1 (Integration into Settings - RECOMMENDED):
+type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
+
+// For Approach 2 (Separate page - OPTIONAL):
+// type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations' | 'rec-preferences';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
@@ -18,8 +28,17 @@ function App() {
   const { isAuthenticated, loading } = useAuth();
 
   const handlePageChange = (page: PageType) => {
-    // Redirect to sign in for protected pages (settings is protected too)
-    if (!isAuthenticated && (page === 'movies' || page === 'tv-series' || page === 'collections' || page === 'settings' || page === 'recommendations' || page === 'recommendation-settings')) {
+    // Redirect to sign in for protected pages
+    const protectedPages: PageType[] = [
+      'movies', 
+      'tv-series', 
+      'collections', 
+      'settings', 
+      'recommendations'
+      // 'rec-preferences' // Add this if using Approach 2
+    ];
+    
+    if (!isAuthenticated && protectedPages.includes(page)) {
       setShowAuthModal(true);
       return;
     }
@@ -45,13 +64,18 @@ function App() {
         onSignInClick={() => setShowAuthModal(true)}
       />
       
+      {/* Main Page Routing */}
       {currentPage === 'search' && <SearchPage />}
       {currentPage === 'movies' && <MovieWatchlistPage />}
       {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
       {currentPage === 'collections' && <MyCollectionsPage />}
       {currentPage === 'settings' && <SettingsPage />}
-      {currentPage === 'recommendations' && <SmartRecommendationsDemo />}
-      {currentPage === 'recommendation-settings' && <RecommendationPreferencesManager />}
+      {currentPage === 'recommendations' && <SmartRecommendationsWithActions />}
+      
+      {/* 
+      APPROACH 2: Uncomment this line if you want recommendation preferences as a separate page
+      {currentPage === 'rec-preferences' && <RecommendationPreferencesManager />} 
+      */}
       
       <AuthModal 
         isOpen={showAuthModal} 
