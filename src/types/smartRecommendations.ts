@@ -61,6 +61,8 @@ export interface RecommendationStats {
 }
 
 export type RecommendationType = 'collection_gap' | 'format_upgrade' | 'similar_title';
+export type RecommendationAction = 'add_to_wishlist' | 'mark_as_owned' | 'not_interested' | 'viewed';
+export type FeedbackReason = 'not_my_genre' | 'already_seen' | 'too_expensive' | 'not_available' | 'poor_quality' | 'other';
 
 export interface RecommendationTypeInfo {
   key: RecommendationType;
