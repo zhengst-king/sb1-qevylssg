@@ -1,10 +1,11 @@
 // src/components/Navigation.tsx
 import React from 'react';
-import { Search, Film, Tv, Star, User, LogOut, Settings, Disc3, Sparkles, BarChart3, History } from 'lucide-react';
+import { Search, Film, Tv, Star, User, LogOut, Settings, Disc3, Sparkles } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { signOut } from '../lib/supabase';
 
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations' | 'analytics' | 'history';
+// Clean PageType - back to original
+type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
 
 interface NavigationProps {
   currentPage: PageType;
@@ -35,7 +36,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
           <div className="flex items-center space-x-1 overflow-x-auto">
             <button
               onClick={() => onPageChange('search')}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                 currentPage === 'search'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -48,7 +49,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             <button
               onClick={() => onPageChange('movies')}
               disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                 currentPage === 'movies'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : isAuthenticated 
@@ -57,13 +58,13 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
               }`}
             >
               <Film className="h-4 w-4" />
-              <span>Movies</span>
+              <span>My Movies</span>
             </button>
             
             <button
               onClick={() => onPageChange('tv-series')}
               disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                 currentPage === 'tv-series'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : isAuthenticated 
@@ -72,13 +73,13 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
               }`}
             >
               <Tv className="h-4 w-4" />
-              <span>TV Series</span>
+              <span>My TV Series</span>
             </button>
 
             <button
               onClick={() => onPageChange('collections')}
               disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                 currentPage === 'collections'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : isAuthenticated 
@@ -93,7 +94,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             <button
               onClick={() => onPageChange('recommendations')}
               disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                 currentPage === 'recommendations'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : isAuthenticated 
@@ -105,42 +106,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
               <span>Smart Recs</span>
             </button>
 
-            {/* NEW: Analytics Button */}
-            <button
-              onClick={() => onPageChange('analytics')}
-              disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
-                currentPage === 'analytics'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : isAuthenticated 
-                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                    : 'text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              <BarChart3 className="h-4 w-4" />
-              <span>Analytics</span>
-            </button>
-
-            {/* NEW: History Button */}
-            <button
-              onClick={() => onPageChange('history')}
-              disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
-                currentPage === 'history'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : isAuthenticated 
-                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                    : 'text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              <History className="h-4 w-4" />
-              <span>History</span>
-            </button>
-
             <button
               onClick={() => onPageChange('settings')}
               disabled={!isAuthenticated}
-              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 text-sm ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                 currentPage === 'settings'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : isAuthenticated 
