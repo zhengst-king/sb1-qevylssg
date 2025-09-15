@@ -7,13 +7,11 @@ import { MovieWatchlistPage } from './components/MovieWatchlistPage';
 import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
 import { MyCollectionsPage } from './components/MyCollectionsPage';
 import { SettingsPage } from './components/SettingsPage';
-import { SmartRecommendationsWithActions } from './components/SmartRecommendationsWithActions';
-import { RecommendationAnalyticsDashboard } from './components/RecommendationAnalyticsDashboard';
-import { RecommendationHistory } from './components/RecommendationHistory';
+import { SmartRecommendationsContainer } from './components/SmartRecommendationsContainer';
 import { useAuth } from './hooks/useAuth';
 
-// Updated PageType to include analytics and history
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations' | 'analytics' | 'history';
+// Clean PageType - back to the original structure
+type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
@@ -27,9 +25,7 @@ function App() {
       'tv-series', 
       'collections', 
       'settings', 
-      'recommendations',
-      'analytics',
-      'history'
+      'recommendations'
     ];
     
     if (!isAuthenticated && protectedPages.includes(page)) {
@@ -64,9 +60,7 @@ function App() {
       {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
       {currentPage === 'collections' && <MyCollectionsPage />}
       {currentPage === 'settings' && <SettingsPage />}
-      {currentPage === 'recommendations' && <SmartRecommendationsWithActions />}
-      {currentPage === 'analytics' && <RecommendationAnalyticsDashboard />}
-      {currentPage === 'history' && <RecommendationHistory />}
+      {currentPage === 'recommendations' && <SmartRecommendationsContainer />}
       
       <AuthModal 
         isOpen={showAuthModal} 
