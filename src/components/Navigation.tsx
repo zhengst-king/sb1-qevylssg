@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Film, Tv, Star, Brain, User, LogOut, Settings, Disc3, Sparkles } from 'lucide-react'; // Add Settings import
 import { useAuth } from '../hooks/useAuth';
 import { signOut } from '../lib/supabase';
+import { Settings } from 'lucide-react';
 
 // Update the PageType to include 'settings'
 type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
@@ -105,6 +106,20 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
   <span>Smart Recs</span>
 </button>
 
+            {isAuthenticated && (
+  <button
+    onClick={() => onPageChange('recommendation-settings')}
+    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+      currentPage === 'recommendation-settings'
+        ? 'bg-purple-100 text-purple-700'
+        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+    }`}
+  >
+    <Settings className="h-4 w-4" />
+    <span>Rec Preferences</span>
+  </button>
+)}
+            
             {/* Add Settings Button */}
             <button
               onClick={() => onPageChange('settings')}
