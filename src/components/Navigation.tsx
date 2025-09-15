@@ -1,10 +1,9 @@
+// src/components/Navigation.tsx
 import React from 'react';
-import { Search, Film, Tv, Star, Brain, User, LogOut, Settings, Disc3, Sparkles } from 'lucide-react'; // Add Settings import
+import { Search, Film, Tv, Star, User, LogOut, Settings, Disc3, Sparkles } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { signOut } from '../lib/supabase';
-import { Settings } from 'lucide-react';
 
-// Update the PageType to include 'settings'
 type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
 
 interface NavigationProps {
@@ -77,48 +76,35 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             </button>
 
             <button
-  onClick={() => onPageChange('collections')}
-  disabled={!isAuthenticated}
-  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-    currentPage === 'collections'
-      ? 'bg-blue-600 text-white shadow-lg'
-      : isAuthenticated 
-        ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
-        : 'text-slate-500 cursor-not-allowed'
-  }`}
->
-  <Disc3 className="h-4 w-4" />
-  <span>Collections</span>
-</button>
+              onClick={() => onPageChange('collections')}
+              disabled={!isAuthenticated}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                currentPage === 'collections'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : isAuthenticated 
+                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    : 'text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              <Disc3 className="h-4 w-4" />
+              <span>Collections</span>
+            </button>
 
             <button
-  onClick={() => onPageChange('recommendations')}
-  disabled={!isAuthenticated}
-  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-    currentPage === 'recommendations'
-      ? 'bg-blue-600 text-white shadow-lg'
-      : isAuthenticated 
-        ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
-        : 'text-slate-500 cursor-not-allowed'
-  }`}
->
-  <Sparkles className="h-4 w-4" />
-  <span>Smart Recs</span>
-</button>
+              onClick={() => onPageChange('recommendations')}
+              disabled={!isAuthenticated}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                currentPage === 'recommendations'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : isAuthenticated 
+                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    : 'text-slate-500 cursor-not-allowed'
+              }`}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>Smart Recs</span>
+            </button>
 
-  <button
-    onClick={() => onPageChange('recommendation-settings')}
-    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-      currentPage === 'recommendation-settings'
-        ? 'bg-purple-100 text-purple-700'
-        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-    }`}
-  >
-    <Settings className="h-4 w-4" />
-    <span>Rec Preferences</span>
-  </button>
-            
-            {/* Add Settings Button */}
             <button
               onClick={() => onPageChange('settings')}
               disabled={!isAuthenticated}
