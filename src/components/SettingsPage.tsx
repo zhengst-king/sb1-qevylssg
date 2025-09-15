@@ -1,4 +1,7 @@
-// src/components/SettingsPage.tsx
+const [showRecommendationPrefs, setShowRecommendationPrefs] = useState(false);
+
+import { RecommendationPreferencesManager } from './RecommendationPreferencesManager';
+import { Sparkles } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { User, Download, Upload, Trash2, Key, Shield, Palette, Monitor, Moon, Sun, CheckCircle, AlertCircle, X, FileText, Clock, List } from 'lucide-react';
 import { useHARImport } from '../hooks/useHARImport';
@@ -327,6 +330,33 @@ export function SettingsPage() {
             </div>
           </section>
 
+          {/* NEW: Recommendation Preferences Section */}
+           <section className="bg-white rounded-lg shadow border border-slate-200 p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-purple-50 rounded-lg">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Smart Recommendations</h2>
+                <p className="text-sm text-slate-600">Customize your recommendation experience</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-slate-600 text-sm">
+                Configure how the recommendation system learns your preferences and suggests new movies.
+              </p>
+              
+              <button
+                onClick={() => setShowRecommendationPrefs(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Manage Recommendation Preferences</span>
+              </button>
+            </div>
+          </section>
+          
           {/* ✅ RESTORED: Privacy & Security Section */}
           <section className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center mb-4">
@@ -613,6 +643,25 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+              {/* Recommendation Preferences Modal */}
+        {showRecommendationPrefs && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Recommendation Preferences</h3>
+                <button 
+                  onClick={() => setShowRecommendationPrefs(false)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-0">
+                <RecommendationPreferencesManager />
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
