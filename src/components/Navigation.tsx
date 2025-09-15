@@ -106,7 +106,6 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
   <span>Smart Recs</span>
 </button>
 
-            {isAuthenticated && (
   <button
     onClick={() => onPageChange('recommendation-settings')}
     className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
@@ -118,7 +117,6 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
     <Settings className="h-4 w-4" />
     <span>Rec Preferences</span>
   </button>
-)}
             
             {/* Add Settings Button */}
             <button
