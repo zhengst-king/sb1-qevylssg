@@ -1,543 +1,680 @@
 // src/services/smartRecommendationsService.ts
-import { supabase } from '../lib/supabase';
+import { omdbApi } from '../lib/omdb';
 import type { PhysicalMediaCollection } from '../lib/supabase';
 
-export interface Recommendation {
-  id: string;
-  type: 'collection_gap' | 'format_upgrade' | 'similar_title' | 'franchise_completion' | 'technical_upgrade' | 'price_drop' | 'diversity' | 'trending';
+// Core recommendation interfaces
+export interface RecommendationScore {
+  relevance: number; // 0-1, how relevant to user's interests
+  confidence: number; // 0-1, how confident we are in this recommendation
+  urgency: number; // 0-1, how time-sensitive this recommendation is
+}
+
+export interface MovieRecommendation {
+  imdb_id: string;
   title: string;
   year?: number;
-  imdb_id?: string;
+  genre?: string;
+  director?: string;
   poster_url?: string;
-  reason: string;
-  score: number;
-  confidence: number;
-  urgency: number;
-  metadata?: {
-    current_format?: string;
-    suggested_format?: string;
-    franchise_name?: string;
-    similar_to?: string[];
-    price_info?: {
-      current_price: number;
-      was_price: number;
-      discount_percent: number;
-    };
+  imdb_rating?: number;
+  plot?: string;
+  
+  // Recommendation metadata
+  recommendation_type: 'collection_gap' | 'format_upgrade' | 'similar_title';
+  reasoning: string;
+  score: RecommendationScore;
+  source_items: string[]; // IDs of collection items that influenced this recommendation
+  suggested_format?: 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
+}
+
+export interface UserProfile {
+  favorite_genres: Array<{ genre: string; count: number; avg_rating: number }>;
+  favorite_directors: Array<{ director: string; count: number; avg_rating: number }>;
+  format_preferences: Array<{ format: string; count: number }>;
+  rating_pattern: {
+    avg_rating: number;
+    high_rated_threshold: number; // What this user considers "high rated"
+    rating_count: number;
+  };
+  collection_stats: {
+    total_items: number;
+    owned_items: number;
+    wishlist_items: number;
+    most_collected_decade: string;
   };
 }
 
-export interface UserCollectionProfile {
-  total_items: number;
-  favorite_genres: string[];
-  favorite_directors: string[];
-  average_rating: number;
-  format_distribution: Record<string, number>;
-  decade_preferences: Record<string, number>;
-  collection_types: Record<string, number>;
+export interface RecommendationFilters {
+  types?: Array<'collection_gap' | 'format_upgrade' | 'similar_title'>;
+  min_confidence?: number;
+  max_results?: number;
+  exclude_owned?: boolean;
+  exclude_wishlist?: boolean;
 }
 
 class SmartRecommendationsService {
-  private readonly OMDB_API_KEY = process.env.VITE_OMDB_API_KEY;
-  private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly MIN_COLLECTION_SIZE = 3; // Minimum items needed for recommendations
+  private readonly FORMAT_HIERARCHY = ['DVD', 'Blu-ray', '4K UHD', '3D Blu-ray'];
+  private readonly OMDB_REQUEST_DELAY = 300; // Delay between OMDB requests
 
   /**
    * Generate personalized recommendations for a user
    */
   async generateRecommendations(
-    userId: string,
-    limit: number = 10
-  ): Promise<Recommendation[]> {
+    collections: PhysicalMediaCollection[],
+    filters: RecommendationFilters = {}
+  ): Promise<MovieRecommendation[]> {
     try {
-      // Get user's collection data
-      const userCollection = await this.getUserCollection(userId);
-      if (userCollection.length === 0) {
-        return this.getDefaultRecommendations();
+      console.log('[SmartRecommendations] Starting recommendation generation');
+      console.log('[SmartRecommendations] Collection size:', collections.length);
+
+      if (collections.length < this.MIN_COLLECTION_SIZE) {
+        console.log('[SmartRecommendations] Collection too small for meaningful recommendations');
+        return [];
       }
 
-      // Analyze user preferences
-      const profile = this.analyzeUserProfile(userCollection);
-      
-      // Generate recommendations from different engines
-      const recommendations: Recommendation[] = [];
-      
-      // 1. Collection Gap Analysis (25% of recommendations)
-      const gapRecs = await this.generateCollectionGapRecommendations(userCollection, profile, Math.ceil(limit * 0.25));
-      recommendations.push(...gapRecs);
+      // Analyze user profile
+      const userProfile = this.analyzeUserProfile(collections);
+      console.log('[SmartRecommendations] User profile:', userProfile);
 
-      // 2. Format Upgrade Suggestions (20% of recommendations) 
-      const upgradeRecs = this.generateFormatUpgradeRecommendations(userCollection, Math.ceil(limit * 0.2));
-      recommendations.push(...upgradeRecs);
+      const allRecommendations: MovieRecommendation[] = [];
 
-      // 3. Similar Titles (30% of recommendations)
-      const similarRecs = await this.generateSimilarTitleRecommendations(userCollection, profile, Math.ceil(limit * 0.3));
-      recommendations.push(...similarRecs);
+      // Apply enabled recommendation types (default: all enabled)
+      const enabledTypes = filters.types || ['collection_gap', 'format_upgrade', 'similar_title'];
 
-      // 4. Franchise Completion (15% of recommendations)
-      const franchiseRecs = await this.generateFranchiseCompletionRecommendations(userCollection, profile, Math.ceil(limit * 0.15));
-      recommendations.push(...franchiseRecs);
+      if (enabledTypes.includes('collection_gap')) {
+        console.log('[SmartRecommendations] Running Collection Gap Analysis...');
+        const gapRecommendations = await this.findCollectionGaps(collections, userProfile);
+        allRecommendations.push(...gapRecommendations);
+      }
 
-      // 5. Diversity Recommendations (10% of recommendations)
-      const diversityRecs = await this.generateDiversityRecommendations(userCollection, profile, Math.ceil(limit * 0.1));
-      recommendations.push(...diversityRecs);
+      if (enabledTypes.includes('format_upgrade')) {
+        console.log('[SmartRecommendations] Running Format Upgrade Analysis...');
+        const upgradeRecommendations = await this.findFormatUpgrades(collections, userProfile);
+        allRecommendations.push(...upgradeRecommendations);
+      }
 
-      // Sort by final score and return top recommendations
-      return recommendations
-        .sort((a, b) => this.calculateFinalScore(b) - this.calculateFinalScore(a))
-        .slice(0, limit);
+      if (enabledTypes.includes('similar_title')) {
+        console.log('[SmartRecommendations] Running Similar Titles Analysis...');
+        const similarRecommendations = await this.findSimilarTitles(collections, userProfile);
+        allRecommendations.push(...similarRecommendations);
+      }
+
+      // Filter and rank recommendations
+      let filteredRecommendations = this.filterRecommendations(allRecommendations, collections, filters);
+      filteredRecommendations = this.rankRecommendations(filteredRecommendations);
+
+      console.log('[SmartRecommendations] Generated', filteredRecommendations.length, 'recommendations');
+      return filteredRecommendations.slice(0, filters.max_results || 20);
 
     } catch (error) {
-      console.error('[Recommendations] Error generating recommendations:', error);
-      return [];
+      console.error('[SmartRecommendations] Error generating recommendations:', error);
+      return this.getFallbackRecommendations(collections);
     }
   }
 
   /**
-   * Get user's complete collection
+   * Analyze user's collection to build a preference profile
    */
-  private async getUserCollection(userId: string): Promise<PhysicalMediaCollection[]> {
-    const { data, error } = await supabase
-      .from('physical_media_collections')
-      .select('*')
-      .eq('user_id', userId);
+  private analyzeUserProfile(collections: PhysicalMediaCollection[]): UserProfile {
+    const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
+    const wishlistItems = collections.filter(item => item.collection_type === 'wishlist');
 
-    if (error) {
-      console.error('[Recommendations] Error fetching collection:', error);
-      return [];
-    }
-
-    return data || [];
-  }
-
-  /**
-   * Analyze user's collection to build preference profile
-   */
-  private analyzeUserProfile(collection: PhysicalMediaCollection[]): UserCollectionProfile {
-    const genres = new Map<string, number>();
-    const directors = new Map<string, number>();
-    const formats = new Map<string, number>();
-    const decades = new Map<string, number>();
-    const types = new Map<string, number>();
-    
-    let totalRating = 0;
-    let ratedItems = 0;
-
-    collection.forEach(item => {
-      // Analyze genres
+    // Analyze genres
+    const genreMap = new Map<string, { count: number; ratings: number[] }>();
+    ownedItems.forEach(item => {
       if (item.genre) {
-        item.genre.split(',').forEach(genre => {
-          const g = genre.trim();
-          genres.set(g, (genres.get(g) || 0) + 1);
+        const genres = item.genre.split(',').map(g => g.trim());
+        genres.forEach(genre => {
+          if (!genreMap.has(genre)) {
+            genreMap.set(genre, { count: 0, ratings: [] });
+          }
+          const entry = genreMap.get(genre)!;
+          entry.count++;
+          if (item.personal_rating) {
+            entry.ratings.push(item.personal_rating);
+          }
         });
-      }
-
-      // Analyze directors
-      if (item.director) {
-        directors.set(item.director, (directors.get(item.director) || 0) + 1);
-      }
-
-      // Analyze formats
-      formats.set(item.format, (formats.get(item.format) || 0) + 1);
-
-      // Analyze decades
-      if (item.year) {
-        const decade = `${Math.floor(item.year / 10) * 10}s`;
-        decades.set(decade, (decades.get(decade) || 0) + 1);
-      }
-
-      // Analyze collection types
-      const collectionType = item.collection_type || 'owned';
-      types.set(collectionType, (types.get(collectionType) || 0) + 1);
-
-      // Calculate average rating
-      if (item.personal_rating) {
-        totalRating += item.personal_rating;
-        ratedItems++;
       }
     });
 
+    const favorite_genres = Array.from(genreMap.entries())
+      .map(([genre, data]) => ({
+        genre,
+        count: data.count,
+        avg_rating: data.ratings.length > 0 ? data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length : 0
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Analyze directors
+    const directorMap = new Map<string, { count: number; ratings: number[] }>();
+    ownedItems.forEach(item => {
+      if (item.director) {
+        const directors = item.director.split(',').map(d => d.trim());
+        directors.forEach(director => {
+          if (!directorMap.has(director)) {
+            directorMap.set(director, { count: 0, ratings: [] });
+          }
+          const entry = directorMap.get(director)!;
+          entry.count++;
+          if (item.personal_rating) {
+            entry.ratings.push(item.personal_rating);
+          }
+        });
+      }
+    });
+
+    const favorite_directors = Array.from(directorMap.entries())
+      .map(([director, data]) => ({
+        director,
+        count: data.count,
+        avg_rating: data.ratings.length > 0 ? data.ratings.reduce((a, b) => a + b, 0) / data.ratings.length : 0
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Analyze formats
+    const formatMap = new Map<string, number>();
+    ownedItems.forEach(item => {
+      formatMap.set(item.format, (formatMap.get(item.format) || 0) + 1);
+    });
+
+    const format_preferences = Array.from(formatMap.entries())
+      .map(([format, count]) => ({ format, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Analyze rating patterns
+    const ratings = ownedItems.filter(item => item.personal_rating).map(item => item.personal_rating!);
+    const avg_rating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 7;
+    const high_rated_threshold = Math.max(avg_rating + 1, 8); // User's high rating threshold
+
+    // Analyze decades
+    const decades = ownedItems
+      .filter(item => item.year)
+      .map(item => Math.floor(item.year! / 10) * 10);
+    const decadeMap = new Map<number, number>();
+    decades.forEach(decade => {
+      decadeMap.set(decade, (decadeMap.get(decade) || 0) + 1);
+    });
+    const most_collected_decade = decadeMap.size > 0 
+      ? Array.from(decadeMap.entries()).sort((a, b) => b[1] - a[1])[0][0].toString() + 's'
+      : '2000s';
+
     return {
-      total_items: collection.length,
-      favorite_genres: Array.from(genres.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([genre]) => genre),
-      favorite_directors: Array.from(directors.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([director]) => director),
-      average_rating: ratedItems > 0 ? totalRating / ratedItems : 7.0,
-      format_distribution: Object.fromEntries(formats),
-      decade_preferences: Object.fromEntries(decades),
-      collection_types: Object.fromEntries(types)
+      favorite_genres,
+      favorite_directors,
+      format_preferences,
+      rating_pattern: {
+        avg_rating,
+        high_rated_threshold,
+        rating_count: ratings.length
+      },
+      collection_stats: {
+        total_items: collections.length,
+        owned_items: ownedItems.length,
+        wishlist_items: wishlistItems.length,
+        most_collected_decade
+      }
     };
   }
 
   /**
-   * 1. Generate Collection Gap Recommendations
+   * Algorithm 1: Collection Gap Analysis
    * Find missing movies from directors/franchises user already collects
    */
-  private async generateCollectionGapRecommendations(
-    collection: PhysicalMediaCollection[],
-    profile: UserCollectionProfile,
-    limit: number
-  ): Promise<Recommendation[]> {
-    const recommendations: Recommendation[] = [];
-
-    // Find missing movies from favorite directors
-    for (const director of profile.favorite_directors.slice(0, 2)) {
-      try {
-        const searchResults = await this.searchOMDB(`director:"${director}"`);
-        
-        for (const movie of searchResults.slice(0, 3)) {
-          const isOwned = collection.some(item => 
-            item.imdb_id === movie.imdbID || 
-            (item.title.toLowerCase() === movie.Title.toLowerCase() && item.year === parseInt(movie.Year))
-          );
-
-          if (!isOwned && parseFloat(movie.imdbRating) >= 6.5) {
-            recommendations.push({
-              id: `gap_${movie.imdbID}`,
-              type: 'collection_gap',
-              title: movie.Title,
-              year: parseInt(movie.Year),
-              imdb_id: movie.imdbID,
-              poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
-              reason: `You love ${director}'s work - this one's missing from your collection`,
-              score: 0.8,
-              confidence: 0.9,
-              urgency: 0.3,
-              metadata: {
-                similar_to: [director]
-              }
-            });
-          }
-
-          if (recommendations.length >= limit) break;
-        }
-      } catch (error) {
-        console.error(`[Recommendations] Error searching for ${director} films:`, error);
-      }
-    }
-
-    return recommendations.slice(0, limit);
-  }
-
-  /**
-   * 2. Generate Format Upgrade Recommendations
-   * Suggest better formats for highly-rated owned movies
-   */
-  private generateFormatUpgradeRecommendations(
-    collection: PhysicalMediaCollection[],
-    limit: number
-  ): Promise<Recommendation[]> {
-    const recommendations: Recommendation[] = [];
-
-    // Find highly-rated movies in lower formats
-    const upgradeableItems = collection
-      .filter(item => 
-        (item.personal_rating || 0) >= 8 && // Only suggest upgrades for favorites
-        (item.collection_type || 'owned') === 'owned' // Only for owned items
-      )
-      .sort((a, b) => (b.personal_rating || 0) - (a.personal_rating || 0));
-
-    for (const item of upgradeableItems) {
-      let suggestedFormat: string | undefined;
-      let score = 0;
-
-      // Determine upgrade path
-      if (item.format === 'DVD') {
-        suggestedFormat = '4K UHD'; // Skip Blu-ray, go straight to 4K if available
-        score = 0.9;
-      } else if (item.format === 'Blu-ray') {
-        suggestedFormat = '4K UHD';
-        score = 0.7;
-      }
-
-      if (suggestedFormat) {
-        recommendations.push({
-          id: `upgrade_${item.id}`,
-          type: 'format_upgrade',
-          title: item.title,
-          year: item.year,
-          imdb_id: item.imdb_id,
-          poster_url: item.poster_url,
-          reason: `Upgrade your ${item.personal_rating}/10 rated favorite to ${suggestedFormat}`,
-          score,
-          confidence: 0.8,
-          urgency: 0.4,
-          metadata: {
-            current_format: item.format,
-            suggested_format: suggestedFormat
-          }
-        });
-      }
-
-      if (recommendations.length >= limit) break;
-    }
-
-    return Promise.resolve(recommendations);
-  }
-
-  /**
-   * 3. Generate Similar Title Recommendations
-   * Find movies similar to user's favorites
-   */
-  private async generateSimilarTitleRecommendations(
-    collection: PhysicalMediaCollection[],
-    profile: UserCollectionProfile,
-    limit: number
-  ): Promise<Recommendation[]> {
-    const recommendations: Recommendation[] = [];
-
-    // Get user's highest-rated movies to find similar titles
-    const favorites = collection
-      .filter(item => (item.personal_rating || 0) >= profile.average_rating + 1)
-      .slice(0, 3);
-
-    for (const favorite of favorites) {
-      try {
-        // Search for movies with similar genres
-        if (favorite.genre) {
-          const primaryGenre = favorite.genre.split(',')[0].trim();
-          const searchResults = await this.searchOMDB(`${primaryGenre} ${favorite.year ? Math.floor(favorite.year / 10) * 10 : ''}`);
-
-          for (const movie of searchResults.slice(0, 2)) {
-            const isOwned = collection.some(item => 
-              item.imdb_id === movie.imdbID ||
-              (item.title.toLowerCase() === movie.Title.toLowerCase())
-            );
-
-            if (!isOwned && parseFloat(movie.imdbRating) >= profile.average_rating - 0.5) {
-              recommendations.push({
-                id: `similar_${movie.imdbID}`,
-                type: 'similar_title',
-                title: movie.Title,
-                year: parseInt(movie.Year),
-                imdb_id: movie.imdbID,
-                poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
-                reason: `Similar to your favorite: ${favorite.title}`,
-                score: 0.7,
-                confidence: 0.6,
-                urgency: 0.2,
-                metadata: {
-                  similar_to: [favorite.title]
-                }
-              });
-            }
-
-            if (recommendations.length >= limit) break;
-          }
-        }
-      } catch (error) {
-        console.error(`[Recommendations] Error finding similar titles to ${favorite.title}:`, error);
-      }
-    }
-
-    return recommendations.slice(0, limit);
-  }
-
-  /**
-   * 4. Generate Franchise Completion Recommendations
-   * Find missing movies in series/franchises user collects
-   */
-  private async generateFranchiseCompletionRecommendations(
-    collection: PhysicalMediaCollection[],
-    profile: UserCollectionProfile,
-    limit: number
-  ): Promise<Recommendation[]> {
-    const recommendations: Recommendation[] = [];
-
-    // Define common franchises and series
-    const franchises = [
-      { name: 'Marvel Cinematic Universe', keywords: ['Iron Man', 'Thor', 'Captain America', 'Avengers', 'Guardians'] },
-      { name: 'Star Wars', keywords: ['Star Wars'] },
-      { name: 'Harry Potter', keywords: ['Harry Potter'] },
-      { name: 'Fast & Furious', keywords: ['Fast', 'Furious'] },
-      { name: 'John Wick', keywords: ['John Wick'] },
-      { name: 'Mission Impossible', keywords: ['Mission: Impossible'] },
-      { name: 'James Bond', keywords: ['Bond', '007'] }
-    ];
-
-    for (const franchise of franchises) {
-      // Check if user has any movies from this franchise
-      const ownedInFranchise = collection.filter(item =>
-        franchise.keywords.some(keyword =>
-          item.title.toLowerCase().includes(keyword.toLowerCase())
-        )
-      );
-
-      if (ownedInFranchise.length > 0) {
-        try {
-          // Search for more movies in this franchise
-          const searchResults = await this.searchOMDB(franchise.keywords[0]);
-          
-          for (const movie of searchResults) {
-            const isOwned = collection.some(item =>
-              item.imdb_id === movie.imdbID ||
-              item.title.toLowerCase() === movie.Title.toLowerCase()
-            );
-
-            if (!isOwned && parseFloat(movie.imdbRating) >= 6.0) {
-              recommendations.push({
-                id: `franchise_${movie.imdbID}`,
-                type: 'franchise_completion',
-                title: movie.Title,
-                year: parseInt(movie.Year),
-                imdb_id: movie.imdbID,
-                poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
-                reason: `Complete your ${franchise.name} collection`,
-                score: 0.8,
-                confidence: 0.7,
-                urgency: 0.5,
-                metadata: {
-                  franchise_name: franchise.name
-                }
-              });
-            }
-
-            if (recommendations.length >= limit) break;
-          }
-        } catch (error) {
-          console.error(`[Recommendations] Error searching ${franchise.name}:`, error);
-        }
-      }
-    }
-
-    return recommendations.slice(0, limit);
-  }
-
-  /**
-   * 5. Generate Diversity Recommendations
-   * Suggest movies from underrepresented genres/eras in collection
-   */
-  private async generateDiversityRecommendations(
-    collection: PhysicalMediaCollection[],
-    profile: UserCollectionProfile,
-    limit: number
-  ): Promise<Recommendation[]> {
-    const recommendations: Recommendation[] = [];
-
-    // Find underrepresented genres
-    const allGenres = ['Drama', 'Comedy', 'Action', 'Thriller', 'Horror', 'Sci-Fi', 'Romance', 'Documentary'];
-    const underrepresentedGenres = allGenres.filter(genre => 
-      !profile.favorite_genres.includes(genre)
-    ).slice(0, 2);
-
-    for (const genre of underrepresentedGenres) {
-      try {
-        const searchResults = await this.searchOMDB(`${genre} acclaimed`);
-        
-        for (const movie of searchResults.slice(0, 2)) {
-          const isOwned = collection.some(item => 
-            item.imdb_id === movie.imdbID
-          );
-
-          if (!isOwned && parseFloat(movie.imdbRating) >= 7.5) {
-            recommendations.push({
-              id: `diversity_${movie.imdbID}`,
-              type: 'diversity',
-              title: movie.Title,
-              year: parseInt(movie.Year),
-              imdb_id: movie.imdbID,
-              poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
-              reason: `Branch out: Highly acclaimed ${genre} film`,
-              score: 0.6,
-              confidence: 0.5,
-              urgency: 0.1
-            });
-          }
-
-          if (recommendations.length >= limit) break;
-        }
-      } catch (error) {
-        console.error(`[Recommendations] Error searching ${genre}:`, error);
-      }
-    }
-
-    return recommendations.slice(0, limit);
-  }
-
-  /**
-   * Search OMDB API for movies
-   */
-  private async searchOMDB(searchTerm: string): Promise<any[]> {
-    if (!this.OMDB_API_KEY) {
-      console.warn('[Recommendations] OMDB API key not configured');
-      return [];
-    }
+  private async findCollectionGaps(
+    collections: PhysicalMediaCollection[], 
+    userProfile: UserProfile
+  ): Promise<MovieRecommendation[]> {
+    const recommendations: MovieRecommendation[] = [];
 
     try {
-      const response = await fetch(
-        `https://www.omdbapi.com/?s=${encodeURIComponent(searchTerm)}&type=movie&apikey=${this.OMDB_API_KEY}`
-      );
-      
-      const data = await response.json();
-      
-      if (data.Response === 'True') {
-        // Get detailed info for each movie
-        const detailedMovies = await Promise.all(
-          data.Search.slice(0, 5).map(async (movie: any) => {
-            const detailResponse = await fetch(
-              `https://www.omdbapi.com/?i=${movie.imdbID}&apikey=${this.OMDB_API_KEY}`
-            );
-            return await detailResponse.json();
-          })
-        );
-        
-        return detailedMovies.filter(movie => movie.Response === 'True');
+      // Focus on top 3 directors the user collects
+      const topDirectors = userProfile.favorite_directors.slice(0, 3);
+
+      for (const directorEntry of topDirectors) {
+        await this.delay(this.OMDB_REQUEST_DELAY);
+
+        try {
+          console.log('[CollectionGaps] Searching for', directorEntry.director, 'movies');
+          
+          // Search for movies by this director
+          const searchResults = await omdbApi.searchMovies(directorEntry.director);
+          
+          if (searchResults.Search && searchResults.Search.length > 0) {
+            // Filter out movies user already owns
+            const ownedImdbIds = new Set(collections.map(item => item.imdb_id).filter(Boolean));
+            
+            const gapMovies = searchResults.Search
+              .filter(movie => !ownedImdbIds.has(movie.imdbID))
+              .slice(0, 3); // Top 3 missing movies per director
+
+            for (const movie of gapMovies) {
+              const recommendation: MovieRecommendation = {
+                imdb_id: movie.imdbID,
+                title: movie.Title,
+                year: parseInt(movie.Year) || undefined,
+                poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
+                recommendation_type: 'collection_gap',
+                reasoning: `You own ${directorEntry.count} movie(s) by ${directorEntry.director}, but missing this one`,
+                score: {
+                  relevance: Math.min(directorEntry.count / 5, 1), // Higher relevance for directors with more movies
+                  confidence: 0.8, // High confidence for director-based recommendations
+                  urgency: directorEntry.avg_rating > userProfile.rating_pattern.avg_rating ? 0.7 : 0.5
+                },
+                source_items: collections
+                  .filter(item => item.director?.includes(directorEntry.director))
+                  .map(item => item.id),
+                suggested_format: this.suggestFormat(userProfile)
+              };
+
+              recommendations.push(recommendation);
+            }
+          }
+        } catch (directorError) {
+          console.error('[CollectionGaps] Error searching for director:', directorEntry.director, directorError);
+        }
       }
-      
-      return [];
+
+      // Also search for franchise gaps (movies with similar titles)
+      const collectionTitles = collections.map(item => item.title);
+      const franchiseKeywords = this.extractFranchiseKeywords(collectionTitles);
+
+      for (const keyword of franchiseKeywords.slice(0, 2)) {
+        await this.delay(this.OMDB_REQUEST_DELAY);
+
+        try {
+          console.log('[CollectionGaps] Searching for franchise:', keyword);
+          const franchiseResults = await omdbApi.searchMovies(keyword);
+          
+          if (franchiseResults.Search && franchiseResults.Search.length > 0) {
+            const ownedImdbIds = new Set(collections.map(item => item.imdb_id).filter(Boolean));
+            
+            const franchiseGaps = franchiseResults.Search
+              .filter(movie => !ownedImdbIds.has(movie.imdbID))
+              .slice(0, 2);
+
+            for (const movie of franchiseGaps) {
+              const recommendation: MovieRecommendation = {
+                imdb_id: movie.imdbID,
+                title: movie.Title,
+                year: parseInt(movie.Year) || undefined,
+                poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
+                recommendation_type: 'collection_gap',
+                reasoning: `Part of the ${keyword} collection you're building`,
+                score: {
+                  relevance: 0.7,
+                  confidence: 0.6,
+                  urgency: 0.4
+                },
+                source_items: collections
+                  .filter(item => item.title.toLowerCase().includes(keyword.toLowerCase()))
+                  .map(item => item.id),
+                suggested_format: this.suggestFormat(userProfile)
+              };
+
+              recommendations.push(recommendation);
+            }
+          }
+        } catch (franchiseError) {
+          console.error('[CollectionGaps] Error searching for franchise:', keyword, franchiseError);
+        }
+      }
+
     } catch (error) {
-      console.error('[Recommendations] OMDB search error:', error);
-      return [];
+      console.error('[CollectionGaps] General error:', error);
     }
+
+    return recommendations;
   }
 
   /**
-   * Calculate final recommendation score
+   * Algorithm 2: Format Upgrade Suggestions
+   * Suggest better formats for highly-rated owned movies
    */
-  private calculateFinalScore(rec: Recommendation): number {
-    return (rec.score * 0.4) + (rec.confidence * 0.3) + (rec.urgency * 0.3);
+  private async findFormatUpgrades(
+    collections: PhysicalMediaCollection[], 
+    userProfile: UserProfile
+  ): Promise<MovieRecommendation[]> {
+    const recommendations: MovieRecommendation[] = [];
+
+    try {
+      const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
+      
+      // Find highly-rated movies in lower formats
+      const upgradeableCandidates = ownedItems.filter(item => {
+        const hasHighRating = item.personal_rating && item.personal_rating >= userProfile.rating_pattern.high_rated_threshold;
+        const hasLowerFormat = this.FORMAT_HIERARCHY.indexOf(item.format) < this.FORMAT_HIERARCHY.length - 1;
+        return hasHighRating && hasLowerFormat;
+      });
+
+      console.log('[FormatUpgrades] Found', upgradeableCandidates.length, 'upgrade candidates');
+
+      for (const item of upgradeableCandidates.slice(0, 10)) { // Limit to top 10
+        const currentFormatIndex = this.FORMAT_HIERARCHY.indexOf(item.format);
+        const suggestedFormat = this.FORMAT_HIERARCHY[currentFormatIndex + 1] as 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
+
+        const recommendation: MovieRecommendation = {
+          imdb_id: item.imdb_id || '',
+          title: item.title,
+          year: item.year,
+          genre: item.genre,
+          director: item.director,
+          poster_url: item.poster_url,
+          recommendation_type: 'format_upgrade',
+          reasoning: `Upgrade your ${item.format} copy to ${suggestedFormat} - you rated this ${item.personal_rating}/10`,
+          score: {
+            relevance: (item.personal_rating! - userProfile.rating_pattern.avg_rating) / 10, // Higher relevance for higher-rated movies
+            confidence: 0.9, // Very confident about format upgrades
+            urgency: suggestedFormat === '4K UHD' ? 0.8 : 0.6 // Higher urgency for 4K upgrades
+          },
+          source_items: [item.id],
+          suggested_format: suggestedFormat
+        };
+
+        recommendations.push(recommendation);
+      }
+
+    } catch (error) {
+      console.error('[FormatUpgrades] Error:', error);
+    }
+
+    return recommendations;
   }
 
   /**
-   * Get default recommendations for new users
+   * Algorithm 3: Similar Titles Matching
+   * Recommend movies similar to user's favorites using content-based filtering
    */
-  private getDefaultRecommendations(): Recommendation[] {
-    return [
-      {
-        id: 'default_1',
-        type: 'trending',
-        title: 'The Dark Knight',
-        year: 2008,
-        reason: 'Essential collection starter - acclaimed superhero film',
-        score: 0.9,
-        confidence: 1.0,
+  private async findSimilarTitles(
+    collections: PhysicalMediaCollection[], 
+    userProfile: UserProfile
+  ): Promise<MovieRecommendation[]> {
+    const recommendations: MovieRecommendation[] = [];
+
+    try {
+      const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
+      
+      // Find user's favorite movies (high personal ratings)
+      const favoriteMovies = ownedItems
+        .filter(item => item.personal_rating && item.personal_rating >= userProfile.rating_pattern.high_rated_threshold)
+        .sort((a, b) => (b.personal_rating || 0) - (a.personal_rating || 0))
+        .slice(0, 5); // Top 5 favorites
+
+      console.log('[SimilarTitles] Analyzing', favoriteMovies.length, 'favorite movies');
+
+      for (const favoriteMovie of favoriteMovies) {
+        await this.delay(this.OMDB_REQUEST_DELAY);
+
+        try {
+          // Search for movies in the same primary genre
+          const primaryGenre = favoriteMovie.genre?.split(',')[0]?.trim();
+          if (primaryGenre) {
+            console.log('[SimilarTitles] Searching for', primaryGenre, 'movies');
+            
+            const genreResults = await omdbApi.searchMovies(primaryGenre);
+            
+            if (genreResults.Search && genreResults.Search.length > 0) {
+              const ownedImdbIds = new Set(collections.map(item => item.imdb_id).filter(Boolean));
+              
+              const similarMovies = genreResults.Search
+                .filter(movie => !ownedImdbIds.has(movie.imdbID))
+                .slice(0, 2); // 2 similar movies per favorite
+
+              for (const movie of similarMovies) {
+                const recommendation: MovieRecommendation = {
+                  imdb_id: movie.imdbID,
+                  title: movie.Title,
+                  year: parseInt(movie.Year) || undefined,
+                  poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
+                  recommendation_type: 'similar_title',
+                  reasoning: `Similar to "${favoriteMovie.title}" (${primaryGenre}) - you rated it ${favoriteMovie.personal_rating}/10`,
+                  score: {
+                    relevance: (favoriteMovie.personal_rating || 7) / 10,
+                    confidence: 0.6, // Moderate confidence for genre-based similarity
+                    urgency: 0.3
+                  },
+                  source_items: [favoriteMovie.id],
+                  suggested_format: this.suggestFormat(userProfile)
+                };
+
+                recommendations.push(recommendation);
+              }
+            }
+          }
+
+          // Also search for movies by the same director (if it's a director the user likes)
+          if (favoriteMovie.director) {
+            const director = favoriteMovie.director.split(',')[0]?.trim();
+            const directorEntry = userProfile.favorite_directors.find(d => d.director === director);
+            
+            if (directorEntry && directorEntry.count >= 2) { // Only if user has multiple movies by this director
+              await this.delay(this.OMDB_REQUEST_DELAY);
+              
+              console.log('[SimilarTitles] Searching for more', director, 'movies');
+              const directorResults = await omdbApi.searchMovies(director);
+              
+              if (directorResults.Search && directorResults.Search.length > 0) {
+                const ownedImdbIds = new Set(collections.map(item => item.imdb_id).filter(Boolean));
+                
+                const directorMovies = directorResults.Search
+                  .filter(movie => !ownedImdbIds.has(movie.imdbID))
+                  .slice(0, 1); // 1 movie per director search
+
+                for (const movie of directorMovies) {
+                  const recommendation: MovieRecommendation = {
+                    imdb_id: movie.imdbID,
+                    title: movie.Title,
+                    year: parseInt(movie.Year) || undefined,
+                    poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
+                    recommendation_type: 'similar_title',
+                    reasoning: `Another ${director} film - you love their work (${directorEntry.count} movies)`,
+                    score: {
+                      relevance: Math.min(directorEntry.count / 5, 0.9),
+                      confidence: 0.8,
+                      urgency: 0.5
+                    },
+                    source_items: [favoriteMovie.id],
+                    suggested_format: this.suggestFormat(userProfile)
+                  };
+
+                  recommendations.push(recommendation);
+                }
+              }
+            }
+          }
+
+        } catch (movieError) {
+          console.error('[SimilarTitles] Error processing favorite movie:', favoriteMovie.title, movieError);
+        }
+      }
+
+    } catch (error) {
+      console.error('[SimilarTitles] General error:', error);
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Filter recommendations based on user preferences and constraints
+   */
+  private filterRecommendations(
+    recommendations: MovieRecommendation[],
+    collections: PhysicalMediaCollection[],
+    filters: RecommendationFilters
+  ): MovieRecommendation[] {
+    let filtered = recommendations;
+
+    // Remove duplicates by IMDB ID
+    const seenImdbIds = new Set<string>();
+    filtered = filtered.filter(rec => {
+      if (seenImdbIds.has(rec.imdb_id)) {
+        return false;
+      }
+      seenImdbIds.add(rec.imdb_id);
+      return true;
+    });
+
+    // Exclude owned items if requested (default: true)
+    if (filters.exclude_owned !== false) {
+      const ownedImdbIds = new Set(
+        collections
+          .filter(item => (item.collection_type || 'owned') === 'owned')
+          .map(item => item.imdb_id)
+          .filter(Boolean)
+      );
+      filtered = filtered.filter(rec => !ownedImdbIds.has(rec.imdb_id));
+    }
+
+    // Exclude wishlist items if requested (default: true)
+    if (filters.exclude_wishlist !== false) {
+      const wishlistImdbIds = new Set(
+        collections
+          .filter(item => item.collection_type === 'wishlist')
+          .map(item => item.imdb_id)
+          .filter(Boolean)
+      );
+      filtered = filtered.filter(rec => !wishlistImdbIds.has(rec.imdb_id));
+    }
+
+    // Apply confidence filter
+    if (filters.min_confidence) {
+      filtered = filtered.filter(rec => rec.score.confidence >= filters.min_confidence!);
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Rank recommendations by composite score
+   */
+  private rankRecommendations(recommendations: MovieRecommendation[]): MovieRecommendation[] {
+    return recommendations.sort((a, b) => {
+      // Composite score: relevance (40%) + confidence (40%) + urgency (20%)
+      const scoreA = (a.score.relevance * 0.4) + (a.score.confidence * 0.4) + (a.score.urgency * 0.2);
+      const scoreB = (b.score.relevance * 0.4) + (b.score.confidence * 0.4) + (b.score.urgency * 0.2);
+      return scoreB - scoreA;
+    });
+  }
+
+  /**
+   * Suggest best format based on user's collection patterns
+   */
+  private suggestFormat(userProfile: UserProfile): 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray' {
+    if (userProfile.format_preferences.length === 0) {
+      return 'Blu-ray'; // Safe default
+    }
+
+    // Suggest the user's most common high-end format
+    const preferredFormat = userProfile.format_preferences[0].format;
+    const formatIndex = this.FORMAT_HIERARCHY.indexOf(preferredFormat);
+    
+    // If user mostly has DVDs, suggest Blu-ray upgrade
+    if (preferredFormat === 'DVD') {
+      return 'Blu-ray';
+    }
+    
+    // Otherwise suggest their preferred format or one step higher
+    return preferredFormat as 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
+  }
+
+  /**
+   * Extract potential franchise keywords from collection titles
+   */
+  private extractFranchiseKeywords(titles: string[]): string[] {
+    const keywords = new Set<string>();
+    
+    // Common franchise patterns
+    const franchisePatterns = [
+      /^(.*?)\s+\d+$/,           // "Movie 2", "Movie 3"
+      /^(.*?)\s+II+$/,           // "Movie II", "Movie III" 
+      /^(.*?):\s+/,              // "Franchise: Subtitle"
+      /^(.*?)\s+-\s+/,           // "Franchise - Subtitle"
+      /^(.*?)\s+Part\s+\d+$/     // "Movie Part 2"
+    ];
+
+    titles.forEach(title => {
+      franchisePatterns.forEach(pattern => {
+        const match = title.match(pattern);
+        if (match && match[1].length > 3) { // Avoid too short keywords
+          keywords.add(match[1].trim());
+        }
+      });
+
+      // Also add common franchise words
+      const commonWords = ['Marvel', 'DC', 'Star Wars', 'Fast', 'Furious', 'Avengers', 'X-Men'];
+      commonWords.forEach(word => {
+        if (title.includes(word)) {
+          keywords.add(word);
+        }
+      });
+    });
+
+    return Array.from(keywords).slice(0, 5); // Limit to 5 keywords
+  }
+
+  /**
+   * Fallback recommendations when main algorithms fail
+   */
+  private getFallbackRecommendations(collections: PhysicalMediaCollection[]): MovieRecommendation[] {
+    console.log('[SmartRecommendations] Generating fallback recommendations');
+    
+    // Create simple fallback based on user's most common genre
+    const genres = collections
+      .filter(item => item.genre)
+      .flatMap(item => item.genre!.split(',').map(g => g.trim()));
+    
+    const genreCount = new Map<string, number>();
+    genres.forEach(genre => {
+      genreCount.set(genre, (genreCount.get(genre) || 0) + 1);
+    });
+
+    const topGenre = genreCount.size > 0 
+      ? Array.from(genreCount.entries()).sort((a, b) => b[1] - a[1])[0][0]
+      : 'Action';
+
+    // Create a simple fallback recommendation
+    return [{
+      imdb_id: 'fallback',
+      title: `Explore more ${topGenre} movies`,
+      recommendation_type: 'similar_title',
+      reasoning: `Based on your collection, you enjoy ${topGenre} movies`,
+      score: {
+        relevance: 0.5,
+        confidence: 0.3,
         urgency: 0.2
       },
-      {
-        id: 'default_2', 
-        type: 'trending',
-        title: 'Inception',
-        year: 2010,
-        reason: 'Mind-bending thriller perfect for 4K format',
-        score: 0.85,
-        confidence: 1.0,
-        urgency: 0.2
-      }
-    ];
+      source_items: []
+    }];
   }
 
   /**
-   * Get cached recommendations for user
+   * Utility function to add delay between API requests
    */
-  async getCachedRecommendations(userId: string): Promise<Recommendation[]> {
-    // In a production app, you'd cache recommendations in database/Redis
-    // For now, we'll generate them fresh each time
-    return this.generateRecommendations(userId);
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Get recommendation statistics for debugging
+   */
+  getRecommendationStats(recommendations: MovieRecommendation[]) {
+    const stats = {
+      total: recommendations.length,
+      by_type: {
+        collection_gap: recommendations.filter(r => r.recommendation_type === 'collection_gap').length,
+        format_upgrade: recommendations.filter(r => r.recommendation_type === 'format_upgrade').length,
+        similar_title: recommendations.filter(r => r.recommendation_type === 'similar_title').length
+      },
+      avg_confidence: recommendations.reduce((sum, r) => sum + r.score.confidence, 0) / recommendations.length,
+      avg_relevance: recommendations.reduce((sum, r) => sum + r.score.relevance, 0) / recommendations.length
+    };
+
+    console.log('[SmartRecommendations] Stats:', stats);
+    return stats;
   }
 }
 
-// Export singleton instance
 export const smartRecommendationsService = new SmartRecommendationsService();
