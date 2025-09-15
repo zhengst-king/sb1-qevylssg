@@ -1,10 +1,10 @@
 import React from 'react';
-import { Search, Film, Tv, Star, Brain, User, LogOut, Settings, Disc3 } from 'lucide-react'; // Add Settings import
+import { Search, Film, Tv, Star, Brain, User, LogOut, Settings, Disc3, Sparkles } from 'lucide-react'; // Add Settings import
 import { useAuth } from '../hooks/useAuth';
 import { signOut } from '../lib/supabase';
 
 // Update the PageType to include 'settings'
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings';
+type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
 
 interface NavigationProps {
   currentPage: PageType;
@@ -89,7 +89,22 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
   <Disc3 className="h-4 w-4" />
   <span>Collections</span>
 </button>
-            
+
+            <button
+  onClick={() => onPageChange('recommendations')}
+  disabled={!isAuthenticated}
+  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+    currentPage === 'recommendations'
+      ? 'bg-blue-600 text-white shadow-lg'
+      : isAuthenticated 
+        ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+        : 'text-slate-500 cursor-not-allowed'
+  }`}
+>
+  <Sparkles className="h-4 w-4" />
+  <span>Smart Recs</span>
+</button>
+
             {/* Add Settings Button */}
             <button
               onClick={() => onPageChange('settings')}
