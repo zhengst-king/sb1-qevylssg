@@ -1,4 +1,4 @@
--- Migration: Performance Optimization - Caching and Background Processing
+-- Migration: Performance Optimization - Caching and Background Processing (FIXED)
 -- File: supabase/migrations/20250916000001_performance_optimization_caching.sql
 
 -- 1. Recommendation Cache Table for Database-Level Caching
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS user_activity_patterns (
   UNIQUE(user_id)
 );
 
--- 4. Performance Metrics Tracking
+-- 4. Performance Metrics Tracking (FIXED - removed GENERATED column)
 CREATE TABLE IF NOT EXISTS performance_metrics (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   
@@ -150,8 +150,8 @@ CREATE TABLE IF NOT EXISTS performance_metrics (
   period_start TIMESTAMP WITH TIME ZONE,
   period_end TIMESTAMP WITH TIME ZONE,
   
-  -- Partitioning hint for large datasets
-  date_partition DATE GENERATED ALWAYS AS (DATE(timestamp)) STORED
+  -- Simple date column for partitioning (instead of GENERATED)
+  date_partition DATE DEFAULT CURRENT_DATE
 );
 
 -- 5. Create Indexes for Optimal Performance
@@ -385,7 +385,21 @@ CREATE TRIGGER update_user_activity_patterns_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
--- 9. Automatic Cleanup Job Setup
+-- 9. Create trigger to automatically set date_partition
+CREATE OR REPLACE FUNCTION set_date_partition()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.date_partition = DATE(NEW.timestamp);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_performance_metrics_date_partition
+  BEFORE INSERT OR UPDATE ON performance_metrics
+  FOR EACH ROW
+  EXECUTE FUNCTION set_date_partition();
+
+-- 10. Automatic Cleanup Job Setup
 
 -- Create a scheduled function that can be called by external cron
 CREATE OR REPLACE FUNCTION scheduled_maintenance()
@@ -417,7 +431,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 10. Monitoring Views
+-- 11. Monitoring Views
 
 CREATE OR REPLACE VIEW cache_performance_summary AS
 SELECT 
@@ -447,14 +461,14 @@ FROM background_task_queue
 GROUP BY task_type, status
 ORDER BY task_count DESC;
 
--- 11. Sample Data and Testing Queries
+-- 12. Sample Data and Testing Queries
 
 -- Insert sample performance metric
 INSERT INTO performance_metrics (metric_type, metric_name, value, unit, metadata)
 VALUES ('recommendation_generation', 'average_generation_time', 1250.0, 'ms', '{"version": "enhanced", "cache_enabled": true}')
 ON CONFLICT DO NOTHING;
 
--- 12. Comments for documentation
+-- 13. Comments for documentation
 COMMENT ON TABLE recommendation_cache IS 'High-performance cache for recommendations and OMDB data with automatic expiration and LRU eviction';
 COMMENT ON TABLE background_task_queue IS 'Queue for background recommendation generation and cache warming tasks';
 COMMENT ON TABLE user_activity_patterns IS 'User activity tracking for smart scheduling and personalization';
