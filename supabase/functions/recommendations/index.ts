@@ -45,12 +45,12 @@ Deno.serve(async (req: Request) => {
   const claudeEndpoint = Deno.env.get('CLAUDE_ENDPOINT') || 'https://api.anthropic.com/v1/messages';
   
   console.log('[Recommendations] Environment check:', {
-    hasApiKey: !!claudeApiKey,
+    hasApiKey: !!(claudeApiKey && claudeApiKey.trim()),
     apiKeyPrefix: claudeApiKey ? claudeApiKey.substring(0, 10) + '...' : 'missing',
     endpoint: claudeEndpoint
   });
 
-  if (!claudeApiKey) {
+  if (!claudeApiKey || claudeApiKey.trim() === '') {
     console.error('[Recommendations] Claude API key not configured');
     return new Response(
       JSON.stringify({ 
