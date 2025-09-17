@@ -1,4 +1,4 @@
-// src/components/MyCollectionsPage.tsx - COMPLETE WITH FORMAT DISTRIBUTION TABS
+// src/components/MyCollectionsPage.tsx - COMPLETE WITH CSV EXPORT FIX
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
@@ -19,9 +19,12 @@ import {
   UserCheck,
   AlertTriangle,
   Download,
-  Grid3X3
+  Grid3X3,
+  CheckCircle,
+  X
 } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
+import { useAuth } from '../hooks/useAuth';
 import { CollectionItemCard } from './CollectionItemCard';
 import { AddToCollectionModal } from './AddToCollectionModal';
 import { CollectionToolbar } from './CollectionToolbar';
@@ -159,64 +162,52 @@ const CollectionTypeTabs: React.FC<CollectionTypeTabsProps> = ({
   ];
 
   const colorClasses = {
-    slate: {
-      active: 'bg-slate-600 text-white border-slate-600',
-      inactive: 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-    },
-    blue: {
-      active: 'bg-blue-600 text-white border-blue-600',
-      inactive: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-    },
-    red: {
-      active: 'bg-red-600 text-white border-red-600',
-      inactive: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
-    },
-    green: {
-      active: 'bg-green-600 text-white border-green-600',
-      inactive: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-    },
-    orange: {
-      active: 'bg-orange-600 text-white border-orange-600',
-      inactive: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
-    }
+    slate: 'bg-slate-600 text-white border-slate-600',
+    blue: 'bg-blue-600 text-white border-blue-600',
+    red: 'bg-red-600 text-white border-red-600',
+    green: 'bg-green-600 text-white border-green-600',
+    orange: 'bg-orange-600 text-white border-orange-600'
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-6">
-      {collectionTypes.map((type) => {
-        const Icon = type.icon;
-        const isActive = activeType === type.id;
-        const colors = colorClasses[type.color as keyof typeof colorClasses];
-        
-        return (
-          <button
-            key={type.id}
-            onClick={() => onTypeChange(type.id)}
-            className={`
-              inline-flex items-center space-x-2 px-4 py-2 rounded-lg border font-medium
-              transition-all duration-200 ${isActive ? colors.active : colors.inactive}
-            `}
-            title={type.description}
-          >
-            <Icon className="h-4 w-4" />
-            <span>{type.label}</span>
-            <span className={`
-              inline-flex items-center justify-center w-6 h-6 text-xs rounded-full font-bold
-              ${isActive ? 'bg-white bg-opacity-20 text-white' : 'bg-slate-200 text-slate-600'}
-            `}>
-              {type.count}
-            </span>
-          </button>
-        );
-      })}
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
+      <div className="flex flex-wrap gap-2">
+        {collectionTypes.map((type) => {
+          const isActive = activeType === type.id;
+          const Icon = type.icon;
+
+          return (
+            <button
+              key={type.id}
+              onClick={() => onTypeChange(type.id)}
+              className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                isActive 
+                  ? colorClasses[type.color as keyof typeof colorClasses]
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+              }`}
+              title={type.description}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{type.label}</span>
+              <span className={`inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold ${
+                isActive 
+                  ? 'bg-white bg-opacity-20 text-white' 
+                  : 'bg-slate-200 text-slate-700'
+              }`}>
+                {type.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
 
-// FORMAT DISTRIBUTION FILTER TABS - Like Movie Watchlist Status Labels
+// Format Distribution Tabs
 interface FormatDistributionTabsProps {
   collections: PhysicalMediaCollection[];
-  activeFormat: string;
+  activeFormat: 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
   onFormatChange: (format: 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray') => void;
 }
 
@@ -226,88 +217,49 @@ const FormatDistributionTabs: React.FC<FormatDistributionTabsProps> = ({
   onFormatChange
 }) => {
   const formatStats = useMemo(() => {
-    const stats = collections.reduce((acc, item) => {
-      acc[item.format] = (acc[item.format] || 0) + 1;
-      acc.total = (acc.total || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      total: stats.total || 0,
-      'DVD': stats['DVD'] || 0,
-      'Blu-ray': stats['Blu-ray'] || 0,
-      '4K UHD': stats['4K UHD'] || 0,
-      '3D Blu-ray': stats['3D Blu-ray'] || 0
+    const stats = {
+      all: collections.length,
+      'DVD': collections.filter(item => item.format === 'DVD').length,
+      'Blu-ray': collections.filter(item => item.format === 'Blu-ray').length,
+      '4K UHD': collections.filter(item => item.format === '4K UHD').length,
+      '3D Blu-ray': collections.filter(item => item.format === '3D Blu-ray').length,
     };
+    return stats;
   }, [collections]);
 
   const formatTabs = [
-    {
-      id: 'all' as const,
-      label: 'Total',
-      count: formatStats.total,
-      color: 'bg-slate-100 text-slate-800 border-slate-300',
-      activeColor: 'bg-slate-600 text-white border-slate-600'
-    },
-    {
-      id: 'DVD' as const,
-      label: 'DVD',
-      count: formatStats.DVD,
-      color: 'bg-red-100 text-red-800 border-red-300',
-      activeColor: 'bg-red-600 text-white border-red-600'
-    },
-    {
-      id: 'Blu-ray' as const,
-      label: 'Blu-ray',
-      count: formatStats['Blu-ray'],
-      color: 'bg-blue-100 text-blue-800 border-blue-300',
-      activeColor: 'bg-blue-600 text-white border-blue-600'
-    },
-    {
-      id: '4K UHD' as const,
-      label: '4K UHD',
-      count: formatStats['4K UHD'],
-      color: 'bg-purple-100 text-purple-800 border-purple-300',
-      activeColor: 'bg-purple-600 text-white border-purple-600'
-    },
-    {
-      id: '3D Blu-ray' as const,
-      label: '3D Blu-ray',
-      count: formatStats['3D Blu-ray'],
-      color: 'bg-green-100 text-green-800 border-green-300',
-      activeColor: 'bg-green-600 text-white border-green-600'
-    }
+    { id: 'all' as const, label: 'All Formats', icon: Disc3, count: formatStats.all, color: 'bg-slate-500' },
+    { id: 'DVD' as const, label: 'DVD', icon: Disc3, count: formatStats.DVD, color: 'bg-red-500' },
+    { id: 'Blu-ray' as const, label: 'Blu-ray', icon: FileVideo, count: formatStats['Blu-ray'], color: 'bg-blue-500' },
+    { id: '4K UHD' as const, label: '4K UHD', icon: Monitor, count: formatStats['4K UHD'], color: 'bg-purple-500' },
+    { id: '3D Blu-ray' as const, label: '3D Blu-ray', icon: Eye, count: formatStats['3D Blu-ray'], color: 'bg-green-500' },
   ];
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-slate-700">Format Distribution</h3>
-        <div className="text-xs text-slate-500">Click to filter by format</div>
-      </div>
-      
+      <h3 className="text-sm font-medium text-slate-700 mb-3">Filter by Format</h3>
       <div className="flex flex-wrap gap-2">
         {formatTabs.map((tab) => {
           const isActive = activeFormat === tab.id;
-          
+          const Icon = tab.icon;
+
           return (
             <button
               key={tab.id}
               onClick={() => onFormatChange(tab.id)}
-              className={`
-                inline-flex items-center space-x-2 px-3 py-2 rounded-lg border text-sm font-medium
-                transition-all duration-200 min-w-[80px] justify-center
-                ${isActive ? tab.activeColor : tab.color + ' hover:bg-opacity-80'}
-              `}
+              className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
+                isActive 
+                  ? `${tab.color} text-white shadow-md`
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
             >
+              <Icon className="h-4 w-4" />
               <span>{tab.label}</span>
-              <span className={`
-                inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold
-                ${isActive 
+              <span className={`inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold ${
+                isActive 
                   ? 'bg-white bg-opacity-20 text-white' 
                   : 'bg-slate-200 text-slate-700'
-                }
-              `}>
+              }`}>
                 {tab.count}
               </span>
             </button>
@@ -321,6 +273,8 @@ const FormatDistributionTabs: React.FC<FormatDistributionTabsProps> = ({
 interface MyCollectionsPageProps {}
 
 export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
+  const { user } = useAuth();
+  
   // Collection type state
   const [activeCollectionType, setActiveCollectionType] = useState<CollectionType | 'all'>('all');
   
@@ -347,12 +301,13 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   const [formatFilter, setFormatFilter] = useState<'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('all');
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'purchase_date' | 'personal_rating'>('title');
   const [selectedItems, setSelectedItems] = useState<PhysicalMediaCollection[]>([]);
-  const [isExporting, setIsExporting] = useState(false);
 
-  // Get collection statistics (this would need to be enhanced to get accurate stats for all types)
+  // CSV Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+
+  // Get collection statistics
   const collectionStats = useMemo(() => {
-    // In a real implementation, you'd want to get stats for ALL collections, not just filtered ones
-    // For now, this provides the structure needed
     return {
       owned: collections.filter(item => (item.collection_type || 'owned') === 'owned').length,
       wishlist: collections.filter(item => item.collection_type === 'wishlist').length,
@@ -360,6 +315,29 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
       loaned_out: collections.filter(item => item.collection_type === 'loaned_out').length,
       missing: collections.filter(item => item.collection_type === 'missing').length,
       total: collections.length
+    };
+  }, [collections]);
+
+  // Enhanced stats calculations
+  const enhancedStats = useMemo(() => {
+    const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
+    const wishlistItems = collections.filter(item => item.collection_type === 'wishlist');
+    const ratedItems = collections.filter(item => item.user_rating && item.user_rating > 0);
+    
+    const totalValue = ownedItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+    const wishlistValue = wishlistItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+    const avgRating = ratedItems.length > 0 
+      ? ratedItems.reduce((sum, item) => sum + (item.user_rating || 0), 0) / ratedItems.length 
+      : 0;
+
+    return {
+      totalValue,
+      wishlistValue,
+      avgRating,
+      mostExpensive: ownedItems.reduce((max, item) => 
+        (item.purchase_price || 0) > (max.purchase_price || 0) ? item : max, ownedItems[0]),
+      newestAddition: collections.reduce((newest, item) => 
+        new Date(item.created_at || 0) > new Date(newest?.created_at || 0) ? item : newest, collections[0])
     };
   }, [collections]);
 
@@ -382,296 +360,352 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     }
   };
 
-  // Handle delete
-  const handleDeleteFromCollection = async (itemId: string) => {
-    try {
-      await removeFromCollection(itemId);
-    } catch (error) {
-      console.error('Failed to delete item:', error);
-      alert('Failed to delete item. Please try again.');
-    }
-  };
-
-  // Handle add to collection
-  const handleAddToCollection = async (collectionData: any) => {
-    try {
-      await addToCollection(collectionData);
-      setShowAddModal(false);
-    } catch (error) {
-      console.error('Failed to add to collection:', error);
-      alert('Failed to add item. Please try again.');
-    }
-  };
-
-  // Enhanced filtering and sorting
-  const filteredAndSortedCollections = useMemo(() => {
-    let filtered = collections;
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item => 
-        item.title.toLowerCase().includes(query) ||
-        item.director?.toLowerCase().includes(query) ||
-        item.genre?.toLowerCase().includes(query)
-      );
-    }
-
-    if (formatFilter !== 'all') {
-      filtered = filtered.filter(item => item.format === formatFilter);
-    }
-
-    return filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'year':
-          return (b.release_year || 0) - (a.release_year || 0);
-        case 'purchase_date':
-          return new Date(b.purchase_date || 0).getTime() - new Date(a.purchase_date || 0).getTime();
-        case 'personal_rating':
-          return (b.rating || 0) - (a.rating || 0);
-        default: // title
-          return a.title.localeCompare(b.title);
-      }
-    });
-  }, [collections, searchQuery, formatFilter, sortBy]);
-
-  // Enhanced stats calculations
-  const enhancedStats = useMemo(() => {
-    const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
-    const wishlistItems = collections.filter(item => item.collection_type === 'wishlist');
-    
-    const totalValue = ownedItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
-    const wishlistValue = wishlistItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
-    
-    const formats = collections.reduce((acc, item) => {
-      acc[item.format] = (acc[item.format] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const avgRating = ownedItems
-      .filter(item => item.rating)
-      .reduce((sum, item, _, arr) => sum + (item.rating || 0) / arr.length, 0);
-
-    return {
-      totalValue,
-      wishlistValue,
-      formats,
-      avgRating: avgRating || 0,
-      mostExpensive: ownedItems.reduce((max, item) => 
-        (item.purchase_price || 0) > (max.purchase_price || 0) ? item : max, ownedItems[0]),
-      newestAddition: collections.reduce((newest, item) => 
-        new Date(item.created_at || 0) > new Date(newest?.created_at || 0) ? item : newest, collections[0])
-    };
-  }, [collections]);
-
-  // CSV Export handler
+  // COMPLETE CSV Export handler
   const handleExportCSV = async () => {
-  try {
-    setIsExporting(true);
-    
-    // Get collections data
-    const collectionsToExport = activeCollectionType === 'all' 
-      ? await getAllCollections() 
-      : collections;
-    
-    if (collectionsToExport.length === 0) {
-      alert('No items to export. Please add some items to your collection first.');
+    if (!user) {
+      alert('Please log in to export your collection');
       return;
     }
-    
-    // Generate CSV
-    const csvData = csvExportService.generateCollectionCSV(collectionsToExport);
-    const filename = `collection-${activeCollectionType === 'all' ? 'all' : activeCollectionType}-${new Date().toISOString().split('T')[0]}.csv`;
-    
-    // Download CSV
-    csvExportService.downloadCSV(csvData, filename);
-    
-    // Show success message
-    console.log(`[Export] Successfully exported ${collectionsToExport.length} items to ${filename}`);
-    
-    // Optional: Show a temporary success message in the UI
-    // You could add a toast notification here
-    
-  } catch (error) {
-    console.error('Export failed:', error);
-    
-    // More detailed error message
-    if (error instanceof Error) {
-      alert(`Failed to export collection: ${error.message}\n\nTip: Try refreshing the page and trying again, or check your browser's download settings.`);
-    } else {
-      alert('Failed to export collection. Please try again or check your browser\'s download settings.');
-    }
+
+    try {
+      setIsExporting(true);
+      setExportSuccess(null);
+      
+      // Get collections data based on active filter
+      let collectionsToExport: PhysicalMediaCollection[] = [];
+      
+      if (activeCollectionType === 'all') {
+        // For 'all', we need to fetch all collections since the current 'collections' 
+        // state might be filtered. We'll use the CSV service's built-in fetch method.
+        const result = await csvExportService.exportCollectionToCSV(user.id, {
+          includeHeaders: true,
+          includeTechnicalSpecs: true,
+          dateFormat: 'iso',
+          filename: `collection-all-items-${new Date().toISOString().split('T')[0]}`
+        });
+        
+        if (result.success) {
+          setExportSuccess(`Successfully exported ${result.recordCount} items to ${result.filename}`);
+          setTimeout(() => setExportSuccess(null), 5000);
+        } else {
+          throw new Error(result.error || 'Export failed');
+        }
+        return;
+      } else {
+        // For filtered views, use the current collections state
+        collectionsToExport = collections;
+      }
+      
+      if (collectionsToExport.length === 0) {
+        alert('No items to export. Please add some items to your collection first.');
+        return;
+      }
+      
+      // Generate CSV content using the simple method
+      const csvContent = csvExportService.generateCollectionCSV(collectionsToExport, {
+        includeHeaders: true,
+        includeTechnicalSpecs: true,
+        dateFormat: 'iso'
+      });
+      
+      // Generate filename with current filter and date
+      const filterSuffix = activeCollectionType === 'all' ? 'all' : activeCollectionType;
+      const filename = `collection-${filterSuffix}-${new Date().toISOString().split('T')[0]}.csv`;
+      
+      // Trigger download
+      csvExportService.downloadCSV(csvContent, filename);
+      
+      // Show success message
+      setExportSuccess(`Successfully exported ${collectionsToExport.length} items to ${filename}`);
+      setTimeout(() => setExportSuccess(null), 5000);
+      
+      console.log(`[Export] Successfully exported ${collectionsToExport.length} items to ${filename}`);
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      
+      // User-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to export collection: ${errorMessage}\n\nTip: Try refreshing the page and trying again, or check your browser's download settings.`);
     } finally {
       setIsExporting(false);
     }
   };
 
+  // Filter and sort collections
+  const filteredAndSortedCollections = useMemo(() => {
+    let filtered = collections;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item =>
+        item.title?.toLowerCase().includes(query) ||
+        item.director?.toLowerCase().includes(query) ||
+        item.genre?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply format filter
+    if (formatFilter !== 'all') {
+      filtered = filtered.filter(item => item.format === formatFilter);
+    }
+
+    // Sort collections
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return (a.title || '').localeCompare(b.title || '');
+        case 'year':
+          return (b.year || 0) - (a.year || 0);
+        case 'purchase_date':
+          return new Date(b.purchase_date || 0).getTime() - new Date(a.purchase_date || 0).getTime();
+        case 'personal_rating':
+          return (b.user_rating || 0) - (a.user_rating || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [collections, searchQuery, formatFilter, sortBy]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading your collection...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Error: {error}</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-2">Error loading collection</p>
+          <p className="text-slate-500 text-sm">{error}</p>
+          <button 
+            onClick={() => refetch()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">My Collections</h1>
-            <p className="text-slate-600">
-              Manage and organize your physical media collection
-            </p>
+    <div className="min-h-screen bg-slate-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Export Success Message */}
+        {exportSuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                <p className="text-sm text-green-700 font-medium">{exportSuccess}</p>
+              </div>
+              <button
+                onClick={() => setExportSuccess(null)}
+                className="text-green-400 hover:text-green-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleExportCSV}
-              disabled={isExporting || collections.length === 0}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              <span>{isExporting ? 'Exporting...' : 'Export CSV'}</span>
-            </button>
+        )}
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center">
+                <Package className="h-8 w-8 text-blue-600 mr-3" />
+                My Collections
+              </h1>
+              <p className="text-slate-600 mt-2">
+                Manage your physical media collection
+              </p>
+            </div>
             
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Item</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              {/* CSV Export Button */}
+              <button
+                onClick={handleExportCSV}
+                disabled={isExporting || collections.length === 0}
+                className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                  isExporting 
+                    ? 'bg-blue-100 text-blue-600 cursor-not-allowed'
+                    : collections.length === 0
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm'
+                }`}
+                title={
+                  isExporting 
+                    ? 'Exporting CSV...' 
+                    : collections.length === 0
+                    ? 'No items to export'
+                    : `Export ${activeCollectionType === 'all' ? 'all' : activeCollectionType} items to CSV`
+                }
+              >
+                {isExporting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    <span>Export CSV</span>
+                    {collections.length > 0 && (
+                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
+                        {collections.length}
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Item</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Enhanced Collection Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <CollectionStatsCard
-            label="Total Items"
-            value={collectionStats.total}
-            icon={Package}
-            color="blue"
-            onClick={() => handleCollectionTypeChange('all')}
-          />
-          <CollectionStatsCard
-            label="Total Value"
-            value={`$${enhancedStats.totalValue.toFixed(0)}`}
-            icon={DollarSign}
-            color="green"
-            subtitle="Owned items only"
-          />
-          <CollectionStatsCard
-            label="Wishlist Value"
-            value={`$${enhancedStats.wishlistValue.toFixed(0)}`}
-            icon={Heart}
-            color="red"
-            subtitle={`${collectionStats.wishlist} items`}
-            onClick={() => handleCollectionTypeChange('wishlist')}
-          />
-          <CollectionStatsCard
-            label="Avg Rating"
-            value={enhancedStats.avgRating.toFixed(1)}
-            icon={Award}
-            color="purple"
-            subtitle="Your ratings"
-          />
-        </div>
-
-        {/* Collection Type Tabs */}
-        <CollectionTypeTabs
-          activeType={activeCollectionType}
-          onTypeChange={handleCollectionTypeChange}
-          stats={collectionStats}
-        />
-
-        {/* FORMAT DISTRIBUTION TABS - THIS IS THE MISSING PIECE! */}
-        <FormatDistributionTabs
-          collections={collections}
-          activeFormat={formatFilter}
-          onFormatChange={setFormatFilter}
-        />
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-8">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-6">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder={`Search ${activeCollectionType === 'all' ? 'all items' : activeCollectionType}...`}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          {/* Enhanced Collection Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <CollectionStatsCard
+              label="Total Items"
+              value={collectionStats.total}
+              icon={Package}
+              color="blue"
+              onClick={() => handleCollectionTypeChange('all')}
+            />
+            <CollectionStatsCard
+              label="Total Value"
+              value={`$${enhancedStats.totalValue.toFixed(0)}`}
+              icon={DollarSign}
+              color="green"
+              subtitle="Owned items only"
+            />
+            <CollectionStatsCard
+              label="Wishlist Value"
+              value={`$${enhancedStats.wishlistValue.toFixed(0)}`}
+              icon={Heart}
+              color="red"
+              subtitle={`${collectionStats.wishlist} items`}
+              onClick={() => handleCollectionTypeChange('wishlist')}
+            />
+            <CollectionStatsCard
+              label="Avg Rating"
+              value={enhancedStats.avgRating.toFixed(1)}
+              icon={Award}
+              color="purple"
+              subtitle="Your ratings"
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-5 w-5 text-slate-600" />
-              <select
-                value={formatFilter}
-                onChange={(e) => setFormatFilter(e.target.value as any)}
-                className="border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Formats</option>
-                <option value="DVD">DVD</option>
-                <option value="Blu-ray">Blu-ray</option>
-                <option value="4K UHD">4K UHD</option>
-                <option value="3D Blu-ray">3D Blu-ray</option>
-              </select>
+          {/* Collection Type Tabs */}
+          <CollectionTypeTabs
+            activeType={activeCollectionType}
+            onTypeChange={handleCollectionTypeChange}
+            stats={collectionStats}
+          />
+
+          {/* Format Distribution Tabs */}
+          <FormatDistributionTabs
+            collections={collections}
+            activeFormat={formatFilter}
+            onFormatChange={setFormatFilter}
+          />
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-6">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder={`Search ${activeCollectionType === 'all' ? 'collections' : activeCollectionType}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900"
+              />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <SortAsc className="h-5 w-5 text-slate-600" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="title">Sort by Title</option>
-                <option value="year">Sort by Year</option>
-                <option value="purchase_date">Sort by Purchase Date</option>
-                <option value="personal_rating">Sort by Rating</option>
-              </select>
+            {/* Sort Controls */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <SortAsc className="h-4 w-4 text-slate-500" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="title">Title A-Z</option>
+                  <option value="year">Year (Newest)</option>
+                  <option value="purchase_date">Purchase Date</option>
+                  <option value="personal_rating">Your Rating</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Collection Grid */}
-      <div className="mb-8">
+          {/* Active Filters Display */}
+          {(searchQuery || formatFilter !== 'all') && (
+            <div className="mt-4 flex items-center space-x-2">
+              <span className="text-sm text-slate-500">Active filters:</span>
+              {searchQuery && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Search: "{searchQuery}"
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {formatFilter !== 'all' && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  Format: {formatFilter}
+                  <button
+                    onClick={() => setFormatFilter('all')}
+                    className="ml-1 text-purple-600 hover:text-purple-800"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Collections Grid */}
         {filteredAndSortedCollections.length === 0 ? (
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-600 mb-2">
-              {searchQuery || formatFilter !== 'all' 
-                ? 'No matches found' 
-                : activeCollectionType === 'all'
-                ? 'Your collection is empty'
-                : `Your ${activeCollectionType} is empty`
-              }
+            <h3 className="text-xl font-semibold text-slate-600 mb-2">
+              {searchQuery || formatFilter !== 'all' ? 'No items match your filters' : 'Your collection is empty'}
             </h3>
-            <p className="text-slate-500 mb-4">
-              {searchQuery || formatFilter !== 'all'
-                ? 'Try adjusting your search or filters'
-                : `Start building your ${activeCollectionType === 'all' ? 'collection' : activeCollectionType}`
-              }
+            <p className="text-slate-500 mb-6">
+              {searchQuery || formatFilter !== 'all' 
+                ? 'Try adjusting your search or filter criteria' 
+                : 'Start building your collection by adding your first item'}
             </p>
-            {!searchQuery && formatFilter === 'all' && (
+            {!(searchQuery || formatFilter !== 'all') && (
               <button
                 onClick={() => setShowAddModal(true)}
                 className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -682,34 +716,28 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredAndSortedCollections.map((item) => (
               <CollectionItemCard
                 key={item.id}
                 item={item}
-                onUpdate={refetch}
-                onDelete={handleDeleteFromCollection}
-                isSelected={selectedItems.some(selected => selected.id === item.id)}
-                onSelect={(selected) => {
-                  if (selected) {
-                    setSelectedItems(prev => [...prev, item]);
-                  } else {
-                    setSelectedItems(prev => prev.filter(selected => selected.id !== item.id));
-                  }
-                }}
-                onMoveToType={(newType) => handleMoveToType(item.id, newType)}
+                onRemove={removeFromCollection}
+                onUpdate={updateCollection}
+                onMoveToType={handleMoveToType}
+                showCollectionType={activeCollectionType === 'all'}
               />
             ))}
           </div>
         )}
-      </div>
 
-      {/* Add to Collection Modal */}
-      <AddToCollectionModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onAdd={handleAddToCollection}
-      />
+        {/* Add Item Modal */}
+        <AddToCollectionModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onAdd={addToCollection}
+          defaultCollectionType={activeCollectionType !== 'all' ? activeCollectionType : 'owned'}
+        />
+      </div>
     </div>
   );
 };
