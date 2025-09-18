@@ -1,4 +1,4 @@
-// src/services/csvExportService.ts - COMPLETE IMPLEMENTATION
+// src/services/csvExportService.ts - FIXED TECHNICAL SPECS INTEGRATION
 import { supabase } from '../lib/supabase';
 import type { PhysicalMediaCollection } from '../lib/supabase';
 
@@ -14,6 +14,29 @@ export interface ExportResult {
   filename: string;
   recordCount: number;
   error?: string;
+}
+
+// Extended type for collections with technical specs
+interface CollectionWithTechnicalSpecs extends PhysicalMediaCollection {
+  bluray_technical_specs?: {
+    video_codec?: string;
+    video_resolution?: string;
+    hdr_format?: string[];
+    aspect_ratio?: string;
+    frame_rate?: string;
+    audio_codecs?: string[];
+    audio_channels?: string[];
+    audio_languages?: string[];
+    region_codes?: string[];
+    disc_count?: number;
+    studio?: string;
+    distributor?: string;
+    special_features?: string[];
+    subtitles?: string[];
+    runtime_minutes?: number;
+    upc_code?: string;
+    data_quality?: string;
+  };
 }
 
 class CSVExportService {
@@ -47,7 +70,7 @@ class CSVExportService {
     
     // Add data rows
     collections.forEach(item => {
-      csvLines.push(this.formatDataRow(item, config));
+      csvLines.push(this.formatDataRow(item as CollectionWithTechnicalSpecs, config));
     });
     
     return csvLines.join('\n');
@@ -80,7 +103,7 @@ class CSVExportService {
   }
 
   /**
-   * Export user's physical media collection to CSV (used by CollectionToolbar)
+   * Export user's physical media collection to CSV with proper technical specs join
    */
   async exportCollectionToCSV(
     userId: string,
@@ -89,8 +112,8 @@ class CSVExportService {
     try {
       const config = { ...this.DEFAULT_OPTIONS, ...options };
       
-      // Fetch collection data with technical specs
-      const collectionData = await this.fetchCollectionData(userId, config.includeTechnicalSpecs);
+      // Fetch collection data with technical specs - FIXED QUERY
+      const collectionData = await this.fetchCollectionDataWithTechnicalSpecs(userId, config.includeTechnicalSpecs);
       
       if (collectionData.length === 0) {
         throw new Error('No collection items found to export');
@@ -124,70 +147,84 @@ class CSVExportService {
   }
 
   /**
-   * Fetch collection data from Supabase (for CollectionToolbar usage)
+   * FIXED: Fetch collection data with proper technical specs join
    */
-  private async fetchCollectionData(
+  private async fetchCollectionDataWithTechnicalSpecs(
     userId: string, 
     includeTechnicalSpecs: boolean
-  ): Promise<any[]> {
-    let query = supabase
-      .from('physical_media_collections')
-      .select(`
-        *,
-        ${includeTechnicalSpecs ? `
-        bluray_technical_specs:technical_specs_id (
-          video_codec,
-          video_resolution,
-          hdr_format,
-          aspect_ratio,
-          audio_codecs,
-          audio_channels,
-          disc_count,
-          studio,
-          distributor,
-          special_features,
-          subtitles,
-          runtime_minutes,
-          upc_code,
-          data_quality
-        )
-        ` : ''}
-      `)
-      .eq('user_id', userId)
-      .order('title', { ascending: true });
+  ): Promise<CollectionWithTechnicalSpecs[]> {
+    try {
+      console.log('[CSV Export] Fetching collection data with technical specs...');
 
-    const { data, error } = await query;
+      let query;
+      
+      if (includeTechnicalSpecs) {
+        // Use the proper join with bluray_technical_specs table
+        query = supabase
+          .from('physical_media_collections')
+          .select(`
+            *,
+            bluray_technical_specs (
+              video_codec,
+              video_resolution,
+              hdr_format,
+              aspect_ratio,
+              frame_rate,
+              audio_codecs,
+              audio_channels,
+              audio_languages,
+              region_codes,
+              disc_count,
+              studio,
+              distributor,
+              special_features,
+              subtitles,
+              runtime_minutes,
+              upc_code,
+              data_quality
+            )
+          `)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+      } else {
+        // Simple query without technical specs
+        query = supabase
+          .from('physical_media_collections')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+      }
 
-    if (error) {
-      throw new Error(`Database error: ${error.message}`);
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[CSV Export] Fetch error:', error);
+        throw new Error(`Failed to fetch collection data: ${error.message}`);
+      }
+
+      console.log(`[CSV Export] Fetched ${data?.length || 0} collection items`);
+      
+      // Log technical specs data for debugging
+      if (includeTechnicalSpecs && data && data.length > 0) {
+        const itemsWithSpecs = data.filter(item => item.bluray_technical_specs);
+        console.log(`[CSV Export] ${itemsWithSpecs.length} items have technical specs`);
+        
+        // Debug log first item with specs
+        if (itemsWithSpecs.length > 0) {
+          console.log('[CSV Export] Sample technical specs:', itemsWithSpecs[0].bluray_technical_specs);
+        }
+      }
+
+      return data || [];
+
+    } catch (error) {
+      console.error('[CSV Export] Error in fetchCollectionDataWithTechnicalSpecs:', error);
+      throw error;
     }
-
-    return data || [];
   }
 
   /**
-   * Generate CSV content from collection data (for CollectionToolbar usage)
-   */
-  private generateCSVContent(
-    data: any[],
-    config: Required<CSVExportOptions>
-  ): string {
-    const headers = this.getCSVHeaders(config.includeTechnicalSpecs);
-    const rows = data.map(item => this.formatDataRow(item, config));
-    
-    const csvLines: string[] = [];
-    
-    if (config.includeHeaders) {
-      csvLines.push(headers.join(','));
-    }
-    
-    csvLines.push(...rows);
-    
-    return csvLines.join('\n');
-  }
-
-  /**
-   * Get CSV headers based on options
+   * FIXED: CSV Headers with correct technical spec field names
    */
   private getCSVHeaders(includeTechnicalSpecs: boolean): string[] {
     const baseHeaders = [
@@ -209,7 +246,8 @@ class CSVExportService {
     ];
 
     if (includeTechnicalSpecs) {
-      baseHeaders.push(
+      return [
+        ...baseHeaders,
         'Video Codec',
         'Video Resolution',
         'HDR Format',
@@ -224,104 +262,112 @@ class CSVExportService {
         'Runtime (Minutes)',
         'UPC Code',
         'Technical Specs Quality'
-      );
+      ];
     }
 
     return baseHeaders;
   }
 
   /**
-   * Format a single data row for CSV
+   * FIXED: Format data row with proper technical specs extraction
    */
   private formatDataRow(
-    item: CollectionWithSpecs,
+    item: CollectionWithTechnicalSpecs,
     config: Required<CSVExportOptions>
   ): string {
-    const formatDate = (date: string | null) => {
-      if (!date) return '';
-      
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return '';
-      
-      switch (config.dateFormat) {
-        case 'us':
-          return d.toLocaleDateString('en-US');
-        case 'eu':
-          return d.toLocaleDateString('en-GB');
-        default: // iso
-          return d.toISOString().split('T')[0];
-      }
-    };
-
-    const formatPrice = (price: number | null) => {
-      return price ? `$${price.toFixed(2)}` : '';
-    };
-
-    const formatArray = (arr: string[] | null) => {
-      return arr && arr.length > 0 ? arr.join('; ') : '';
-    };
-
     const escapeCSV = (value: any): string => {
       if (value === null || value === undefined) return '';
       
-      const str = String(value);
-      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      let str = String(value);
+      
+      // Handle arrays (like HDR formats, audio codecs)
+      if (Array.isArray(value)) {
+        str = value.join(', ');
+      }
+      
+      // Escape CSV special characters
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;
     };
 
-    const formatCollectionType = (type: string | null) => {
-      const typeMap: { [key: string]: string } = {
-        'owned': 'My Collection',
-        'wishlist': 'Wishlist',
-        'for_sale': 'For Sale',
-        'loaned_out': 'Loaned Out',
-        'missing': 'Missing'
-      };
-      return typeMap[type || 'owned'] || 'My Collection';
+    const formatDate = (dateStr: string | null): string => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      switch (config.dateFormat) {
+        case 'us': return date.toLocaleDateString('en-US');
+        case 'eu': return date.toLocaleDateString('en-GB');
+        default: return date.toISOString().split('T')[0];
+      }
     };
 
+    // Base fields that all collections have
     const baseFields = [
       escapeCSV(item.title || ''),
       escapeCSV(item.year || ''),
       escapeCSV(item.format || ''),
-      escapeCSV(formatCollectionType(item.collection_type)),
+      escapeCSV(item.collection_type || 'owned'),
       escapeCSV(item.genre || ''),
       escapeCSV(item.director || ''),
       escapeCSV(formatDate(item.purchase_date)),
-      escapeCSV(formatPrice(item.purchase_price)),
+      escapeCSV(item.purchase_price ? `$${item.purchase_price}` : ''),
       escapeCSV(item.purchase_location || ''),
       escapeCSV(item.condition || ''),
-      escapeCSV(item.personal_rating || ''),
+      escapeCSV(item.user_rating || ''),
       escapeCSV(item.notes || ''),
       escapeCSV(item.imdb_id || ''),
       escapeCSV(formatDate(item.created_at)),
       escapeCSV(formatDate(item.updated_at))
     ];
 
+    // Add technical specs if requested and available
     if (config.includeTechnicalSpecs) {
       const specs = item.bluray_technical_specs;
-      baseFields.push(
+      
+      const technicalFields = [
         escapeCSV(specs?.video_codec || ''),
         escapeCSV(specs?.video_resolution || ''),
-        escapeCSV(formatArray(specs?.hdr_format)),
+        escapeCSV(specs?.hdr_format || ''),
         escapeCSV(specs?.aspect_ratio || ''),
-        escapeCSV(formatArray(specs?.audio_codecs)),
-        escapeCSV(formatArray(specs?.audio_channels)),
+        escapeCSV(specs?.audio_codecs || ''),
+        escapeCSV(specs?.audio_channels || ''),
         escapeCSV(specs?.disc_count || ''),
         escapeCSV(specs?.studio || ''),
         escapeCSV(specs?.distributor || ''),
-        escapeCSV(formatArray(specs?.special_features)),
-        escapeCSV(formatArray(specs?.subtitles)),
+        escapeCSV(specs?.special_features || ''),
+        escapeCSV(specs?.subtitles || ''),
         escapeCSV(specs?.runtime_minutes || ''),
         escapeCSV(specs?.upc_code || ''),
         escapeCSV(specs?.data_quality || '')
-      );
+      ];
+
+      return [...baseFields, ...technicalFields].join(',');
     }
 
     return baseFields.join(',');
+  }
+
+  /**
+   * Generate CSV content (used internally)
+   */
+  private generateCSVContent(
+    collections: CollectionWithTechnicalSpecs[],
+    config: Required<CSVExportOptions>
+  ): string {
+    const csvLines: string[] = [];
+
+    // Add headers if requested
+    if (config.includeHeaders) {
+      csvLines.push(this.getCSVHeaders(config.includeTechnicalSpecs).join(','));
+    }
+
+    // Add data rows
+    collections.forEach(item => {
+      csvLines.push(this.formatDataRow(item, config));
+    });
+
+    return csvLines.join('\n');
   }
 
   /**
@@ -333,11 +379,13 @@ class CSVExportService {
     estimatedFileSize: string;
   }> {
     try {
+      // Get total count
       const { count: totalItems } = await supabase
         .from('physical_media_collections')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
 
+      // Get count with technical specs (non-null technical_specs_id)
       const { count: withTechnicalSpecs } = await supabase
         .from('physical_media_collections')
         .select('*', { count: 'exact', head: true })
@@ -345,7 +393,7 @@ class CSVExportService {
         .not('technical_specs_id', 'is', null);
 
       // Estimate file size (rough calculation)
-      const avgRowSize = 500; // bytes per row
+      const avgRowSize = 800; // bytes per row (increased for technical specs)
       const estimatedSize = (totalItems || 0) * avgRowSize;
       const estimatedFileSize = estimatedSize < 1024 ? 
         `${estimatedSize} B` : 
