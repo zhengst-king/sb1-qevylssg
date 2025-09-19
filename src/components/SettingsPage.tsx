@@ -331,7 +331,7 @@ export function SettingsPage() {
           </div>
         </section>
 
-        {/* Security & Privacy Section */}
+{/* Security & Privacy Section */}
         <section className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center mb-4">
             <Shield className="w-5 h-5 text-slate-600 mr-2" />
@@ -339,6 +339,14 @@ export function SettingsPage() {
           </div>
           
           <div className="space-y-2">
+            <button className="text-blue-600 hover:text-blue-800 text-sm">
+              Change password
+            </button>
+            <br />
+            <button className="text-blue-600 hover:text-blue-800 text-sm">
+              Two-factor authentication
+            </button>
+            <br />
             <button className="text-blue-600 hover:text-blue-800 text-sm">
               View active sessions
             </button>
@@ -354,7 +362,7 @@ export function SettingsPage() {
         </section>
       </div>
 
-      {/* Import Modal (existing) */}
+      {/* Import Modal */}
       {importModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -434,7 +442,7 @@ export function SettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    HAR File
+                    Select HAR File
                   </label>
                   <input
                     type="file"
@@ -443,100 +451,23 @@ export function SettingsPage() {
                     disabled={isImporting}
                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
                   />
-                  {selectedFile && (
-                    <p className="text-sm text-slate-600 mt-1">
-                      Selected: {selectedFile.name}
-                    </p>
-                  )}
                 </div>
 
-                {/* Progress bar */}
-                {isImporting && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Importing...</span>
-                      <span>{Math.round(progress)}%</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Import History */}
-                {importHistory.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center">
-                      <Clock className="w-4 h-4 mr-2" />
-                      Import History
-                    </h4>
-                    <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-md">
-                      <table className="w-full text-xs">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left">Date</th>
-                            <th className="px-3 py-2 text-left">Service</th>
-                            <th className="px-3 py-2 text-left">Movies</th>
-                            <th className="px-3 py-2 text-left">TV Shows</th>
-                            <th className="px-3 py-2 text-left">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {importHistory.map((record) => (
-                            <tr key={record.id} className="border-t border-slate-200">
-                              <td className="px-3 py-2">
-                                {new Date(record.upload_datetime).toLocaleDateString()}
-                              </td>
-                              <td className="px-3 py-2 capitalize">{record.streaming_service}</td>
-                              <td className="px-3 py-2">{record.movies_added}</td>
-                              <td className="px-3 py-2">{record.tv_series_added}</td>
-                              <td className="px-3 py-2 font-medium">{record.total_imported}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={handleStartImport}
+                  disabled={!selectedFile || isImporting}
+                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isImporting ? 'Importing...' : 'Import'}
+                </button>
               </div>
             )}
-
-            {/* Modal buttons */}
-            <div className="flex justify-end space-x-3 mt-6">
-              {result ? (
-                <button 
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Done
-                </button>
-              ) : (
-                <>
-                  <button 
-                    onClick={handleCloseModal}
-                    disabled={isImporting}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    onClick={handleStartImport}
-                    disabled={isImporting || !selectedFile}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isImporting ? 'Importing...' : 'Import'}
-                  </button>
-                </>
-              )}
-            </div>
           </div>
         </div>
       )}
 
-      {/* NEW: Recommendation Preferences Modal */}
+      {/* Recommendation Preferences Modal */}
       {showRecommendationPrefs && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
@@ -557,20 +488,20 @@ export function SettingsPage() {
       )}
 
       {/* Collection Technical Specs Linking Tool Modal */}
-{showLinkingTool && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
-      <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Fix Technical Specifications Linking</h3>
-        <button 
-          onClick={() => setShowLinkingTool(false)}
-          className="text-slate-400 hover:text-slate-600"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="p-0">
-        <CollectionLinkingAdmin />
+      {showLinkingTool && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Fix Technical Specifications Linking</h3>
+              <button 
+                onClick={() => setShowLinkingTool(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-0">
+              <CollectionLinkingAdmin />
             </div>
           </div>
         </div>
