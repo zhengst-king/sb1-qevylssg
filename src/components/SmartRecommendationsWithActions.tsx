@@ -1,154 +1,49 @@
 // src/components/SmartRecommendationsWithActions.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Sparkles, 
-  Brain, 
-  TrendingUp, 
-  Star, 
-  Clock, 
-  Target,
-  RefreshCw,
-  Filter,
-  BarChart3,
-  Lightbulb,
-  Film,
-  Disc,
-  AlertCircle,
-  CheckCircle,
-  Heart,
-  Package,
-  X,
-  ThumbsDown,
-  Eye,
-  ShoppingCart,
-  Zap,
-  TrendingDown
+  Heart, Package, X, CheckCircle, AlertTriangle, Sparkles, 
+  Star, Calendar, Play, Filter, RefreshCw, TrendingUp, 
+  Eye, Clock, Target, Zap, Settings
 } from 'lucide-react';
-import { useSmartRecommendations } from '../hooks/useSmartRecommendations';
-import { useRecommendationActions } from '../hooks/useRecommendationActions';
-import type { RecommendationType, RecommendationFilters } from '../types/smartRecommendations';
-import type { MovieRecommendation } from '../services/smartRecommendationsService';
-import type { FeedbackReason } from '../services/recommendationActionsService';
+import { useCollections } from '../hooks/useCollections';
+import { useAuth } from '../hooks/useAuth';
+import { optimizedOMDBService } from '../services/optimizedOMDBService';
+import { smartRecommendationsService, MovieRecommendation, RecommendationFilters } from '../services/smartRecommendationsService';
+import { toast } from 'react-hot-toast';
 
-// Feedback modal component for dismissal reasons
-interface FeedbackModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (reason: FeedbackReason, comment?: string) => void;
-  recommendationTitle: string;
-}
+// Types
+type FeedbackReason = 'not_my_genre' | 'already_seen' | 'too_expensive' | 'not_available' | 'poor_quality' | 'other';
+type ActionType = 'add_to_wishlist' | 'mark_as_owned' | 'not_interested' | 'viewed';
 
-const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose, onSubmit, recommendationTitle }) => {
-  const [selectedReason, setSelectedReason] = useState<FeedbackReason | null>(null);
-  const [comment, setComment] = useState('');
-
-  const feedbackReasons: Array<{ value: FeedbackReason; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { value: 'not_my_genre', label: 'Not my genre', icon: ThumbsDown },
-    { value: 'already_seen', label: 'Already seen/own', icon: CheckCircle },
-    { value: 'too_expensive', label: 'Too expensive', icon: TrendingDown },
-    { value: 'not_available', label: 'Not available', icon: AlertCircle },
-    { value: 'poor_quality', label: 'Poor quality/reviews', icon: Star },
-    { value: 'other', label: 'Other reason', icon: X }
-  ];
-
-  const handleSubmit = () => {
-    if (selectedReason) {
-      onSubmit(selectedReason, comment.trim() || undefined);
-      setSelectedReason(null);
-      setComment('');
-      onClose();
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-md w-full p-6">
-        <h3 className="text-lg font-semibold mb-4">
-          Why aren't you interested in "{recommendationTitle}"?
-        </h3>
-        
-        <div className="space-y-3 mb-4">
-          {feedbackReasons.map((reason) => {
-            const Icon = reason.icon;
-            return (
-              <button
-                key={reason.value}
-                onClick={() => setSelectedReason(reason.value)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                  selectedReason === reason.value
-                    ? 'border-blue-600 bg-blue-50 text-blue-800'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                <span>{reason.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {selectedReason === 'other' && (
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Please tell us more..."
-            className="w-full p-3 border border-gray-300 rounded-lg mb-4"
-            rows={3}
-          />
-        )}
-
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!selectedReason}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Submit Feedback
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Action button component
-interface ActionButtonProps {
+interface ActionButton {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
   variant: 'primary' | 'secondary' | 'danger';
   loading?: boolean;
   disabled?: boolean;
-  size?: 'sm' | 'md';
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({ 
+interface FeedbackModal {
+  isOpen: boolean;
+  recommendation: MovieRecommendation | null;
+}
+
+// Action Button Component
+const ActionButtonComponent: React.FC<ActionButton> = ({ 
   icon: Icon, 
   label, 
   onClick, 
   variant, 
   loading = false, 
-  disabled = false,
-  size = 'md'
+  disabled = false 
 }) => {
-  const baseClasses = `
-    flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors
-    ${size === 'sm' ? 'text-xs' : 'text-sm'}
-    ${disabled || loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-  `;
-
+  const baseClasses = "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+  
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700',
-    secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-    danger: 'bg-red-100 text-red-700 hover:bg-red-200'
+    primary: "bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800",
+    secondary: "bg-slate-200 text-slate-700 hover:bg-slate-300 active:bg-slate-400",
+    danger: "bg-red-100 text-red-700 hover:bg-red-200 active:bg-red-300"
   };
 
   return (
@@ -158,253 +53,311 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       className={`${baseClasses} ${variantClasses[variant]}`}
     >
       {loading ? (
-        <RefreshCw className={`${size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} />
+        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
       ) : (
-        <Icon className={size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} />
+        <Icon className="h-4 w-4" />
       )}
-      <span>{label}</span>
+      <span>{loading ? 'Processing...' : label}</span>
     </button>
   );
 };
 
-// Enhanced recommendation card with actions
-interface RecommendationCardProps {
+// Recommendation Card Component
+const RecommendationCard: React.FC<{
   recommendation: MovieRecommendation;
   onAddToWishlist: () => void;
   onMarkAsOwned: () => void;
   onDismiss: () => void;
-  loading?: boolean;
-  hasActed?: boolean;
-}
-
-const RecommendationCard: React.FC<RecommendationCardProps> = ({
-  recommendation,
-  onAddToWishlist,
-  onMarkAsOwned,
-  onDismiss,
-  loading = false,
-  hasActed = false
-}) => {
-  const typeConfig = {
-    collection_gap: { 
-      icon: Target, 
-      color: 'text-blue-600', 
-      bgColor: 'bg-blue-50 border-blue-200',
-      label: 'Collection Gap'
-    },
-    format_upgrade: { 
-      icon: TrendingUp, 
-      color: 'text-green-600', 
-      bgColor: 'bg-green-50 border-green-200',
-      label: 'Format Upgrade'
-    },
-    similar_title: { 
-      icon: Lightbulb, 
-      color: 'text-purple-600', 
-      bgColor: 'bg-purple-50 border-purple-200',
-      label: 'Similar Title'
+  loading: boolean;
+  hasActed: boolean;
+}> = ({ recommendation, onAddToWishlist, onMarkAsOwned, onDismiss, loading, hasActed }) => {
+  
+  const getReasoningIcon = (type: string) => {
+    switch (type) {
+      case 'collection_gap': return <Target className="h-4 w-4 text-orange-600" />;
+      case 'format_upgrade': return <TrendingUp className="h-4 w-4 text-blue-600" />;
+      case 'similar_title': return <Sparkles className="h-4 w-4 text-purple-600" />;
+      default: return <Eye className="h-4 w-4 text-slate-600" />;
     }
   };
 
-  const config = typeConfig[recommendation.recommendation_type];
-  const TypeIcon = config.icon;
-
-  const confidenceColor = recommendation.score.confidence >= 0.8 ? 'text-green-600' : 
-                         recommendation.score.confidence >= 0.6 ? 'text-yellow-600' : 'text-gray-600';
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'collection_gap': return 'Complete Your Collection';
+      case 'format_upgrade': return 'Format Upgrade';
+      case 'similar_title': return 'Similar Title';
+      default: return 'Recommended';
+    }
+  };
 
   return (
-    <div className={`bg-white rounded-lg border-2 shadow-sm hover:shadow-md transition-shadow ${
-      hasActed ? 'opacity-75 bg-gray-50' : ''
-    }`}>
-      {/* Header */}
-      <div className={`p-4 border-b ${config.bgColor}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TypeIcon className={`h-5 w-5 ${config.color}`} />
-            <span className={`text-sm font-medium ${config.color}`}>
-              {config.label}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Star className={`h-4 w-4 ${confidenceColor}`} />
-              <span className={`text-sm font-medium ${confidenceColor}`}>
-                {(recommendation.score.confidence * 100).toFixed(0)}%
-              </span>
+    <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-200">
+      <div className="flex">
+        {/* Poster */}
+        <div className="flex-shrink-0 w-32 h-48 bg-slate-100">
+          {recommendation.poster_url ? (
+            <img
+              src={recommendation.poster_url}
+              alt={recommendation.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Play className="h-8 w-8 text-slate-400" />
             </div>
-            {recommendation.score.urgency > 0.5 && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 text-orange-500" />
-                <span className="text-xs text-gray-600">Urgent</span>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="p-4">
-        <div className="flex gap-4">
-          {/* Poster */}
-          <div className="flex-shrink-0">
-            {recommendation.poster_url ? (
-              <img
-                src={recommendation.poster_url}
-                alt={`${recommendation.title} poster`}
-                className="w-20 h-30 object-cover rounded-lg border"
-              />
-            ) : (
-              <div className="w-20 h-30 bg-gray-200 rounded-lg border flex items-center justify-center">
-                <Film className="h-8 w-8 text-gray-400" />
-              </div>
-            )}
-          </div>
-
-          {/* Details */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-lg mb-1 line-clamp-1">
-              {recommendation.title}
-            </h3>
-            
-            {recommendation.year && (
-              <p className="text-gray-600 text-sm mb-2">{recommendation.year}</p>
-            )}
-
-            {recommendation.genre && (
-              <p className="text-gray-600 text-sm mb-2">{recommendation.genre}</p>
-            )}
-
-            {recommendation.director && (
-              <p className="text-gray-600 text-sm mb-3">
-                Directed by {recommendation.director}
-              </p>
-            )}
-
-            <p className="text-gray-700 text-sm mb-3 line-clamp-2">
-              {recommendation.reasoning}
-            </p>
-
-            {recommendation.suggested_format && (
-              <div className="flex items-center gap-2 mb-3">
-                <Disc className="h-4 w-4 text-gray-500" />
-                <span className="text-sm bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                  {recommendation.suggested_format}
+        {/* Content */}
+        <div className="flex-1 p-6">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                {getReasoningIcon(recommendation.recommendation_type)}
+                <span className="text-sm font-medium text-slate-600">
+                  {getTypeLabel(recommendation.recommendation_type)}
                 </span>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        {hasActed ? (
-          <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-            <div className="flex items-center gap-2 text-gray-600">
-              <CheckCircle className="h-4 w-4" />
-              <span className="text-sm">You've already acted on this recommendation</span>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">
+                {recommendation.title}
+              </h3>
+              <div className="flex items-center gap-4 text-sm text-slate-600">
+                {recommendation.year && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {recommendation.year}
+                  </span>
+                )}
+                {recommendation.imdb_rating && (
+                  <span className="flex items-center gap-1">
+                    <Star className="h-3 w-3" />
+                    {recommendation.imdb_rating}/10
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Confidence Score */}
+            <div className="text-right">
+              <div className="text-xs text-slate-500 mb-1">Confidence</div>
+              <div className="text-lg font-bold text-purple-600">
+                {Math.round(recommendation.score.confidence * 100)}%
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <ActionButton
-              icon={Heart}
-              label="Add to Wishlist"
-              onClick={onAddToWishlist}
-              variant="primary"
-              loading={loading}
-            />
-            <ActionButton
-              icon={Package}
-              label="Already Own"
-              onClick={onMarkAsOwned}
-              variant="secondary"
-              loading={loading}
-            />
-            <ActionButton
-              icon={X}
-              label="Not Interested"
-              onClick={onDismiss}
-              variant="danger"
-              loading={loading}
-            />
+
+          {/* Metadata */}
+          {recommendation.genre && (
+            <p className="text-sm text-slate-600 mb-2">
+              <span className="font-medium">Genre:</span> {recommendation.genre}
+            </p>
+          )}
+          
+          {recommendation.director && (
+            <p className="text-sm text-slate-600 mb-3">
+              <span className="font-medium">Director:</span> {recommendation.director}
+            </p>
+          )}
+
+          {/* Reasoning */}
+          <div className="bg-slate-50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-slate-700">
+              <span className="font-medium text-slate-900">Why we recommend this:</span><br />
+              {recommendation.reasoning}
+            </p>
           </div>
-        )}
+
+          {/* Action Buttons */}
+          {hasActed ? (
+            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-800 font-medium">
+                You've already acted on this recommendation
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <ActionButtonComponent
+                icon={Heart}
+                label="Add to Wishlist"
+                onClick={onAddToWishlist}
+                variant="primary"
+                loading={loading}
+              />
+              <ActionButtonComponent
+                icon={Package}
+                label="Already Own"
+                onClick={onMarkAsOwned}
+                variant="secondary"
+                loading={loading}
+              />
+              <ActionButtonComponent
+                icon={X}
+                label="Not Interested"
+                onClick={onDismiss}
+                variant="danger"
+                loading={loading}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// Main component
+// Feedback Modal Component
+const FeedbackModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (reason: FeedbackReason, comment?: string) => void;
+  loading: boolean;
+}> = ({ isOpen, onClose, onSubmit, loading }) => {
+  const [selectedReason, setSelectedReason] = useState<FeedbackReason>('not_my_genre');
+  const [comment, setComment] = useState('');
+
+  const reasons: { value: FeedbackReason; label: string }[] = [
+    { value: 'not_my_genre', label: "Not my genre" },
+    { value: 'already_seen', label: "Already seen/owned" },
+    { value: 'too_expensive', label: "Too expensive" },
+    { value: 'not_available', label: "Not available to buy" },
+    { value: 'poor_quality', label: "Poor quality/reviews" },
+    { value: 'other', label: "Other" }
+  ];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(selectedReason, comment.trim() || undefined);
+    setComment('');
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 className="text-lg font-semibold mb-4">Why not interested?</h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            {reasons.map(reason => (
+              <label key={reason.value} className="flex items-center">
+                <input
+                  type="radio"
+                  name="reason"
+                  value={reason.value}
+                  checked={selectedReason === reason.value}
+                  onChange={(e) => setSelectedReason(e.target.value as FeedbackReason)}
+                  className="mr-2"
+                />
+                {reason.label}
+              </label>
+            ))}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Additional feedback (optional)
+            </label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="w-full p-2 border border-slate-300 rounded-md"
+              rows={3}
+              placeholder="Help us improve our recommendations..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 text-slate-600 hover:text-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+            >
+              {loading ? 'Submitting...' : 'Submit Feedback'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 export const SmartRecommendationsWithActions: React.FC = () => {
-  const {
-    recommendations,
-    userProfile,
-    loading: recommendationsLoading,
-    error,
-    generateRecommendations,
-    refreshRecommendations,
-    hasRecommendations,
-    canGenerate,
-    collectionSize,
-    getStats
-  } = useSmartRecommendations();
-
-  const {
-    loading: actionsLoading,
-    addToWishlist,
-    markAsOwned,
-    dismissRecommendation,
-    trackView,
-    recordSession,
-    hasActedOn,
-    actionStats,
-    getConversionRate
-  } = useRecommendationActions({ trackViews: true });
-
-  const [activeFilters, setActiveFilters] = useState<RecommendationFilters>({});
-  const [showFilters, setShowFilters] = useState(false);
-  const [feedbackModal, setFeedbackModal] = useState<{
-    isOpen: boolean;
-    recommendation: MovieRecommendation | null;
-  }>({ isOpen: false, recommendation: null });
-  const [actedRecommendations, setActedRecommendations] = useState<Set<string>>(new Set());
+  const { user } = useAuth();
+  const { collections, addToCollection } = useCollections();
+  
+  // State
+  const [recommendations, setRecommendations] = useState<MovieRecommendation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
+  const [actedRecommendations, setActedRecommendations] = useState<Set<string>>(new Set());
+  const [feedbackModal, setFeedbackModal] = useState<FeedbackModal>({ isOpen: false, recommendation: null });
+  const [filters, setFilters] = useState<RecommendationFilters>({
+    max_results: 12,
+    exclude_owned: true,
+    exclude_wishlist: false
+  });
 
-  const stats = getStats();
+  // Refs
+  const generateRequestRef = useRef<number>(0);
 
-  // Check which recommendations user has already acted on
-  useEffect(() => {
-    const checkActedRecommendations = async () => {
-      if (!recommendations.length) return;
-
-      const checks = await Promise.all(
-        recommendations.map(async (rec) => {
-          const acted = await hasActedOn(rec.imdb_id, rec.recommendation_type);
-          return { id: `${rec.imdb_id}_${rec.recommendation_type}`, acted };
-        })
+  // Generate recommendations
+  const generateRecommendations = async () => {
+    if (!user || collections.length < 3) {
+      setError(collections.length === 0 
+        ? "Add some movies to your collection first to get recommendations!" 
+        : `Add ${3 - collections.length} more movies to get recommendations!`
       );
-
-      const actedSet = new Set(
-        checks.filter(check => check.acted).map(check => check.id)
-      );
-      setActedRecommendations(actedSet);
-    };
-
-    checkActedRecommendations();
-  }, [recommendations, hasActedOn]);
-
-  // Track recommendation views
-  useEffect(() => {
-    recommendations.forEach(rec => {
-      trackView(rec);
-    });
-  }, [recommendations, trackView]);
-
-  // Record recommendation session when recommendations are generated
-  useEffect(() => {
-    if (recommendations.length > 0) {
-      recordSession(recommendations.length, activeFilters, undefined, false);
+      return;
     }
-  }, [recommendations.length, recordSession, activeFilters]);
+
+    setLoading(true);
+    setError(null);
+    const requestId = ++generateRequestRef.current;
+
+    try {
+      console.log('[SmartRecommendations] Generating recommendations for', collections.length, 'items');
+      
+      const newRecommendations = await smartRecommendationsService.generateRecommendations(
+        collections,
+        filters
+      );
+
+      // Only update if this is still the latest request
+      if (requestId === generateRequestRef.current) {
+        setRecommendations(newRecommendations);
+        
+        if (newRecommendations.length === 0) {
+          setError("No new recommendations found. Try adjusting your filters or adding more items to your collection.");
+        } else {
+          // Track views for analytics
+          console.log(`[SmartRecommendations] Generated ${newRecommendations.length} recommendations`);
+        }
+      }
+    } catch (err) {
+      console.error('[SmartRecommendations] Error:', err);
+      if (requestId === generateRequestRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to generate recommendations');
+      }
+    } finally {
+      if (requestId === generateRequestRef.current) {
+        setLoading(false);
+      }
+    }
+  };
 
   // Handle add to wishlist
   const handleAddToWishlist = async (recommendation: MovieRecommendation) => {
@@ -414,12 +367,28 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     setProcessingActions(prev => new Set(prev).add(actionId));
     
     try {
-      const result = await addToWishlist(recommendation);
-      if (result.success) {
+      const result = await addToCollection({
+        title: recommendation.title,
+        year: recommendation.year,
+        genre: recommendation.genre,
+        director: recommendation.director,
+        poster_url: recommendation.poster_url,
+        imdb_id: recommendation.imdb_id,
+        imdb_rating: recommendation.imdb_rating,
+        plot: recommendation.plot,
+        collection_type: 'wishlist',
+        watch_status: 'To Watch',
+        personal_rating: null,
+        notes: `Added from smart recommendations (${recommendation.recommendation_type})`
+      });
+
+      if (result) {
         setActedRecommendations(prev => new Set(prev).add(actionId));
+        toast.success(`Added "${recommendation.title}" to your wishlist!`);
       }
     } catch (error) {
       console.error('Failed to add to wishlist:', error);
+      toast.error('Failed to add to wishlist. Please try again.');
     } finally {
       setProcessingActions(prev => {
         const newSet = new Set(prev);
@@ -437,12 +406,28 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     setProcessingActions(prev => new Set(prev).add(actionId));
     
     try {
-      const result = await markAsOwned(recommendation);
-      if (result.success) {
+      const result = await addToCollection({
+        title: recommendation.title,
+        year: recommendation.year,
+        genre: recommendation.genre,
+        director: recommendation.director,
+        poster_url: recommendation.poster_url,
+        imdb_id: recommendation.imdb_id,
+        imdb_rating: recommendation.imdb_rating,
+        plot: recommendation.plot,
+        collection_type: 'owned',
+        watch_status: 'Watched',
+        personal_rating: null,
+        notes: `Added from smart recommendations (${recommendation.recommendation_type})`
+      });
+
+      if (result) {
         setActedRecommendations(prev => new Set(prev).add(actionId));
+        toast.success(`Added "${recommendation.title}" to your collection!`);
       }
     } catch (error) {
       console.error('Failed to mark as owned:', error);
+      toast.error('Failed to add to collection. Please try again.');
     } finally {
       setProcessingActions(prev => {
         const newSet = new Set(prev);
@@ -461,177 +446,114 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const handleFeedbackSubmit = async (reason: FeedbackReason, comment?: string) => {
     if (!feedbackModal.recommendation) return;
 
-    const recommendation = feedbackModal.recommendation;
-    const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
+    const actionId = `${feedbackModal.recommendation.imdb_id}_${feedbackModal.recommendation.recommendation_type}`;
+    setActedRecommendations(prev => new Set(prev).add(actionId));
     
-    setProcessingActions(prev => new Set(prev).add(actionId));
+    // Here you would typically send feedback to your analytics service
+    console.log('User feedback:', { reason, comment, recommendation: feedbackModal.recommendation });
     
-    try {
-      const result = await dismissRecommendation(recommendation, reason, comment);
-      if (result.success) {
-        setActedRecommendations(prev => new Set(prev).add(actionId));
-      }
-    } catch (error) {
-      console.error('Failed to dismiss recommendation:', error);
-    } finally {
-      setProcessingActions(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(actionId);
-        return newSet;
-      });
+    toast.success('Thanks for your feedback!');
+    setFeedbackModal({ isOpen: false, recommendation: null });
+  };
+
+  // Load recommendations on mount
+  useEffect(() => {
+    if (collections.length >= 3) {
+      generateRecommendations();
     }
-  };
+  }, [collections.length]);
 
-  // Handle filter changes
-  const handleFilterChange = (newFilters: RecommendationFilters) => {
-    setActiveFilters(newFilters);
-    generateRecommendations(newFilters);
-  };
-
-  // Handle refresh
-  const handleRefresh = () => {
-    refreshRecommendations();
-  };
-
-  if (!canGenerate) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center py-12">
-          <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Smart Recommendations
-          </h2>
-          <p className="text-gray-600 mb-4">
-            You need at least 3 items in your collection to generate personalized recommendations.
-          </p>
-          <p className="text-sm text-gray-500">
-            Current collection size: {collectionSize} items
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Check if user can generate recommendations
+  const canGenerate = collections.length >= 3;
+  const hasRecommendations = recommendations.length > 0;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Smart Recommendations
-          </h1>
-          <p className="text-gray-600">
-            Personalized suggestions based on your {collectionSize}-item collection
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-lg border transition-colors ${
-              showFilters 
-                ? 'bg-blue-50 border-blue-200 text-blue-700' 
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Filter className="h-4 w-4 mr-2 inline" />
-            Filters
-          </button>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+              <Sparkles className="h-8 w-8 text-purple-600" />
+              Smart Recommendations
+            </h1>
+            <p className="text-slate-600 mt-2">
+              Personalized movie suggestions based on your collection
+            </p>
+          </div>
           
-          <button
-            onClick={handleRefresh}
-            disabled={recommendationsLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${recommendationsLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={generateRecommendations}
+              disabled={loading || !canGenerate}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Generating...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-6 text-sm text-slate-600">
+          <span>Collection size: {collections.length}</span>
+          {hasRecommendations && <span>Recommendations: {recommendations.length}</span>}
         </div>
       </div>
-
-      {/* Stats */}
-      {(stats || actionStats) && (
-        <div className="bg-white rounded-lg border p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="h-5 w-5 text-gray-600" />
-            <h3 className="font-semibold">Performance Overview</h3>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {stats && (
-              <>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
-                  <p className="text-sm text-gray-600">Recommendations</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-600">{(stats.avg_confidence * 100).toFixed(0)}%</p>
-                  <p className="text-sm text-gray-600">Avg Confidence</p>
-                </div>
-              </>
-            )}
-            {actionStats && (
-              <>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{getConversionRate().toFixed(1)}%</p>
-                  <p className="text-sm text-gray-600">Conversion Rate</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-600">{actionStats.total_actions}</p>
-                  <p className="text-sm text-gray-600">Total Actions</p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2 text-red-800">
-            <AlertCircle className="h-5 w-5" />
-            <span className="font-semibold">Error generating recommendations</span>
+        <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 mr-2" />
+            <div>
+              <p className="text-orange-800 font-medium">Unable to Generate Recommendations</p>
+              <p className="text-orange-700 text-sm mt-1">{error}</p>
+            </div>
           </div>
-          <p className="text-red-700 mt-1">{error}</p>
         </div>
       )}
 
       {/* Loading State */}
-      {recommendationsLoading ? (
+      {loading && (
         <div className="text-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Generating personalized recommendations...</p>
-        </div>
-      ) : hasRecommendations ? (
-        <div className="space-y-6">
-          {/* Recommendations Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {recommendations.map((recommendation, index) => {
-              const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
-              const hasActed = actedRecommendations.has(actionId);
-              const isProcessing = processingActions.has(actionId);
-
-              return (
-                <RecommendationCard
-                  key={`${recommendation.imdb_id}_${recommendation.recommendation_type}_${index}`}
-                  recommendation={recommendation}
-                  onAddToWishlist={() => handleAddToWishlist(recommendation)}
-                  onMarkAsOwned={() => handleMarkAsOwned(recommendation)}
-                  onDismiss={() => handleDismiss(recommendation)}
-                  loading={isProcessing}
-                  hasActed={hasActed}
-                />
-              );
-            })}
+          <div className="inline-flex items-center gap-3 text-slate-600">
+            <RefreshCw className="h-6 w-6 animate-spin" />
+            <span className="text-lg">Analyzing your collection and generating recommendations...</span>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Recommendations Grid */}
+      {hasRecommendations && !loading && (
+        <div className="space-y-6">
+          {recommendations.map((recommendation, index) => {
+            const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
+            const hasActed = actedRecommendations.has(actionId);
+            const isProcessing = processingActions.has(actionId);
+
+            return (
+              <RecommendationCard
+                key={`${recommendation.imdb_id}-${recommendation.recommendation_type}-${index}`}
+                recommendation={recommendation}
+                onAddToWishlist={() => handleAddToWishlist(recommendation)}
+                onMarkAsOwned={() => handleMarkAsOwned(recommendation)}
+                onDismiss={() => handleDismiss(recommendation)}
+                loading={isProcessing}
+                hasActed={hasActed}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!hasRecommendations && !loading && !error && (
         <div className="text-center py-12">
-          <Sparkles className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No recommendations yet</h3>
-          <p className="text-gray-600 mb-4">
-            Click "Refresh" to generate personalized recommendations based on your collection.
+          <Zap className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Ready to Discover?</h2>
+          <p className="text-slate-600 mb-6">
+            Click "Refresh" to get personalized movie recommendations based on your collection.
           </p>
         </div>
       )}
@@ -641,7 +563,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
         isOpen={feedbackModal.isOpen}
         onClose={() => setFeedbackModal({ isOpen: false, recommendation: null })}
         onSubmit={handleFeedbackSubmit}
-        recommendationTitle={feedbackModal.recommendation?.title || ''}
+        loading={false}
       />
     </div>
   );
