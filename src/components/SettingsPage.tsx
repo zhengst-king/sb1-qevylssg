@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { RecommendationPreferencesManager } from './RecommendationPreferencesManager';
 import { CollectionLinkingAdmin } from './CollectionLinkingAdmin';
+import { Link } from 'lucide-react';
 
 interface ImportHistoryRecord {
   id: string;
@@ -25,6 +26,7 @@ export function SettingsPage() {
   const [showRatings, setShowRatings] = useState(true);
   const [posterSize, setPosterSize] = useState('medium');
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [showLinkingTool, setShowLinkingTool] = useState(false);
   
   // NEW: Recommendation preferences modal state
   const [showRecommendationPrefs, setShowRecommendationPrefs] = useState(false);
@@ -242,6 +244,14 @@ export function SettingsPage() {
               <Trash2 className="w-4 h-4 mr-2" />
               Clear All Data
             </button>
+
+            <button 
+  onClick={() => setShowLinkingTool(true)}
+  className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+>
+  <Link className="w-4 h-4 mr-2" />
+  Fix Technical Specs
+</button>
           </div>
         </section>
 
@@ -545,6 +555,23 @@ export function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Collection Technical Specs Linking Tool Modal */}
+{showLinkingTool && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
+      <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Fix Technical Specifications Linking</h3>
+        <button 
+          onClick={() => setShowLinkingTool(false)}
+          className="text-slate-400 hover:text-slate-600"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="p-0">
+        <CollectionLinkingAdmin />
+      </div>
     </div>
   );
 }
