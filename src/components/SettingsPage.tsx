@@ -5,6 +5,7 @@ import { useHARImport } from '../hooks/useHARImport';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { RecommendationPreferencesManager } from './RecommendationPreferencesManager';
+import { CollectionLinkingAdmin } from './CollectionLinkingAdmin';
 
 interface ImportHistoryRecord {
   id: string;
