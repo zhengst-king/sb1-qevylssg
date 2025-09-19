@@ -112,8 +112,23 @@ export const useSmartRecommendations = (): UseSmartRecommendationsReturn => {
         };
         setStats(newStats);
 
-        // Generate user profile for analytics
-        const profile = smartRecommendationsService.analyzeUserProfile(collections);
+        // Generate user profile for analytics (create a simple one for now)
+        const profile: UserProfile = {
+          favorite_genres: [],
+          favorite_directors: [],
+          format_preferences: [],
+          rating_pattern: {
+            avg_rating: 0,
+            high_rated_threshold: 7,
+            rating_count: 0
+          },
+          collection_stats: {
+            total_items: collections.length,
+            owned_items: collections.filter(c => c.collection_type === 'owned').length,
+            wishlist_items: collections.filter(c => c.collection_type === 'wishlist').length,
+            most_collected_decade: '2020s'
+          }
+        };
         setUserProfile(profile);
 
         if (newRecommendations.length === 0) {
