@@ -3,21 +3,25 @@ import React, { useState } from 'react';
 import { 
   Heart, Package, X, CheckCircle, AlertTriangle, Sparkles, 
   Star, Calendar, Play, RefreshCw, TrendingUp, 
-  Eye, Target, Zap
+  Eye, Target, Zap, Info
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useCollections } from '../hooks/useCollections';
 
-// Try to import the real services, but with fallbacks
+// Try to import the real services, but with better error handling
 let smartRecommendationsService: any = null;
+let serviceImportError: string | null = null;
+
 try {
   const serviceModule = require('../services/smartRecommendationsService');
   smartRecommendationsService = serviceModule.smartRecommendationsService;
+  console.log('[Diagnostic] Service imported successfully:', !!smartRecommendationsService);
 } catch (error) {
-  console.warn('[SmartRecommendations] Service not available, using fallback mode');
+  serviceImportError = error.message;
+  console.error('[Diagnostic] Service import failed:', error);
 }
 
-// Define types locally to avoid import issues
+// Define types locally
 type FeedbackReason = 'not_my_genre' | 'already_seen' | 'too_expensive' | 'not_available' | 'poor_quality' | 'other';
 
 // Mock recommendation data for fallback
@@ -70,7 +74,16 @@ interface FeedbackModal {
   recommendation: any | null;
 }
 
-// Action Button Component
+interface DiagnosticInfo {
+  serviceAvailable: boolean;
+  serviceError: string | null;
+  collectionCount: number;
+  collectionSample: any[];
+  omdbConfigured: boolean;
+  lastError: string | null;
+}
+
+// Action Button Component (same as before)
 const ActionButtonComponent: React.FC<ActionButton> = ({ 
   icon: Icon, 
   label, 
@@ -100,6 +113,87 @@ const ActionButtonComponent: React.FC<ActionButton> = ({
       )}
       <span>{loading ? 'Processing...' : label}</span>
     </button>
+  );
+};
+
+// Diagnostic Panel Component
+const DiagnosticPanel: React.FC<{ 
+  diagnostic: DiagnosticInfo;
+  isVisible: boolean;
+  onToggle: () => void;
+}> = ({ diagnostic, isVisible, onToggle }) => {
+  if (!isVisible) {
+    return (
+      <button
+        onClick={onToggle}
+        className="mb-4 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors"
+      >
+        <Info className="h-4 w-4 inline mr-2" />
+        Show Diagnostics
+      </button>
+    );
+  }
+
+  return (
+    <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          Diagnostic Information
+        </h3>
+        <button
+          onClick={onToggle}
+          className="text-slate-500 hover:text-slate-700 text-sm"
+        >
+          Hide
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div>
+          <h4 className="font-medium mb-2">Service Status</h4>
+          <ul className="space-y-1">
+            <li className={`flex items-center gap-2 ${diagnostic.serviceAvailable ? 'text-green-700' : 'text-red-700'}`}>
+              <span className={`w-2 h-2 rounded-full ${diagnostic.serviceAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              Service Available: {diagnostic.serviceAvailable ? 'Yes' : 'No'}
+            </li>
+            <li className={`flex items-center gap-2 ${diagnostic.omdbConfigured ? 'text-green-700' : 'text-red-700'}`}>
+              <span className={`w-2 h-2 rounded-full ${diagnostic.omdbConfigured ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              OMDB Configured: {diagnostic.omdbConfigured ? 'Yes' : 'No'}
+            </li>
+          </ul>
+          
+          {diagnostic.serviceError && (
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700">
+              <strong>Import Error:</strong> {diagnostic.serviceError}
+            </div>
+          )}
+          
+          {diagnostic.lastError && (
+            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-orange-700">
+              <strong>Runtime Error:</strong> {diagnostic.lastError}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h4 className="font-medium mb-2">Collection Data</h4>
+          <ul className="space-y-1">
+            <li>Count: {diagnostic.collectionCount}</li>
+            <li>Sample Data Available: {diagnostic.collectionSample.length > 0 ? 'Yes' : 'No'}</li>
+          </ul>
+          
+          {diagnostic.collectionSample.length > 0 && (
+            <div className="mt-2 p-2 bg-slate-100 rounded text-xs">
+              <strong>Sample Item:</strong>
+              <pre className="mt-1 overflow-x-auto">
+                {JSON.stringify(diagnostic.collectionSample[0], null, 2).substring(0, 200)}...
+              </pre>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -348,6 +442,8 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
   const [isRealMode, setIsRealMode] = useState(false);
+  const [lastRuntimeError, setLastRuntimeError] = useState<string | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   
   // UI State
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
@@ -366,7 +462,24 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const canGenerate = collectionSize >= 3;
   const hasRecommendations = recommendations.length > 0;
 
-  // Enhanced recommendation generation - tries real service first, falls back to mock
+  // Check if OMDB is configured
+  const omdbConfigured = !!(
+    typeof import.meta !== 'undefined' && 
+    import.meta.env?.VITE_OMDB_API_KEY ||
+    process.env?.VITE_OMDB_API_KEY
+  );
+
+  // Create diagnostic info
+  const diagnosticInfo: DiagnosticInfo = {
+    serviceAvailable: !!smartRecommendationsService,
+    serviceError: serviceImportError,
+    collectionCount: collectionSize,
+    collectionSample: Array.isArray(collections) ? collections.slice(0, 1) : [],
+    omdbConfigured,
+    lastError: lastRuntimeError
+  };
+
+  // Enhanced recommendation generation with detailed logging
   const generateRecommendations = async () => {
     if (!user) {
       setError('Please sign in to get recommendations');
@@ -383,16 +496,24 @@ export const SmartRecommendationsWithActions: React.FC = () => {
 
     setLoading(true);
     setError(null);
+    setLastRuntimeError(null);
 
     try {
       let generatedRecommendations = [];
       let usingRealService = false;
 
+      console.log('[Diagnostic] Starting recommendation generation...');
+      console.log('[Diagnostic] Service available:', !!smartRecommendationsService);
+      console.log('[Diagnostic] OMDB configured:', omdbConfigured);
+      console.log('[Diagnostic] Collection count:', collectionSize);
+      console.log('[Diagnostic] Sample collection item:', collections[0]);
+
       // Try the real service first
       if (smartRecommendationsService && Array.isArray(collections) && collections.length >= 3) {
         try {
-          console.log('[SmartRecommendations] Attempting real service with', collections.length, 'items');
+          console.log('[Diagnostic] Attempting real service generation...');
           
+          const startTime = Date.now();
           generatedRecommendations = await smartRecommendationsService.generateRecommendations(
             collections,
             {
@@ -402,20 +523,36 @@ export const SmartRecommendationsWithActions: React.FC = () => {
               min_confidence: 0.5
             }
           );
+          const endTime = Date.now();
+          
+          console.log('[Diagnostic] Service call completed in', endTime - startTime, 'ms');
+          console.log('[Diagnostic] Recommendations returned:', generatedRecommendations);
           
           if (generatedRecommendations && generatedRecommendations.length > 0) {
             usingRealService = true;
-            console.log('[SmartRecommendations] Real service succeeded:', generatedRecommendations.length, 'recommendations');
+            console.log('[Diagnostic] ✅ Real service succeeded:', generatedRecommendations.length, 'recommendations');
+          } else {
+            console.log('[Diagnostic] ⚠️ Real service returned empty results');
+            setLastRuntimeError('Service returned no recommendations');
           }
         } catch (serviceError) {
-          console.warn('[SmartRecommendations] Real service failed:', serviceError);
+          console.error('[Diagnostic] ❌ Real service failed:', serviceError);
+          setLastRuntimeError(serviceError.message || 'Unknown service error');
         }
+      } else {
+        const reasons = [];
+        if (!smartRecommendationsService) reasons.push('service not imported');
+        if (!Array.isArray(collections)) reasons.push('collections not array');
+        if (collections.length < 3) reasons.push('insufficient collections');
+        
+        console.log('[Diagnostic] ⚠️ Skipping real service:', reasons.join(', '));
+        setLastRuntimeError(`Service not attempted: ${reasons.join(', ')}`);
       }
 
       // Fallback to mock data if real service didn't work
       if (!usingRealService) {
-        console.log('[SmartRecommendations] Using mock data fallback');
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+        console.log('[Diagnostic] 🔄 Using mock data fallback');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Shorter delay for testing
         generatedRecommendations = mockRecommendations;
       }
       
@@ -424,19 +561,22 @@ export const SmartRecommendationsWithActions: React.FC = () => {
       setIsRealMode(usingRealService);
       
       const message = usingRealService 
-        ? `Generated ${generatedRecommendations.length} personalized recommendations!`
-        : `Generated ${generatedRecommendations.length} demo recommendations!`;
+        ? `✅ Generated ${generatedRecommendations.length} real recommendations!`
+        : `🎭 Generated ${generatedRecommendations.length} demo recommendations`;
       showNotification(message, 'success');
       
+      console.log('[Diagnostic] 🎉 Generation complete. Mode:', usingRealService ? 'Real' : 'Demo');
+      
     } catch (err) {
-      console.error('Failed to generate recommendations:', err);
+      console.error('[Diagnostic] 💥 Unexpected error:', err);
       setError('Failed to generate recommendations. Please try again.');
+      setLastRuntimeError(err.message || 'Unexpected error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle add to wishlist - same as before but with better feedback
+  // Handle add to wishlist - same as before
   const handleAddToWishlist = async (recommendation: any) => {
     const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
     if (processingActions.has(actionId)) return;
@@ -445,7 +585,6 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     
     try {
       if (addToCollection) {
-        // Try to use real collection function
         await addToCollection({
           title: recommendation.title,
           year: recommendation.year,
@@ -459,7 +598,6 @@ export const SmartRecommendationsWithActions: React.FC = () => {
         });
         showNotification(`Added "${recommendation.title}" to your wishlist!`, 'success');
       } else {
-        // Fallback to simulation
         await new Promise(resolve => setTimeout(resolve, 1000));
         showNotification(`Added "${recommendation.title}" to wishlist (demo)`, 'success');
       }
@@ -478,7 +616,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     }
   };
 
-  // Handle mark as owned - same as before but with better feedback
+  // Handle mark as owned - same as before  
   const handleMarkAsOwned = async (recommendation: any) => {
     const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
     if (processingActions.has(actionId)) return;
@@ -487,7 +625,6 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     
     try {
       if (addToCollection) {
-        // Try to use real collection function
         await addToCollection({
           title: recommendation.title,
           year: recommendation.year,
@@ -501,7 +638,6 @@ export const SmartRecommendationsWithActions: React.FC = () => {
         });
         showNotification(`Added "${recommendation.title}" to your collection!`, 'success');
       } else {
-        // Fallback to simulation
         await new Promise(resolve => setTimeout(resolve, 1000));
         showNotification(`Added "${recommendation.title}" to collection (demo)`, 'success');
       }
@@ -574,10 +710,17 @@ export const SmartRecommendationsWithActions: React.FC = () => {
               ? 'bg-green-100 text-green-700' 
               : 'bg-purple-100 text-purple-700'
           }`}>
-            {isRealMode ? 'Real Mode' : 'Demo Mode'}
+            {isRealMode ? '✅ Real Mode' : '🎭 Demo Mode'}
           </span>
         </div>
       </div>
+
+      {/* Diagnostic Panel */}
+      <DiagnosticPanel 
+        diagnostic={diagnosticInfo}
+        isVisible={showDiagnostics}
+        onToggle={() => setShowDiagnostics(!showDiagnostics)}
+      />
 
       {/* Error State */}
       {error && (
