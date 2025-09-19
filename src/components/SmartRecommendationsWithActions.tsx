@@ -7,8 +7,7 @@ import {
 } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { useAuth } from '../hooks/useAuth';
-import { optimizedOMDBService } from '../services/optimizedOMDBService';
-import { smartRecommendationsService, MovieRecommendation, RecommendationFilters } from '../services/smartRecommendationsService';
+import { useSmartRecommendations } from '../hooks/useSmartRecommendations';
 // Removed react-hot-toast dependency - using simple notifications instead
 
 // Types
@@ -463,17 +462,6 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     setFeedbackModal({ isOpen: false, recommendation: null });
   };
 
-  // Load recommendations on mount
-  useEffect(() => {
-    if (collections.length >= 3) {
-      generateRecommendations();
-    }
-  }, [collections.length]);
-
-  // Check if user can generate recommendations
-  const canGenerate = collections.length >= 3;
-  const hasRecommendations = recommendations.length > 0;
-
   return (
     <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
@@ -491,7 +479,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
           
           <div className="flex items-center gap-3">
             <button
-              onClick={generateRecommendations}
+              onClick={refreshRecommendations}
               disabled={loading || !canGenerate}
               className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
@@ -503,7 +491,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
 
         {/* Stats */}
         <div className="flex items-center gap-6 text-sm text-slate-600">
-          <span>Collection size: {collections.length}</span>
+          <span>Collection size: {collectionSize}</span>
           {hasRecommendations && <span>Recommendations: {recommendations.length}</span>}
         </div>
       </div>
