@@ -8,17 +8,22 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useCollections } from '../hooks/useCollections';
 
-// Try to import the real services, but with better error handling
+// ✅ FIXED: Use proper ES6 imports instead of require()
 let smartRecommendationsService: any = null;
 let serviceImportError: string | null = null;
 
 try {
-  const serviceModule = require('../services/smartRecommendationsService');
-  smartRecommendationsService = serviceModule.smartRecommendationsService;
-  console.log('[Diagnostic] Service imported successfully:', !!smartRecommendationsService);
+  // Use dynamic import for better compatibility
+  import('../services/smartRecommendationsService').then((module) => {
+    smartRecommendationsService = module.smartRecommendationsService;
+    console.log('[Fixed] Service imported successfully via ES6:', !!smartRecommendationsService);
+  }).catch((error) => {
+    serviceImportError = error.message;
+    console.warn('[Fixed] Service import failed:', error);
+  });
 } catch (error) {
   serviceImportError = error.message;
-  console.error('[Diagnostic] Service import failed:', error);
+  console.error('[Fixed] Service import failed:', error);
 }
 
 // Define types locally
@@ -83,7 +88,7 @@ interface DiagnosticInfo {
   lastError: string | null;
 }
 
-// Action Button Component (same as before)
+// Action Button Component
 const ActionButtonComponent: React.FC<ActionButton> = ({ 
   icon: Icon, 
   label, 
@@ -164,13 +169,13 @@ const DiagnosticPanel: React.FC<{
           </ul>
           
           {diagnostic.serviceError && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700">
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
               <strong>Import Error:</strong> {diagnostic.serviceError}
             </div>
           )}
           
           {diagnostic.lastError && (
-            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-orange-700">
+            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-orange-700 text-xs">
               <strong>Runtime Error:</strong> {diagnostic.lastError}
             </div>
           )}
@@ -186,18 +191,29 @@ const DiagnosticPanel: React.FC<{
           {diagnostic.collectionSample.length > 0 && (
             <div className="mt-2 p-2 bg-slate-100 rounded text-xs">
               <strong>Sample Item:</strong>
-              <pre className="mt-1 overflow-x-auto">
-                {JSON.stringify(diagnostic.collectionSample[0], null, 2).substring(0, 200)}...
-              </pre>
+              <div className="mt-1 font-mono text-xs bg-white p-2 rounded overflow-x-auto">
+                Title: {diagnostic.collectionSample[0]?.title || 'N/A'}<br/>
+                IMDB ID: {diagnostic.collectionSample[0]?.imdb_id || 'N/A'}<br/>
+                Year: {diagnostic.collectionSample[0]?.year || 'N/A'}
+              </div>
             </div>
           )}
         </div>
+      </div>
+      
+      {/* Import Status */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+        <h4 className="font-medium text-blue-900 mb-2">🔧 Import Method: ES6 Dynamic Import (Fixed)</h4>
+        <p className="text-blue-800 text-sm">
+          Previous issue: Used Node.js <code className="bg-blue-100 px-1 rounded">require()</code> in browser.<br/>
+          <strong>Fixed:</strong> Now using ES6 <code className="bg-blue-100 px-1 rounded">import()</code> for compatibility.
+        </p>
       </div>
     </div>
   );
 };
 
-// Recommendation Card Component (same as before)
+// Recommendation Card Component (same as before but shorter for brevity)
 const RecommendationCard: React.FC<{
   recommendation: any;
   onAddToWishlist: () => void;
@@ -249,7 +265,6 @@ const RecommendationCard: React.FC<{
 
         {/* Content */}
         <div className="flex-1 p-6">
-          {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
@@ -277,7 +292,6 @@ const RecommendationCard: React.FC<{
               </div>
             </div>
             
-            {/* Confidence Score */}
             <div className="text-right">
               <div className="text-xs text-slate-500 mb-1">Confidence</div>
               <div className="text-lg font-bold text-purple-600">
@@ -286,7 +300,6 @@ const RecommendationCard: React.FC<{
             </div>
           </div>
 
-          {/* Metadata */}
           {recommendation.genre && (
             <p className="text-sm text-slate-600 mb-2">
               <span className="font-medium">Genre:</span> {recommendation.genre}
@@ -299,7 +312,6 @@ const RecommendationCard: React.FC<{
             </p>
           )}
 
-          {/* Reasoning */}
           <div className="bg-slate-50 rounded-lg p-3 mb-4">
             <p className="text-sm text-slate-700">
               <span className="font-medium text-slate-900">Why we recommend this:</span><br />
@@ -307,7 +319,6 @@ const RecommendationCard: React.FC<{
             </p>
           </div>
 
-          {/* Action Buttons */}
           {hasActed ? (
             <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
               <CheckCircle className="h-4 w-4 text-green-600" />
@@ -444,6 +455,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const [isRealMode, setIsRealMode] = useState(false);
   const [lastRuntimeError, setLastRuntimeError] = useState<string | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [serviceReady, setServiceReady] = useState(false);
   
   // UI State
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
@@ -471,7 +483,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
 
   // Create diagnostic info
   const diagnosticInfo: DiagnosticInfo = {
-    serviceAvailable: !!smartRecommendationsService,
+    serviceAvailable: !!smartRecommendationsService && serviceReady,
     serviceError: serviceImportError,
     collectionCount: collectionSize,
     collectionSample: Array.isArray(collections) ? collections.slice(0, 1) : [],
@@ -479,7 +491,21 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     lastError: lastRuntimeError
   };
 
-  // Enhanced recommendation generation with detailed logging
+  // Check service readiness periodically
+  React.useEffect(() => {
+    const checkService = () => {
+      if (smartRecommendationsService && !serviceReady) {
+        setServiceReady(true);
+        console.log('[Fixed] ✅ Service is now ready!');
+      }
+    };
+    
+    checkService();
+    const interval = setInterval(checkService, 1000);
+    return () => clearInterval(interval);
+  }, [serviceReady]);
+
+  // Enhanced recommendation generation with better service loading
   const generateRecommendations = async () => {
     if (!user) {
       setError('Please sign in to get recommendations');
@@ -502,16 +528,16 @@ export const SmartRecommendationsWithActions: React.FC = () => {
       let generatedRecommendations = [];
       let usingRealService = false;
 
-      console.log('[Diagnostic] Starting recommendation generation...');
-      console.log('[Diagnostic] Service available:', !!smartRecommendationsService);
-      console.log('[Diagnostic] OMDB configured:', omdbConfigured);
-      console.log('[Diagnostic] Collection count:', collectionSize);
-      console.log('[Diagnostic] Sample collection item:', collections[0]);
+      console.log('[Fixed] Starting recommendation generation...');
+      console.log('[Fixed] Service available:', !!smartRecommendationsService);
+      console.log('[Fixed] Service ready:', serviceReady);
+      console.log('[Fixed] OMDB configured:', omdbConfigured);
+      console.log('[Fixed] Collection count:', collectionSize);
 
-      // Try the real service first
-      if (smartRecommendationsService && Array.isArray(collections) && collections.length >= 3) {
+      // Try the real service first if available and ready
+      if (smartRecommendationsService && serviceReady && Array.isArray(collections) && collections.length >= 3) {
         try {
-          console.log('[Diagnostic] Attempting real service generation...');
+          console.log('[Fixed] 🚀 Attempting real service generation...');
           
           const startTime = Date.now();
           generatedRecommendations = await smartRecommendationsService.generateRecommendations(
@@ -525,34 +551,35 @@ export const SmartRecommendationsWithActions: React.FC = () => {
           );
           const endTime = Date.now();
           
-          console.log('[Diagnostic] Service call completed in', endTime - startTime, 'ms');
-          console.log('[Diagnostic] Recommendations returned:', generatedRecommendations);
+          console.log('[Fixed] Service call completed in', endTime - startTime, 'ms');
+          console.log('[Fixed] Recommendations returned:', generatedRecommendations);
           
           if (generatedRecommendations && generatedRecommendations.length > 0) {
             usingRealService = true;
-            console.log('[Diagnostic] ✅ Real service succeeded:', generatedRecommendations.length, 'recommendations');
+            console.log('[Fixed] ✅ Real service succeeded:', generatedRecommendations.length, 'recommendations');
           } else {
-            console.log('[Diagnostic] ⚠️ Real service returned empty results');
+            console.log('[Fixed] ⚠️ Real service returned empty results');
             setLastRuntimeError('Service returned no recommendations');
           }
         } catch (serviceError) {
-          console.error('[Diagnostic] ❌ Real service failed:', serviceError);
+          console.error('[Fixed] ❌ Real service failed:', serviceError);
           setLastRuntimeError(serviceError.message || 'Unknown service error');
         }
       } else {
         const reasons = [];
         if (!smartRecommendationsService) reasons.push('service not imported');
+        if (!serviceReady) reasons.push('service not ready');
         if (!Array.isArray(collections)) reasons.push('collections not array');
         if (collections.length < 3) reasons.push('insufficient collections');
         
-        console.log('[Diagnostic] ⚠️ Skipping real service:', reasons.join(', '));
+        console.log('[Fixed] ⚠️ Skipping real service:', reasons.join(', '));
         setLastRuntimeError(`Service not attempted: ${reasons.join(', ')}`);
       }
 
       // Fallback to mock data if real service didn't work
       if (!usingRealService) {
-        console.log('[Diagnostic] 🔄 Using mock data fallback');
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Shorter delay for testing
+        console.log('[Fixed] 🔄 Using mock data fallback');
+        await new Promise(resolve => setTimeout(resolve, 1000));
         generatedRecommendations = mockRecommendations;
       }
       
@@ -565,10 +592,10 @@ export const SmartRecommendationsWithActions: React.FC = () => {
         : `🎭 Generated ${generatedRecommendations.length} demo recommendations`;
       showNotification(message, 'success');
       
-      console.log('[Diagnostic] 🎉 Generation complete. Mode:', usingRealService ? 'Real' : 'Demo');
+      console.log('[Fixed] 🎉 Generation complete. Mode:', usingRealService ? 'Real' : 'Demo');
       
     } catch (err) {
-      console.error('[Diagnostic] 💥 Unexpected error:', err);
+      console.error('[Fixed] 💥 Unexpected error:', err);
       setError('Failed to generate recommendations. Please try again.');
       setLastRuntimeError(err.message || 'Unexpected error');
     } finally {
@@ -712,6 +739,11 @@ export const SmartRecommendationsWithActions: React.FC = () => {
           }`}>
             {isRealMode ? '✅ Real Mode' : '🎭 Demo Mode'}
           </span>
+          {smartRecommendationsService && serviceReady && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+              🔧 Import Fixed
+            </span>
+          )}
         </div>
       </div>
 
