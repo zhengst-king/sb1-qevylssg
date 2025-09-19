@@ -8,10 +8,19 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useCollections } from '../hooks/useCollections';
 
+// Try to import the real services, but with fallbacks
+let smartRecommendationsService: any = null;
+try {
+  const serviceModule = require('../services/smartRecommendationsService');
+  smartRecommendationsService = serviceModule.smartRecommendationsService;
+} catch (error) {
+  console.warn('[SmartRecommendations] Service not available, using fallback mode');
+}
+
 // Define types locally to avoid import issues
 type FeedbackReason = 'not_my_genre' | 'already_seen' | 'too_expensive' | 'not_available' | 'poor_quality' | 'other';
 
-// Mock recommendation data for testing
+// Mock recommendation data for fallback
 const mockRecommendations = [
   {
     imdb_id: 'tt0111161',
@@ -94,7 +103,7 @@ const ActionButtonComponent: React.FC<ActionButton> = ({
   );
 };
 
-// Recommendation Card Component
+// Recommendation Card Component (same as before)
 const RecommendationCard: React.FC<{
   recommendation: any;
   onAddToWishlist: () => void;
@@ -243,7 +252,7 @@ const RecommendationCard: React.FC<{
   );
 };
 
-// Feedback Modal Component
+// Feedback Modal Component (same as before)
 const FeedbackModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -333,11 +342,12 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const { user } = useAuth();
   const { collections = [], addToCollection } = useCollections() || { collections: [], addToCollection: null };
   
-  // Local state for demo functionality
+  // Local state
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
+  const [isRealMode, setIsRealMode] = useState(false);
   
   // UI State
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
@@ -356,7 +366,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const canGenerate = collectionSize >= 3;
   const hasRecommendations = recommendations.length > 0;
 
-  // Mock recommendation generation
+  // Enhanced recommendation generation - tries real service first, falls back to mock
   const generateRecommendations = async () => {
     if (!user) {
       setError('Please sign in to get recommendations');
@@ -375,13 +385,48 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      let generatedRecommendations = [];
+      let usingRealService = false;
+
+      // Try the real service first
+      if (smartRecommendationsService && Array.isArray(collections) && collections.length >= 3) {
+        try {
+          console.log('[SmartRecommendations] Attempting real service with', collections.length, 'items');
+          
+          generatedRecommendations = await smartRecommendationsService.generateRecommendations(
+            collections,
+            {
+              max_results: 6,
+              exclude_owned: true,
+              exclude_wishlist: false,
+              min_confidence: 0.5
+            }
+          );
+          
+          if (generatedRecommendations && generatedRecommendations.length > 0) {
+            usingRealService = true;
+            console.log('[SmartRecommendations] Real service succeeded:', generatedRecommendations.length, 'recommendations');
+          }
+        } catch (serviceError) {
+          console.warn('[SmartRecommendations] Real service failed:', serviceError);
+        }
+      }
+
+      // Fallback to mock data if real service didn't work
+      if (!usingRealService) {
+        console.log('[SmartRecommendations] Using mock data fallback');
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+        generatedRecommendations = mockRecommendations;
+      }
       
-      // Use mock data for now
-      setRecommendations(mockRecommendations);
+      setRecommendations(generatedRecommendations);
       setHasGeneratedOnce(true);
-      showNotification('Generated 2 personalized recommendations!', 'success');
+      setIsRealMode(usingRealService);
+      
+      const message = usingRealService 
+        ? `Generated ${generatedRecommendations.length} personalized recommendations!`
+        : `Generated ${generatedRecommendations.length} demo recommendations!`;
+      showNotification(message, 'success');
       
     } catch (err) {
       console.error('Failed to generate recommendations:', err);
@@ -391,7 +436,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     }
   };
 
-  // Handle add to wishlist
+  // Handle add to wishlist - same as before but with better feedback
   const handleAddToWishlist = async (recommendation: any) => {
     const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
     if (processingActions.has(actionId)) return;
@@ -412,16 +457,17 @@ export const SmartRecommendationsWithActions: React.FC = () => {
           collection_type: 'wishlist',
           watch_status: 'To Watch'
         });
+        showNotification(`Added "${recommendation.title}" to your wishlist!`, 'success');
       } else {
         // Fallback to simulation
         await new Promise(resolve => setTimeout(resolve, 1000));
+        showNotification(`Added "${recommendation.title}" to wishlist (demo)`, 'success');
       }
       
       setActedRecommendations(prev => new Set(prev).add(actionId));
-      showNotification(`Added "${recommendation.title}" to your wishlist!`, 'success');
     } catch (error) {
       console.error('Failed to add to wishlist:', error);
-      showNotification('Added to wishlist (demo mode)', 'success');
+      showNotification(`Added "${recommendation.title}" to wishlist (demo)`, 'success');
       setActedRecommendations(prev => new Set(prev).add(actionId));
     } finally {
       setProcessingActions(prev => {
@@ -432,7 +478,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     }
   };
 
-  // Handle mark as owned
+  // Handle mark as owned - same as before but with better feedback
   const handleMarkAsOwned = async (recommendation: any) => {
     const actionId = `${recommendation.imdb_id}_${recommendation.recommendation_type}`;
     if (processingActions.has(actionId)) return;
@@ -453,16 +499,17 @@ export const SmartRecommendationsWithActions: React.FC = () => {
           collection_type: 'owned',
           watch_status: 'Watched'
         });
+        showNotification(`Added "${recommendation.title}" to your collection!`, 'success');
       } else {
         // Fallback to simulation
         await new Promise(resolve => setTimeout(resolve, 1000));
+        showNotification(`Added "${recommendation.title}" to collection (demo)`, 'success');
       }
       
       setActedRecommendations(prev => new Set(prev).add(actionId));
-      showNotification(`Added "${recommendation.title}" to your collection!`, 'success');
     } catch (error) {
       console.error('Failed to mark as owned:', error);
-      showNotification('Added to collection (demo mode)', 'success');
+      showNotification(`Added "${recommendation.title}" to collection (demo)`, 'success');
       setActedRecommendations(prev => new Set(prev).add(actionId));
     } finally {
       setProcessingActions(prev => {
@@ -522,7 +569,13 @@ export const SmartRecommendationsWithActions: React.FC = () => {
         <div className="flex items-center gap-6 text-sm text-slate-600">
           <span>Collection size: {collectionSize}</span>
           {hasRecommendations && <span>Recommendations: {recommendations.length}</span>}
-          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">Demo Mode</span>
+          <span className={`px-2 py-1 rounded text-xs ${
+            isRealMode 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-purple-100 text-purple-700'
+          }`}>
+            {isRealMode ? 'Real Mode' : 'Demo Mode'}
+          </span>
         </div>
       </div>
 
