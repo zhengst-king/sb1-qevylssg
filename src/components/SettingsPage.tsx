@@ -573,5 +573,5 @@ export function SettingsPage() {
         <CollectionLinkingAdmin />
       </div>
     </div>
-  </div>  // ✅ ADD THIS CLOSING DIV TAG
+  </div>
 )}
