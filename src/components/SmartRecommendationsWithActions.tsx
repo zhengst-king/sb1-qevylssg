@@ -9,7 +9,7 @@ import { useCollections } from '../hooks/useCollections';
 import { useAuth } from '../hooks/useAuth';
 import { optimizedOMDBService } from '../services/optimizedOMDBService';
 import { smartRecommendationsService, MovieRecommendation, RecommendationFilters } from '../services/smartRecommendationsService';
-import { toast } from 'react-hot-toast';
+// Removed react-hot-toast dependency - using simple notifications instead
 
 // Types
 type FeedbackReason = 'not_my_genre' | 'already_seen' | 'too_expensive' | 'not_available' | 'poor_quality' | 'other';
@@ -305,11 +305,18 @@ export const SmartRecommendationsWithActions: React.FC = () => {
   const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
   const [actedRecommendations, setActedRecommendations] = useState<Set<string>>(new Set());
   const [feedbackModal, setFeedbackModal] = useState<FeedbackModal>({ isOpen: false, recommendation: null });
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [filters, setFilters] = useState<RecommendationFilters>({
     max_results: 12,
     exclude_owned: true,
     exclude_wishlist: false
   });
+
+  // Simple notification system
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   // Refs
   const generateRequestRef = useRef<number>(0);
@@ -384,11 +391,11 @@ export const SmartRecommendationsWithActions: React.FC = () => {
 
       if (result) {
         setActedRecommendations(prev => new Set(prev).add(actionId));
-        toast.success(`Added "${recommendation.title}" to your wishlist!`);
+        showNotification(`Added "${recommendation.title}" to your wishlist!`, 'success');
       }
     } catch (error) {
       console.error('Failed to add to wishlist:', error);
-      toast.error('Failed to add to wishlist. Please try again.');
+      showNotification('Failed to add to wishlist. Please try again.', 'error');
     } finally {
       setProcessingActions(prev => {
         const newSet = new Set(prev);
@@ -423,11 +430,11 @@ export const SmartRecommendationsWithActions: React.FC = () => {
 
       if (result) {
         setActedRecommendations(prev => new Set(prev).add(actionId));
-        toast.success(`Added "${recommendation.title}" to your collection!`);
+        showNotification(`Added "${recommendation.title}" to your collection!`, 'success');
       }
     } catch (error) {
       console.error('Failed to mark as owned:', error);
-      toast.error('Failed to add to collection. Please try again.');
+      showNotification('Failed to add to collection. Please try again.', 'error');
     } finally {
       setProcessingActions(prev => {
         const newSet = new Set(prev);
@@ -452,7 +459,7 @@ export const SmartRecommendationsWithActions: React.FC = () => {
     // Here you would typically send feedback to your analytics service
     console.log('User feedback:', { reason, comment, recommendation: feedbackModal.recommendation });
     
-    toast.success('Thanks for your feedback!');
+    showNotification('Thanks for your feedback!', 'success');
     setFeedbackModal({ isOpen: false, recommendation: null });
   };
 
@@ -565,6 +572,24 @@ export const SmartRecommendationsWithActions: React.FC = () => {
         onSubmit={handleFeedbackSubmit}
         loading={false}
       />
+
+      {/* Simple Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+          notification.type === 'success' 
+            ? 'bg-green-500 text-white' 
+            : 'bg-red-500 text-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <CheckCircle className="h-5 w-5" />
+            ) : (
+              <X className="h-5 w-5" />
+            )}
+            <span>{notification.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
