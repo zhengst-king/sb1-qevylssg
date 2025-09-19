@@ -571,7 +571,10 @@ export function SettingsPage() {
       </div>
       <div className="p-0">
         <CollectionLinkingAdmin />
-      </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
+  );
+}
