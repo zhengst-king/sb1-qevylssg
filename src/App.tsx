@@ -8,10 +8,26 @@ import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
 import { MyCollectionsPage } from './components/MyCollectionsPage';
 import { SettingsPage } from './components/SettingsPage';
 import { SmartRecommendationsContainer } from './components/SmartRecommendationsContainer';
+import { MyStarsPage } from './components/MyStarsPage';
+import { MySpotsPage } from './components/MySpotsPage';
+import { MyTagsPage } from './components/MyTagsPage';
+import { CalendarsPage } from './components/CalendarsPage';
+import { AnalyticsPage } from './components/AnalyticsPage';
 import { useAuth } from './hooks/useAuth';
 
-// Clean PageType - back to the original structure
-type PageType = 'search' | 'movies' | 'tv-series' | 'collections' | 'settings' | 'recommendations';
+// Updated PageType with new pages
+type PageType = 
+  | 'search' 
+  | 'movies' 
+  | 'tv-series' 
+  | 'collections' 
+  | 'new2me'
+  | 'my-stars'
+  | 'my-spots'
+  | 'my-tags'
+  | 'calendars'
+  | 'analytics'
+  | 'settings';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
@@ -24,8 +40,13 @@ function App() {
       'movies', 
       'tv-series', 
       'collections', 
-      'settings', 
-      'recommendations'
+      'new2me',
+      'my-stars',
+      'my-spots',
+      'my-tags',
+      'calendars',
+      'analytics',
+      'settings'
     ];
     
     if (!isAuthenticated && protectedPages.includes(page)) {
@@ -48,19 +69,30 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navigation 
-        currentPage={currentPage} 
-        onPageChange={handlePageChange}
-        onSignInClick={() => setShowAuthModal(true)}
-      />
+      {/* Sticky Navigation */}
+      <div className="sticky top-0 z-50">
+        <Navigation 
+          currentPage={currentPage} 
+          onPageChange={handlePageChange}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
+      </div>
       
-      {/* Main Page Routing */}
-      {currentPage === 'search' && <SearchPage />}
-      {currentPage === 'movies' && <MovieWatchlistPage />}
-      {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
-      {currentPage === 'collections' && <MyCollectionsPage />}
-      {currentPage === 'settings' && <SettingsPage />}
-      {currentPage === 'recommendations' && <SmartRecommendationsContainer />}
+      {/* Main Content Container with top padding for sticky nav */}
+      <div className="pt-4">
+        {/* Main Page Routing */}
+        {currentPage === 'search' && <SearchPage />}
+        {currentPage === 'movies' && <MovieWatchlistPage />}
+        {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
+        {currentPage === 'collections' && <MyCollectionsPage />}
+        {currentPage === 'new2me' && <SmartRecommendationsContainer />}
+        {currentPage === 'my-stars' && <MyStarsPage />}
+        {currentPage === 'my-spots' && <MySpotsPage />}
+        {currentPage === 'my-tags' && <MyTagsPage />}
+        {currentPage === 'calendars' && <CalendarsPage />}
+        {currentPage === 'analytics' && <AnalyticsPage />}
+        {currentPage === 'settings' && <SettingsPage />}
+      </div>
       
       <AuthModal 
         isOpen={showAuthModal} 
