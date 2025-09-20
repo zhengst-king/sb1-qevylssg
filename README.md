@@ -4,7 +4,7 @@ A comprehensive movie watchlist application with AI-powered review enhancement.
 
 ## Features
 
-- **Movie Search**: Search movies using The Movie Database (TMDb) API
+- **Movie Search**: Search movies using The Open Movie Database (OMDb) API
 - **Personal Watchlist**: Add movies to your personal watchlist with status tracking
 - **AI-Powered Reviews**: Write and enhance movie reviews using AI
 - **Advanced Filtering**: Filter movies by year, rating, genre, director, and more
@@ -22,8 +22,8 @@ Create a `.env` file in the root directory with the following variables:
 VITE_SUPABASE_URL=https://ofzcqugxmlazjwbwikxb.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9memNxdWd4bWxhemp3Yndpa3hiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2NTk1NDgsImV4cCI6MjA3MDIzNTU0OH0.UNd7LsEOQ-ilM5pD7MiIaEbhlHv_w3JSx77PZIUnUYs
 
-# TMDb API Configuration (Already configured)
-VITE_TMDB_API_KEY=a1c48dd97365677772288676568b781d
+# OMDb API Configuration (Already configured)
+VITE_OMDB_API_KEY=b9fe3880
 
 # Google Gemini API Configuration (Required for AI review enhancement)
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
@@ -133,14 +133,14 @@ The AI review feature uses Google's Gemini Pro model to:
 
 - **Frontend**: React, TypeScript, Tailwind CSS
 - **Database**: Supabase (PostgreSQL)
-- **Movie Data**: The Movie Database (TMDb) API
+- **Movie Data**: The Open Movie Database (OMDb) API
 - **AI Enhancement**: Google Gemini API (Gemini Pro model)
 - **Build Tool**: Vite
 
 ## Features Overview
 
 ### Movie Search
-- Real-time search using TMDb API
+- Real-time search using OMDb API
 - Detailed movie information including cast, crew, and ratings
 - High-quality movie posters and metadata
 
@@ -164,4 +164,4 @@ The AI review feature uses Google's Gemini Pro model to:
 
 ## License
 
-This project is for educational and personal use. Please respect the terms of service for all integrated APIs (TMDb, Groq, Supabase).
+This project is for educational and personal use. Please respect the terms of service for all integrated APIs (OMDb, Groq, Supabase).
