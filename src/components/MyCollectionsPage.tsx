@@ -527,7 +527,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             <div>
               <h1 className="text-3xl font-bold text-slate-900 flex items-center">
                 <Package className="h-8 w-8 text-blue-600 mr-3" />
-                My Collections
+                My Disc Collections
               </h1>
               <p className="text-slate-600 mt-2">
                 Manage your physical media collection
