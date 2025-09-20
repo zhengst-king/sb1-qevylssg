@@ -1,11 +1,11 @@
+// src/components/MovieWatchlistPage.tsx
 import React, { useState, useMemo } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Film, AlertCircle } from 'lucide-react';
-import { Download } from 'lucide-react';
+import { Filter, Film, AlertCircle, Download } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -159,28 +159,37 @@ export function MovieWatchlistPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <Film className="h-12 w-12 text-blue-600" />
-            <h1 className="text-4xl font-bold text-slate-900">My Movie Watchlist</h1>
-          </div>
-          <p className="text-lg text-slate-600">
-            Manage your personal collection of movies
-          </p>
-          
-          {/* Download Button */}
-          {movies.length > 0 && (
-            <div className="mt-6">
-              <button
-                onClick={() => downloadMovieWatchlist(movies)}
-                className="inline-flex items-center px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors shadow-lg hover:shadow-xl"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download My List ({movies.length} movies)
-              </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Header - Matching MyCollections style */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center">
+                <Film className="h-8 w-8 text-blue-600 mr-3" />
+                My Movies
+              </h1>
+              <p className="text-slate-600 mt-2">
+                Manage your personal collection of movies
+              </p>
             </div>
-          )}
+            
+            <div className="flex items-center space-x-3">
+              {/* Download Button */}
+              {movies.length > 0 && (
+                <button
+                  onClick={() => downloadMovieWatchlist(movies)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download My List</span>
+                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
+                    {movies.length}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {error && (
