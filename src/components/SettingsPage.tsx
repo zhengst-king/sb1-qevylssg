@@ -1,510 +1,484 @@
 // src/components/SettingsPage.tsx
-import React, { useState, useEffect } from 'react';
-import { User, Download, Upload, Trash2, Key, Shield, Palette, Monitor, Moon, Sun, CheckCircle, AlertCircle, X, FileText, Clock, List, Sparkles, Eye } from 'lucide-react';
-import { useHARImport } from '../hooks/useHARImport';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { 
+  Settings, 
+  User, 
+  Bell, 
+  Download, 
+  Upload, 
+  FileText, 
+  Trash2, 
+  Link, 
+  Palette, 
+  Sun, 
+  Moon, 
+  Monitor, 
+  Shield,
+  Package,
+  Disc3,
+  Sparkles,
+  Eye,
+  TrendingUp
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { RecommendationPreferencesManager } from './RecommendationPreferencesManager';
-import { CollectionLinkingAdmin } from './CollectionLinkingAdmin';
-import { Link } from 'lucide-react';
+import { CollectionLinkingTool } from './CollectionLinkingTool';
 
-interface ImportHistoryRecord {
-  id: string;
-  upload_datetime: string;
-  streaming_service: string;
-  default_status: string;
-  har_filename: string;
-  movies_added: number;
-  tv_series_added: number;
-  total_imported: number;
-}
+type SettingsTab = 'account' | 'collections' | 'notifications' | 'data' | 'display' | 'privacy';
 
 export function SettingsPage() {
   const { user } = useAuth();
-  const [theme, setTheme] = useState('light');
-  const [cardsPerRow, setCardsPerRow] = useState('4');
-  const [showRatings, setShowRatings] = useState(true);
-  const [posterSize, setPosterSize] = useState('medium');
-  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [showLinkingTool, setShowLinkingTool] = useState(false);
   
-  // NEW: Recommendation preferences modal state
-  const [showRecommendationPrefs, setShowRecommendationPrefs] = useState(false);
-  
-  // Import state
-  const [selectedService, setSelectedService] = useState<'netflix' | 'hulu' | 'disney' | 'prime'>('netflix');
-  const [defaultWatchStatus, setDefaultWatchStatus] = useState<'To Watch' | 'Watching' | 'Watched'>('To Watch');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  // Import history state
-  const [importHistory, setImportHistory] = useState<ImportHistoryRecord[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  
-  const { isImporting, progress, result, error, importFromHAR, resetState } = useHARImport();
+  // Settings state
+  const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light');
+  const [cardsPerRow, setCardsPerRow] = useState('4');
+  const [showRatings, setShowRatings] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
+
+  // Collections settings state
+  const [includeWishlistItems, setIncludeWishlistItems] = useState(false);
+  const [focusOnCollectionGaps, setFocusOnCollectionGaps] = useState(true);
+  const [formatUpgradeSuggestions, setFormatUpgradeSuggestions] = useState(true);
+  const [maxRecommendations, setMaxRecommendations] = useState('12');
+  const [confidenceThreshold, setConfidenceThreshold] = useState('0.5');
+
+  const tabs: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'account', label: 'Account', icon: User },
+    { id: 'collections', label: 'Collections', icon: Package },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'data', label: 'Data Management', icon: Download },
+    { id: 'display', label: 'Display', icon: Palette },
+    { id: 'privacy', label: 'Privacy', icon: Shield },
+  ];
 
   const handleImportMyLists = () => {
-    resetState();
-    setSelectedFile(null);
-    setImportModalOpen(true);
-    fetchImportHistory(); // Fetch history when modal opens
-  };
-
-  const fetchImportHistory = async () => {
-    if (!user) return;
-    
-    setHistoryLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('import_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('upload_datetime', { ascending: false })
-        .limit(20); // Show last 20 imports
-
-      if (error) {
-        console.error('Error fetching import history:', error);
-        return;
-      }
-
-      setImportHistory(data || []);
-    } catch (err) {
-      console.error('Error fetching import history:', err);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    setSelectedFile(file || null);
-  };
-
-  const handleStartImport = async () => {
-    if (!selectedFile) return;
-    
-    try {
-      await importFromHAR(selectedFile, selectedService, defaultWatchStatus);
-      // Refresh history after successful import
-      await fetchImportHistory();
-    } catch (error) {
-      console.error('Import failed:', error);
-    }
-  };
-
-  const handleCloseModal = () => {
-    if (!isImporting) {
-      setImportModalOpen(false);
-      resetState();
-      setSelectedFile(null);
-    }
+    console.log('Import functionality coming soon');
   };
 
   const handleExportWatchlists = () => {
-    // TODO: Implement export functionality
-    alert('Export functionality coming soon!');
+    console.log('Export functionality coming soon');
   };
 
   const handleBackupData = () => {
-    // TODO: Implement backup functionality
-    alert('Backup functionality coming soon!');
+    console.log('Backup functionality coming soon');
   };
 
   const handleClearAllData = () => {
-    const confirm = window.confirm('Are you sure you want to delete all your data? This cannot be undone.');
-    if (confirm) {
-      // TODO: Implement clear all data functionality
-      alert('Clear all data functionality coming soon!');
+    if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+      console.log('Clear data functionality coming soon');
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600 mt-2">Manage your account, preferences, and data</p>
+        <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
+          <Settings className="h-8 w-8 text-slate-600" />
+          <span>Settings</span>
+        </h1>
+        <p className="text-slate-600 mt-2">
+          Manage your account, preferences, and data
+        </p>
       </div>
 
-      <div className="space-y-8">
-        {/* Account Settings */}
-        <section className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center mb-4">
-            <User className="w-5 h-5 text-slate-600 mr-2" />
-            <h2 className="text-xl font-semibold text-slate-900">Account Settings</h2>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
-              <input 
-                type="email" 
-                value={user?.email || ''}
-                disabled
-                className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-md bg-slate-50 text-slate-500"
-              />
-            </div>
-            
-            <div className="flex space-x-4">
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                Update Profile
-              </button>
-              <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors">
-                Change Password
-              </button>
-            </div>
-          </div>
-        </section>
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar */}
+        <div className="lg:w-64">
+          <nav className="space-y-1">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-blue-100 text-blue-700 border-blue-300'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <Icon className="h-4 w-4 mr-3" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
-        {/* NEW: Smart Recommendations Section */}
-        <section className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-purple-50 rounded-lg">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">Smart Recommendations</h2>
-              <p className="text-sm text-slate-600">Customize your recommendation experience</p>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <p className="text-slate-600 text-sm">
-              Configure how the recommendation system learns your preferences and suggests new movies for your collection.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => setShowRecommendationPrefs(true)}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>Manage Recommendation Preferences</span>
-              </button>
+        {/* Main Content */}
+        <div className="flex-1 space-y-6">
+          {/* Account Settings */}
+          {activeTab === 'account' && (
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center mb-6">
+                <User className="w-5 h-5 text-slate-600 mr-2" />
+                <h2 className="text-xl font-semibold text-slate-900">Account Information</h2>
+              </div>
               
-              <button
-                onClick={() => window.location.hash = '#recommendations'}
-                className="inline-flex items-center space-x-2 px-6 py-3 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors font-medium"
-              >
-                <Eye className="h-4 w-4" />
-                <span>View Recommendations</span>
-              </button>
-            </div>
-
-            {/* Quick stats or info */}
-            <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-100">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-purple-600 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-purple-900">How it works</h4>
-                  <p className="text-sm text-purple-700 mt-1">
-                    Our smart recommendation system analyzes your collection to find missing movies from franchises you collect, 
-                    format upgrades for your favorites, and similar titles you might love. The more you use it, the better it gets!
-                  </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={user?.email || ''}
+                    disabled
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md bg-slate-50 text-slate-500"
+                  />
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Data Management Section */}
-        <section className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center mb-4">
-            <Download className="w-5 h-5 text-slate-600 mr-2" />
-            <h2 className="text-xl font-semibold text-slate-900">Data Management</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button 
-              onClick={handleImportMyLists}
-              className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Import My Lists
-            </button>
-            
-            <button 
-              onClick={handleExportWatchlists}
-              className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export Watchlists
-            </button>
-            
-            <button 
-              onClick={handleBackupData}
-              className="flex items-center justify-center px-4 py-3 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Backup Data
-            </button>
-            
-            <button 
-              onClick={handleClearAllData}
-              className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Clear All Data
-            </button>
-
-            <button 
-  onClick={() => setShowLinkingTool(true)}
-  className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
->
-  <Link className="w-4 h-4 mr-2" />
-  Fix Technical Specs
-</button>
-          </div>
-        </section>
-
-        {/* Display Settings Section */}
-        <section className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center mb-4">
-            <Palette className="w-5 h-5 text-slate-600 mr-2" />
-            <h2 className="text-xl font-semibold text-slate-900">Display Settings</h2>
-          </div>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Theme</label>
-              <div className="flex space-x-4">
-                <button 
-                  onClick={() => setTheme('light')}
-                  className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
-                    theme === 'light' 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Sun className="w-4 h-4 mr-2" />
-                  Light
-                </button>
-                <button 
-                  onClick={() => setTheme('dark')}
-                  className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
-                    theme === 'dark' 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Moon className="w-4 h-4 mr-2" />
-                  Dark
-                </button>
-                <button 
-                  onClick={() => setTheme('auto')}
-                  className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
-                    theme === 'auto' 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <Monitor className="w-4 h-4 mr-2" />
-                  Auto
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Cards per row</label>
-              <select 
-                value={cardsPerRow}
-                onChange={(e) => setCardsPerRow(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="3">3 cards</option>
-                <option value="4">4 cards</option>
-                <option value="5">5 cards</option>
-                <option value="6">6 cards</option>
-              </select>
-            </div>
-
-            <div className="flex items-center">
-              <input 
-                type="checkbox" 
-                id="show-ratings"
-                checked={showRatings}
-                onChange={(e) => setShowRatings(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="show-ratings" className="ml-2 text-sm text-slate-700">
-                Show ratings on cards
-              </label>
-            </div>
-          </div>
-        </section>
-
-{/* Security & Privacy Section */}
-        <section className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center mb-4">
-            <Shield className="w-5 h-5 text-slate-600 mr-2" />
-            <h2 className="text-xl font-semibold text-slate-900">Security & Privacy</h2>
-          </div>
-          
-          <div className="space-y-2">
-            <button className="text-blue-600 hover:text-blue-800 text-sm">
-              Change password
-            </button>
-            <br />
-            <button className="text-blue-600 hover:text-blue-800 text-sm">
-              Two-factor authentication
-            </button>
-            <br />
-            <button className="text-blue-600 hover:text-blue-800 text-sm">
-              View active sessions
-            </button>
-            <br />
-            <button className="text-blue-600 hover:text-blue-800 text-sm">
-              Privacy policy
-            </button>
-            <br />
-            <button className="text-red-600 hover:text-red-800 text-sm">
-              Delete account
-            </button>
-          </div>
-        </section>
-      </div>
-
-      {/* Import Modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Import My Lists</h3>
-              {!isImporting && (
-                <button 
-                  onClick={handleCloseModal}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-
-            {/* Show error if any */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-center">
-                  <AlertCircle className="w-4 h-4 text-red-600 mr-2" />
-                  <span className="text-red-800 text-sm">{error}</span>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">User ID</label>
+                  <input
+                    type="text"
+                    value={user?.id || ''}
+                    disabled
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md bg-slate-50 text-slate-500 font-mono text-xs"
+                  />
                 </div>
-              </div>
-            )}
-
-            {/* Show import result */}
-            {result && (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
-                <div className="flex items-start">
-                  <CheckCircle className="w-5 h-5 text-green-600 mr-2 mt-0.5" />
-                  <div className="text-green-800 text-sm">
-                    <div className="font-medium mb-2">Import completed successfully!</div>
-                    <div className="space-y-1">
-                      <div>Movies added: {result.moviesAdded}</div>
-                      <div>TV series added: {result.tvSeriesAdded}</div>
-                      <div>Total items processed: {result.totalProcessed}</div>
-                    </div>
+                
+                <div className="pt-4 border-t border-slate-200">
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">Account Actions</h3>
+                  <div className="space-y-2">
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                      Change Password
+                    </button>
+                    <br />
+                    <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                      Delete Account
+                    </button>
                   </div>
                 </div>
               </div>
-            )}
+            </section>
+          )}
 
-            {!result && (
+          {/* Collections Settings */}
+          {activeTab === 'collections' && (
+            <div className="space-y-6">
+              <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center mb-6">
+                  <Sparkles className="w-5 h-5 text-purple-600 mr-2" />
+                  <h2 className="text-xl font-semibold text-slate-900">Recommendation Preferences</h2>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-slate-900">Include wishlist items</label>
+                        <p className="text-xs text-slate-600">Show recommendations even if they're already in your wishlist</p>
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        checked={includeWishlistItems}
+                        onChange={(e) => setIncludeWishlistItems(e.target.checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-slate-900">Focus on collection gaps</label>
+                        <p className="text-xs text-slate-600">Prioritize missing movies from series you already own</p>
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        checked={focusOnCollectionGaps}
+                        onChange={(e) => setFocusOnCollectionGaps(e.target.checked)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-slate-900">Format upgrade suggestions</label>
+                        <p className="text-xs text-slate-600">Suggest 4K/Blu-ray upgrades for DVDs you own</p>
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        checked={formatUpgradeSuggestions}
+                        onChange={(e) => setFormatUpgradeSuggestions(e.target.checked)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-900 mb-1">
+                        Maximum recommendations per session
+                      </label>
+                      <select 
+                        className="w-full p-2 border border-slate-300 rounded-md"
+                        value={maxRecommendations}
+                        onChange={(e) => setMaxRecommendations(e.target.value)}
+                      >
+                        <option value="6">6 recommendations</option>
+                        <option value="12">12 recommendations</option>
+                        <option value="18">18 recommendations</option>
+                        <option value="24">24 recommendations</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-slate-900 mb-1">
+                        Minimum confidence threshold
+                      </label>
+                      <select 
+                        className="w-full p-2 border border-slate-300 rounded-md"
+                        value={confidenceThreshold}
+                        onChange={(e) => setConfidenceThreshold(e.target.value)}
+                      >
+                        <option value="0.3">Low (30%)</option>
+                        <option value="0.5">Medium (50%)</option>
+                        <option value="0.7">High (70%)</option>
+                        <option value="0.8">Very High (80%)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                <div className="flex items-center mb-6">
+                  <Disc3 className="w-5 h-5 text-blue-600 mr-2" />
+                  <h2 className="text-xl font-semibold text-slate-900">Collection Management</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => setShowLinkingTool(true)}
+                    className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                  >
+                    <Link className="w-4 h-4 mr-2" />
+                    Fix Technical Specs
+                  </button>
+                  
+                  <button 
+                    className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Auto-Organize Collection
+                  </button>
+                  
+                  <button 
+                    className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Scan for Duplicates
+                  </button>
+                  
+                  <button 
+                    className="flex items-center justify-center px-4 py-3 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    Collection Health Check
+                  </button>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Notifications Settings */}
+          {activeTab === 'notifications' && (
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center mb-6">
+                <Bell className="w-5 h-5 text-slate-600 mr-2" />
+                <h2 className="text-xl font-semibold text-slate-900">Notification Preferences</h2>
+              </div>
+              
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Streaming Service
-                  </label>
-                  <select
-                    value={selectedService}
-                    onChange={(e) => setSelectedService(e.target.value as typeof selectedService)}
-                    disabled={isImporting}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="netflix">Netflix</option>
-                    <option value="hulu">Hulu</option>
-                    <option value="disney">Disney+</option>
-                    <option value="prime">Prime Video</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Default Watch Status
-                  </label>
-                  <select
-                    value={defaultWatchStatus}
-                    onChange={(e) => setDefaultWatchStatus(e.target.value as typeof defaultWatchStatus)}
-                    disabled={isImporting}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
-                  >
-                    <option value="To Watch">To Watch</option>
-                    <option value="Watching">Watching</option>
-                    <option value="Watched">Watched</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Select HAR File
-                  </label>
-                  <input
-                    type="file"
-                    accept=".har"
-                    onChange={handleFileChange}
-                    disabled={isImporting}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed"
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-medium text-slate-900">Email notifications</label>
+                    <p className="text-xs text-slate-600">Receive updates about your collection via email</p>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="rounded" 
+                    checked={emailNotifications}
+                    onChange={(e) => setEmailNotifications(e.target.checked)}
                   />
                 </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-sm font-medium text-slate-900">Push notifications</label>
+                    <p className="text-xs text-slate-600">Get notified about new recommendations and updates</p>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="rounded" 
+                    checked={pushNotifications}
+                    onChange={(e) => setPushNotifications(e.target.checked)}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
 
-                <button
-                  onClick={handleStartImport}
-                  disabled={!selectedFile || isImporting}
-                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          {/* Data Management Settings */}
+          {activeTab === 'data' && (
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center mb-6">
+                <Download className="w-5 h-5 text-slate-600 mr-2" />
+                <h2 className="text-xl font-semibold text-slate-900">Data Management</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button 
+                  onClick={handleImportMyLists}
+                  className="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  {isImporting ? 'Importing...' : 'Import'}
+                  Import My Lists
+                </button>
+                
+                <button 
+                  onClick={handleExportWatchlists}
+                  className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Watchlists
+                </button>
+                
+                <button 
+                  onClick={handleBackupData}
+                  className="flex items-center justify-center px-4 py-3 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Backup Data
+                </button>
+                
+                <button 
+                  onClick={handleClearAllData}
+                  className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear All Data
                 </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </section>
+          )}
 
-      {/* Recommendation Preferences Modal */}
-      {showRecommendationPrefs && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Recommendation Preferences</h3>
-              <button 
-                onClick={() => setShowRecommendationPrefs(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-0">
-              <RecommendationPreferencesManager />
-            </div>
-          </div>
-        </div>
-      )}
+          {/* Display Settings */}
+          {activeTab === 'display' && (
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center mb-6">
+                <Palette className="w-5 h-5 text-slate-600 mr-2" />
+                <h2 className="text-xl font-semibold text-slate-900">Display Settings</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Theme</label>
+                  <div className="flex space-x-4">
+                    <button 
+                      onClick={() => setTheme('light')}
+                      className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                        theme === 'light' 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Sun className="w-4 h-4 mr-2" />
+                      Light
+                    </button>
+                    <button 
+                      onClick={() => setTheme('dark')}
+                      className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                        theme === 'dark' 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Moon className="w-4 h-4 mr-2" />
+                      Dark
+                    </button>
+                    <button 
+                      onClick={() => setTheme('auto')}
+                      className={`flex items-center px-4 py-2 rounded-md border transition-colors ${
+                        theme === 'auto' 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Monitor className="w-4 h-4 mr-2" />
+                      Auto
+                    </button>
+                  </div>
+                </div>
 
-      {/* Collection Technical Specs Linking Tool Modal */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Cards per row</label>
+                  <select 
+                    value={cardsPerRow}
+                    onChange={(e) => setCardsPerRow(e.target.value)}
+                    className="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="3">3 cards</option>
+                    <option value="4">4 cards</option>
+                    <option value="5">5 cards</option>
+                    <option value="6">6 cards</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="show-ratings"
+                    checked={showRatings}
+                    onChange={(e) => setShowRatings(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="show-ratings" className="ml-2 text-sm text-slate-700">
+                    Show ratings on cards
+                  </label>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Privacy Settings */}
+          {activeTab === 'privacy' && (
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center mb-6">
+                <Shield className="w-5 h-5 text-slate-600 mr-2" />
+                <h2 className="text-xl font-semibold text-slate-900">Security & Privacy</h2>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <h3 className="font-medium text-slate-900 mb-2">Data Privacy</h3>
+                  <p className="text-sm text-slate-600 mb-3">
+                    Your collection data is stored securely and is never shared with third parties.
+                  </p>
+                  <button className="text-sm text-blue-600 hover:text-blue-800">
+                    View Privacy Policy
+                  </button>
+                </div>
+                
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <h3 className="font-medium text-slate-900 mb-2">Data Retention</h3>
+                  <p className="text-sm text-slate-600 mb-3">
+                    Collection data is retained until you delete your account.
+                  </p>
+                  <button className="text-sm text-blue-600 hover:text-blue-800">
+                    Request Data Export
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+
+      {/* Collection Linking Tool Modal */}
       {showLinkingTool && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Fix Technical Specifications Linking</h3>
-              <button 
-                onClick={() => setShowLinkingTool(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-0">
-              <CollectionLinkingAdmin />
-            </div>
-          </div>
-        </div>
+        <CollectionLinkingTool onClose={() => setShowLinkingTool(false)} />
       )}
     </div>
   );
