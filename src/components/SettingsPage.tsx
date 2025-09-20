@@ -18,14 +18,15 @@ import {
   Disc3,
   Sparkles,
   Eye,
-  TrendingUp
+  TrendingUp,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 type SettingsTab = 'account' | 'collections' | 'notifications' | 'data' | 'display' | 'privacy';
 
 export function SettingsPage() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   
   // Settings state
@@ -71,6 +72,15 @@ export function SettingsPage() {
 
   const handleFixTechnicalSpecs = () => {
     alert('Technical specs linking tool coming soon!');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Note: Navigation will handle redirecting to search page
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   return (
@@ -142,15 +152,27 @@ export function SettingsPage() {
                 </div>
                 
                 <div className="pt-4 border-t border-slate-200">
-                  <h3 className="text-lg font-medium text-slate-900 mb-2">Account Actions</h3>
-                  <div className="space-y-2">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                      Change Password
-                    </button>
-                    <br />
-                    <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
-                      Delete Account
-                    </button>
+                  <h3 className="text-lg font-medium text-slate-900 mb-4">Account Actions</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                        Change Password
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                    <div>
+                      <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                        Delete Account
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
