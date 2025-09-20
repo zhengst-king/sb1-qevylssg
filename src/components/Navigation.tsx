@@ -12,8 +12,7 @@ import {
   Calendar,
   BarChart3,
   Settings, 
-  User, 
-  LogOut 
+  User
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -37,16 +36,7 @@ interface NavigationProps {
 }
 
 export function Navigation({ currentPage, onPageChange, onSignInClick }: NavigationProps) {
-  const { isAuthenticated, user, signOut } = useAuth();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      onPageChange('search');
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
+  const { isAuthenticated } = useAuth();
 
   return (
     <nav className="bg-slate-800 shadow-lg border-b border-slate-700">
@@ -60,7 +50,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
           {/* Navigation Items */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-1">
-              {/* Search */}
+              {/* Home (previously Search) */}
               <button
                 onClick={() => onPageChange('search')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
@@ -70,7 +60,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
                 }`}
               >
                 <Search className="h-4 w-4" />
-                <span>Search</span>
+                <span>Home</span>
               </button>
 
               {/* Movies */}
@@ -105,7 +95,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
                 <span>My TV Series</span>
               </button>
 
-              {/* Collections */}
+              {/* My Discs (previously Collections) */}
               <button
                 onClick={() => onPageChange('collections')}
                 disabled={!isAuthenticated}
@@ -118,10 +108,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
                 }`}
               >
                 <Disc3 className="h-4 w-4" />
-                <span>Collections</span>
+                <span>My Discs</span>
               </button>
 
-              {/* New2Me (previously Smart Recs) */}
+              {/* New2Me */}
               <button
                 onClick={() => onPageChange('new2me')}
                 disabled={!isAuthenticated}
@@ -235,22 +225,9 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             </div>
           </div>
 
-          {/* User Section */}
+          {/* User Section - Only Sign In button when not authenticated */}
           <div className="ml-4 pl-4 border-l border-slate-600">
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-3">
-                <span className="text-slate-300 text-sm">
-                  {user?.email}
-                </span>
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center space-x-2 px-3 py-2 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all duration-200"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            ) : (
+            {!isAuthenticated && (
               <button
                 onClick={onSignInClick}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200"
