@@ -21,14 +21,12 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { CollectionLinkingTool } from './CollectionLinkingTool';
 
 type SettingsTab = 'account' | 'collections' | 'notifications' | 'data' | 'display' | 'privacy';
 
 export function SettingsPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
-  const [showLinkingTool, setShowLinkingTool] = useState(false);
   
   // Settings state
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light');
@@ -69,6 +67,10 @@ export function SettingsPage() {
     if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
       console.log('Clear data functionality coming soon');
     }
+  };
+
+  const handleFixTechnicalSpecs = () => {
+    alert('Technical specs linking tool coming soon!');
   };
 
   return (
@@ -250,7 +252,7 @@ export function SettingsPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button 
-                    onClick={() => setShowLinkingTool(true)}
+                    onClick={handleFixTechnicalSpecs}
                     className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
                   >
                     <Link className="w-4 h-4 mr-2" />
@@ -475,11 +477,6 @@ export function SettingsPage() {
           )}
         </div>
       </div>
-
-      {/* Collection Linking Tool Modal */}
-      {showLinkingTool && (
-        <CollectionLinkingTool onClose={() => setShowLinkingTool(false)} />
-      )}
     </div>
   );
 }
