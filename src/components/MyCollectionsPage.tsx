@@ -1,4 +1,4 @@
-// src/components/MyCollectionsPage.tsx - COMPLETE WITH CSV EXPORT FIX
+// src/components/MyCollectionsPage.tsx
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
@@ -19,14 +19,17 @@ import {
   UserCheck,
   AlertTriangle,
   Download,
+  Upload,
   Grid3X3,
   CheckCircle,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { useAuth } from '../hooks/useAuth';
 import { CollectionItemCard } from './CollectionItemCard';
 import { AddToCollectionModal } from './AddToCollectionModal';
+import { ImportListsModal } from './ImportListsModal';
 import { CollectionToolbar } from './CollectionToolbar';
 import { csvExportService } from '../services/csvExportService';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
@@ -110,96 +113,43 @@ const CollectionTypeTabs: React.FC<CollectionTypeTabsProps> = ({
   onTypeChange,
   stats
 }) => {
-  const collectionTypes = [
-    {
-      id: 'all' as const,
-      label: 'All Items',
-      icon: Grid3X3,
-      count: stats.total,
-      color: 'slate',
-      description: 'View all collection items'
-    },
-    {
-      id: 'owned' as const,
-      label: 'My Collection',
-      icon: Package,
-      count: stats.owned,
-      color: 'blue',
-      description: 'Items you own'
-    },
-    {
-      id: 'wishlist' as const,
-      label: 'Wishlist',
-      icon: Heart,
-      count: stats.wishlist,
-      color: 'red',
-      description: 'Items you want to buy'
-    },
-    {
-      id: 'for_sale' as const,
-      label: 'For Sale',
-      icon: DollarSign,
-      count: stats.for_sale,
-      color: 'green',
-      description: 'Items you\'re selling'
-    },
-    {
-      id: 'loaned_out' as const,
-      label: 'Loaned Out',
-      icon: UserCheck,
-      count: stats.loaned_out,
-      color: 'orange',
-      description: 'Items loaned to others'
-    },
-    {
-      id: 'missing' as const,
-      label: 'Missing',
-      icon: AlertTriangle,
-      count: stats.missing,
-      color: 'red',
-      description: 'Items that are lost or missing'
-    }
+  const tabs = [
+    { id: 'all' as const, label: 'All Items', count: stats.total, icon: Package, color: 'bg-slate-600' },
+    { id: 'owned' as const, label: 'Owned', count: stats.owned, icon: Disc3, color: 'bg-blue-600' },
+    { id: 'wishlist' as const, label: 'Wishlist', count: stats.wishlist, icon: Heart, color: 'bg-red-600' },
+    { id: 'for_sale' as const, label: 'For Sale', count: stats.for_sale, icon: DollarSign, color: 'bg-green-600' },
+    { id: 'loaned_out' as const, label: 'Loaned Out', count: stats.loaned_out, icon: UserCheck, color: 'bg-orange-600' },
+    { id: 'missing' as const, label: 'Missing', count: stats.missing, icon: AlertTriangle, color: 'bg-yellow-600' }
   ];
 
-  const colorClasses = {
-    slate: 'bg-slate-600 text-white border-slate-600',
-    blue: 'bg-blue-600 text-white border-blue-600',
-    red: 'bg-red-600 text-white border-red-600',
-    green: 'bg-green-600 text-white border-green-600',
-    orange: 'bg-orange-600 text-white border-orange-600'
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
-      <div className="flex flex-wrap gap-2">
-        {collectionTypes.map((type) => {
-          const isActive = activeType === type.id;
-          const Icon = type.icon;
-
-          return (
-            <button
-              key={type.id}
-              onClick={() => onTypeChange(type.id)}
-              className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                isActive 
-                  ? colorClasses[type.color as keyof typeof colorClasses]
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-              }`}
-              title={type.description}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{type.label}</span>
-              <span className={`inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold ${
-                isActive 
-                  ? 'bg-white bg-opacity-20 text-white' 
-                  : 'bg-slate-200 text-slate-700'
-              }`}>
-                {type.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex flex-wrap gap-2 mb-6">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeType === tab.id;
+        
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onTypeChange(tab.id)}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              isActive
+                ? `${tab.color} text-white shadow-md`
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{tab.label}</span>
+            <span className={`inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold ${
+              isActive 
+                ? 'bg-white bg-opacity-20 text-white' 
+                : 'bg-slate-200 text-slate-700'
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };
@@ -228,44 +178,39 @@ const FormatDistributionTabs: React.FC<FormatDistributionTabsProps> = ({
   }, [collections]);
 
   const formatTabs = [
-    { id: 'all' as const, label: 'All Formats', icon: Disc3, count: formatStats.all, color: 'bg-slate-500' },
-    { id: 'DVD' as const, label: 'DVD', icon: Disc3, count: formatStats.DVD, color: 'bg-red-500' },
-    { id: 'Blu-ray' as const, label: 'Blu-ray', icon: FileVideo, count: formatStats['Blu-ray'], color: 'bg-blue-500' },
-    { id: '4K UHD' as const, label: '4K UHD', icon: Monitor, count: formatStats['4K UHD'], color: 'bg-purple-500' },
-    { id: '3D Blu-ray' as const, label: '3D Blu-ray', icon: Eye, count: formatStats['3D Blu-ray'], color: 'bg-green-500' },
+    { id: 'all' as const, label: 'All Formats', icon: Monitor, color: 'text-slate-600' },
+    { id: 'DVD' as const, label: 'DVD', icon: Disc3, color: 'text-red-600' },
+    { id: 'Blu-ray' as const, label: 'Blu-ray', icon: Disc3, color: 'text-blue-600' },
+    { id: '4K UHD' as const, label: '4K UHD', icon: Monitor, color: 'text-purple-600' },
+    { id: '3D Blu-ray' as const, label: '3D Blu-ray', icon: FileVideo, color: 'text-green-600' }
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
-      <h3 className="text-sm font-medium text-slate-700 mb-3">Filter by Format</h3>
-      <div className="flex flex-wrap gap-2">
-        {formatTabs.map((tab) => {
-          const isActive = activeFormat === tab.id;
-          const Icon = tab.icon;
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onFormatChange(tab.id)}
-              className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
-                isActive 
-                  ? `${tab.color} text-white shadow-md`
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
-              <span className={`inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold ${
-                isActive 
-                  ? 'bg-white bg-opacity-20 text-white' 
-                  : 'bg-slate-200 text-slate-700'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex flex-wrap gap-2">
+      {formatTabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeFormat === tab.id;
+        const count = formatStats[tab.id];
+        
+        if (count === 0 && tab.id !== 'all') return null;
+        
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onFormatChange(tab.id)}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              isActive
+                ? 'bg-white shadow-sm border border-slate-200'
+                : 'bg-slate-50 hover:bg-slate-100'
+            }`}
+          >
+            <Icon className={`h-3 w-3 ${tab.color}`} />
+            <span className={isActive ? 'text-slate-900' : 'text-slate-600'}>
+              {tab.label} ({count})
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };
@@ -297,6 +242,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
 
   // UI state
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('all');
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'purchase_date' | 'personal_rating'>('title');
@@ -322,12 +268,12 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   const enhancedStats = useMemo(() => {
     const ownedItems = collections.filter(item => (item.collection_type || 'owned') === 'owned');
     const wishlistItems = collections.filter(item => item.collection_type === 'wishlist');
-    const ratedItems = collections.filter(item => item.user_rating && item.user_rating > 0);
+    const ratedItems = collections.filter(item => item.personal_rating && item.personal_rating > 0);
     
     const totalValue = ownedItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
     const wishlistValue = wishlistItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
     const avgRating = ratedItems.length > 0 
-      ? ratedItems.reduce((sum, item) => sum + (item.user_rating || 0), 0) / ratedItems.length 
+      ? ratedItems.reduce((sum, item) => sum + (item.personal_rating || 0), 0) / ratedItems.length 
       : 0;
 
     return {
@@ -335,98 +281,46 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
       wishlistValue,
       avgRating,
       mostExpensive: ownedItems.reduce((max, item) => 
-        (item.purchase_price || 0) > (max.purchase_price || 0) ? item : max, ownedItems[0]),
-      newestAddition: collections.reduce((newest, item) => 
-        new Date(item.created_at || 0) > new Date(newest?.created_at || 0) ? item : newest, collections[0])
+        (item.purchase_price || 0) > (max.purchase_price || 0) ? item : max, 
+        ownedItems[0] || {} as PhysicalMediaCollection
+      )
     };
   }, [collections]);
 
   // Handle collection type change
-  const handleCollectionTypeChange = (newType: CollectionType | 'all') => {
-    setActiveCollectionType(newType);
-    setSelectedItems([]); // Clear selections when changing types
-    setSearchQuery(''); // Clear search when changing types
+  const handleCollectionTypeChange = (type: CollectionType | 'all') => {
+    setActiveCollectionType(type);
+    setSearchQuery('');
+    setFormatFilter('all');
   };
 
-  // Handle moving items between collection types
+  // Move item to different collection type
   const handleMoveToType = async (itemId: string, newType: CollectionType) => {
     try {
       await moveToCollectionType(itemId, newType);
-      // Refresh collections to update counts and filtered view
-      await refetch();
     } catch (error) {
       console.error('Failed to move item:', error);
-      alert('Failed to move item. Please try again.');
     }
   };
 
-  // COMPLETE CSV Export handler
+  // CSV Export functionality
   const handleExportCSV = async () => {
-    if (!user) {
-      alert('Please log in to export your collection');
-      return;
-    }
-
+    if (collections.length === 0) return;
+    
+    setIsExporting(true);
     try {
-      setIsExporting(true);
-      setExportSuccess(null);
+      const filename = activeCollectionType === 'all' 
+        ? 'my_complete_collection' 
+        : `my_${activeCollectionType}_collection`;
       
-      // Get collections data based on active filter
-      let collectionsToExport: PhysicalMediaCollection[] = [];
+      await csvExportService.exportCollections(collections, filename);
+      setExportSuccess(`Successfully exported ${collections.length} items to CSV!`);
       
-      if (activeCollectionType === 'all') {
-        // For 'all', we need to fetch all collections since the current 'collections' 
-        // state might be filtered. We'll use the CSV service's built-in fetch method.
-        const result = await csvExportService.exportCollectionToCSV(user.id, {
-          includeHeaders: true,
-          includeTechnicalSpecs: true,
-          dateFormat: 'iso',
-          filename: `collection-all-items-${new Date().toISOString().split('T')[0]}`
-        });
-        
-        if (result.success) {
-          setExportSuccess(`Successfully exported ${result.recordCount} items to ${result.filename}`);
-          setTimeout(() => setExportSuccess(null), 5000);
-        } else {
-          throw new Error(result.error || 'Export failed');
-        }
-        return;
-      } else {
-        // For filtered views, use the current collections state
-        collectionsToExport = collections;
-      }
-      
-      if (collectionsToExport.length === 0) {
-        alert('No items to export. Please add some items to your collection first.');
-        return;
-      }
-      
-      // Generate CSV content using the simple method
-      const csvContent = csvExportService.generateCollectionCSV(collectionsToExport, {
-        includeHeaders: true,
-        includeTechnicalSpecs: true,
-        dateFormat: 'iso'
-      });
-      
-      // Generate filename with current filter and date
-      const filterSuffix = activeCollectionType === 'all' ? 'all' : activeCollectionType;
-      const filename = `collection-${filterSuffix}-${new Date().toISOString().split('T')[0]}.csv`;
-      
-      // Trigger download
-      csvExportService.downloadCSV(csvContent, filename);
-      
-      // Show success message
-      setExportSuccess(`Successfully exported ${collectionsToExport.length} items to ${filename}`);
+      // Clear success message after 5 seconds
       setTimeout(() => setExportSuccess(null), 5000);
-      
-      console.log(`[Export] Successfully exported ${collectionsToExport.length} items to ${filename}`);
-      
     } catch (error) {
       console.error('Export failed:', error);
-      
-      // User-friendly error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to export collection: ${errorMessage}\n\nTip: Try refreshing the page and trying again, or check your browser's download settings.`);
+      setExportSuccess('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -434,15 +328,14 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
 
   // Filter and sort collections
   const filteredAndSortedCollections = useMemo(() => {
-    let filtered = collections;
+    let filtered = [...collections];
 
     // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    if (searchQuery) {
       filtered = filtered.filter(item =>
-        item.title?.toLowerCase().includes(query) ||
-        item.director?.toLowerCase().includes(query) ||
-        item.genre?.toLowerCase().includes(query)
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.director && item.director.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.genre && item.genre.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -451,17 +344,17 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
       filtered = filtered.filter(item => item.format === formatFilter);
     }
 
-    // Sort collections
-    const sorted = [...filtered].sort((a, b) => {
+    // Apply sorting
+    const sorted = filtered.sort((a, b) => {
       switch (sortBy) {
         case 'title':
-          return (a.title || '').localeCompare(b.title || '');
+          return a.title.localeCompare(b.title);
         case 'year':
           return (b.year || 0) - (a.year || 0);
         case 'purchase_date':
           return new Date(b.purchase_date || 0).getTime() - new Date(a.purchase_date || 0).getTime();
         case 'personal_rating':
-          return (b.user_rating || 0) - (a.user_rating || 0);
+          return (b.personal_rating || 0) - (a.personal_rating || 0);
         default:
           return 0;
       }
@@ -535,7 +428,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             </div>
             
             <div className="flex items-center space-x-3">
-              {/* CSV Export Button */}
+              {/* Export Lists Button (previously Export CSV) */}
               <button
                 onClick={handleExportCSV}
                 disabled={isExporting || collections.length === 0}
@@ -548,10 +441,10 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                 }`}
                 title={
                   isExporting 
-                    ? 'Exporting CSV...' 
+                    ? 'Exporting Lists...' 
                     : collections.length === 0
                     ? 'No items to export'
-                    : `Export ${activeCollectionType === 'all' ? 'all' : activeCollectionType} items to CSV`
+                    : `Export ${activeCollectionType === 'all' ? 'all' : activeCollectionType} items`
                 }
               >
                 {isExporting ? (
@@ -562,7 +455,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                 ) : (
                   <>
                     <Download className="h-4 w-4" />
-                    <span>Export CSV</span>
+                    <span>Export Lists</span>
                     {collections.length > 0 && (
                       <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
                         {collections.length}
@@ -571,7 +464,17 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                   </>
                 )}
               </button>
+
+              {/* Import Lists Button */}
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Import Lists</span>
+              </button>
               
+              {/* Add Item Button */}
               <button
                 onClick={() => setShowAddModal(true)}
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -736,6 +639,13 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           onClose={() => setShowAddModal(false)}
           onAdd={addToCollection}
           defaultCollectionType={activeCollectionType !== 'all' ? activeCollectionType : 'owned'}
+        />
+
+        {/* Import Lists Modal */}
+        <ImportListsModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          pageType="collections"
         />
       </div>
     </div>
