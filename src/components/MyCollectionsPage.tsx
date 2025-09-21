@@ -32,6 +32,7 @@ import { AddToCollectionModal } from './AddToCollectionModal';
 import { ImportListsModal } from './ImportListsModal';
 import { CollectionToolbar } from './CollectionToolbar';
 import { csvExportService } from '../services/csvExportService';
+import { CSVImportModal } from './CSVImportModal';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
 // Enhanced Collection Stats Card
