@@ -250,25 +250,6 @@ export function CSVImportModal({ isOpen, onClose, onSuccess }: CSVImportModalPro
     };
   };
 
-  // Check for existing items in collection
-  const checkForDuplicates = async (items: ProcessedItem[]) => {
-    if (!user) return [];
-
-    try {
-      const titles = items.map(item => item.title);
-      const { data: existingItems } = await supabase
-        .from('physical_media_collections')
-        .select('title, format')
-        .eq('user_id', user.id)
-        .in('title', titles);
-
-      return existingItems || [];
-    } catch (error) {
-      console.error('Error checking for duplicates:', error);
-      return [];
-    }
-  };
-
   // Process CSV file - Enhanced with better error handling
   const processCSV = async (data: CSVRow[]) => {
     if (!user) throw new Error('User not authenticated');
@@ -367,6 +348,25 @@ export function CSVImportModal({ isOpen, onClose, onSuccess }: CSVImportModalPro
       errors: processingErrors,
       notEnriched: notEnrichedItems
     };
+  };
+
+  // Check for existing items in collection
+  const checkForDuplicates = async (items: ProcessedItem[]) => {
+    if (!user) return [];
+
+    try {
+      const titles = items.map(item => item.title);
+      const { data: existingItems } = await supabase
+        .from('physical_media_collections')
+        .select('title, format')
+        .eq('user_id', user.id)
+        .in('title', titles);
+
+      return existingItems || [];
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      return [];
+    }
   };
 
   // Handle file upload
