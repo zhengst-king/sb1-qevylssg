@@ -647,6 +647,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           pageType="collections"
+          onImportSuccess={() => refetch()}
         />
       </div>
     </div>
