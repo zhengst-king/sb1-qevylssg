@@ -14,7 +14,7 @@ import {
 import { PhysicalMediaCollection } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { csvExportService } from '../services/csvExportService';
-import { CSVImportModal } from './CSVImportModal';
+import { CSVImportModal } from './CSVImportModal'; // Import the new modal
 
 interface CollectionToolbarProps {
   collections: PhysicalMediaCollection[];
@@ -27,7 +27,7 @@ interface CollectionToolbarProps {
   onDuplicateManagement: () => void;
   exportSuccess: string | null;
   setExportSuccess: (message: string | null) => void;
-  onImportSuccess?: () => void;
+  onImportSuccess?: () => void; // NEW: Callback for successful import
 }
 
 export function CollectionToolbar({
@@ -45,7 +45,7 @@ export function CollectionToolbar({
 }: CollectionToolbarProps) {
   const { user } = useAuth();
   const [exportingCsv, setExportingCsv] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false); // NEW: Import modal state
 
   const hasSelections = selectedItems.length > 0;
   const allSelected = selectedItems.length === collections.length && collections.length > 0;
@@ -79,6 +79,12 @@ export function CollectionToolbar({
     if (selectionMode) handleClearSelection();
   };
 
+  const handleBulkEditClick = () => {
+    onBulkEdit();
+    setShowBulkModal(false);
+    handleClearSelection();
+  };
+
   const handleCSVExport = async () => {
     if (!user?.id) {
       alert('Please log in to export your collection');
@@ -103,7 +109,7 @@ export function CollectionToolbar({
 
       if (result.success) {
         setExportSuccess(`Successfully exported ${result.recordCount} items to ${result.filename}`);
-        setTimeout(() => setExportSuccess(null), 5000);
+        setTimeout(() => setExportSuccess(null), 5000); // Clear after 5 seconds
       } else {
         throw new Error(result.error || 'Export failed');
       }
@@ -115,11 +121,13 @@ export function CollectionToolbar({
     }
   };
 
+  // NEW: Handle CSV import success
   const handleImportSuccess = (importedCount: number) => {
     setShowImportModal(false);
     setExportSuccess(`Successfully imported ${importedCount} items from CSV`);
     setTimeout(() => setExportSuccess(null), 5000);
     
+    // Trigger parent component refresh if callback provided
     if (onImportSuccess) {
       onImportSuccess();
     }
@@ -209,6 +217,9 @@ export function CollectionToolbar({
               }
             >
               <Copy className="h-4 w-4" />
+              <span className="sr-only">
+                Duplicate Management{duplicateGroups.length > 0 ? ` (${duplicateGroups.length})` : ''}
+              </span>
             </button>
 
             {/* Export/Import Actions */}
@@ -239,7 +250,7 @@ export function CollectionToolbar({
                 )}
               </button>
 
-              {/* CSV Import */}
+              {/* CSV Import - UPDATED */}
               <button
                 onClick={() => setShowImportModal(true)}
                 className="p-2 text-slate-600 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
@@ -251,21 +262,13 @@ export function CollectionToolbar({
           </div>
         </div>
 
-        {/* Export/Import Success Message */}
+        {/* Export Success Message */}
         {exportSuccess && (
           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-green-700">
-                <CheckSquare className="inline h-4 w-4 mr-1" />
-                {exportSuccess}
-              </p>
-              <button
-                onClick={() => setExportSuccess(null)}
-                className="text-green-400 hover:text-green-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <p className="text-sm text-green-700">
+              <CheckSquare className="inline h-4 w-4 mr-1" />
+              {exportSuccess}
+            </p>
           </div>
         )}
 
@@ -290,7 +293,7 @@ export function CollectionToolbar({
         )}
       </div>
 
-      {/* CSV Import Modal */}
+      {/* CSV Import Modal - NEW */}
       <CSVImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
