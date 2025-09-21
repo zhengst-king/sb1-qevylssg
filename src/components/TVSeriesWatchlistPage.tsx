@@ -1,11 +1,11 @@
+// src/components/TVSeriesWatchlistPage.tsx
 import React, { useState, useMemo } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle } from 'lucide-react';
-import { Download } from 'lucide-react';
+import { Filter, Tv, AlertCircle, Download } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -35,9 +35,9 @@ export function TVSeriesWatchlistPage() {
 
   const filteredMovies = useMovieFilters(movies, filters);
 
-  const downloadTVWatchlist = (tvSeries: Movie[]) => {
+  const downloadTVWatchlist = (movies: Movie[]) => {
     // Sort by user rating descending (highest rated first), then by IMDb rating
-    const sortedSeries = [...tvSeries].sort((a, b) => {
+    const sortedMovies = [...movies].sort((a, b) => {
       const aRating = a.user_rating || a.imdb_score || 0;
       const bRating = b.user_rating || b.imdb_score || 0;
       return bRating - aRating;
@@ -46,58 +46,58 @@ export function TVSeriesWatchlistPage() {
     const data = {
       exportInfo: {
         exportDate: new Date().toISOString(),
-        totalCount: tvSeries.length,
+        totalCount: movies.length,
         exportType: 'tv_series_watchlist',
         sortedBy: 'user_rating_desc'
       },
-      tvSeries: sortedSeries.map(series => ({
+      tvSeries: sortedMovies.map(movie => ({
         // Core identification
-        id: series.id,
-        title: series.title,
-        imdbID: series.imdb_id,
-        mediaType: series.media_type,
+        id: movie.id,
+        title: movie.title,
+        imdbID: movie.imdb_id,
+        mediaType: movie.media_type,
         
         // Basic series info
-        year: series.year,
-        genre: series.genre,
-        country: series.country,
-        language: series.language,
-        runtime: series.runtime,
-        rated: series.rated,
-        released: series.released,
+        year: movie.year,
+        genre: movie.genre,
+        country: movie.country,
+        language: movie.language,
+        runtime: movie.runtime,
+        rated: movie.rated,
+        released: movie.released,
         
         // People
-        director: series.director,
-        writer: series.writer,
-        actors: series.actors,
+        director: movie.director,
+        writer: movie.writer,
+        actors: movie.actors,
         
         // Ratings and scores
-        myRating: series.user_rating,
-        imdbRating: series.imdb_score,
-        metascore: series.metascore,
-        imdbVotes: series.imdb_votes,
+        myRating: movie.user_rating,
+        imdbRating: movie.imdb_score,
+        metascore: movie.metascore,
+        imdbVotes: movie.imdb_votes,
         
         // User tracking
-        status: series.status,
-        dateWatched: series.date_watched,
-        userReview: series.user_review,
+        status: movie.status,
+        dateWatched: movie.date_watched,
+        userReview: movie.user_review,
         
         // URLs and media
-        posterUrl: series.poster_url,
-        imdbUrl: series.imdb_url,
-        website: series.website,
+        posterUrl: movie.poster_url,
+        imdbUrl: movie.imdb_url,
+        website: movie.website,
         
         // Additional info
-        plot: series.plot,
-        awards: series.awards,
-        boxOffice: series.box_office,
-        production: series.production,
+        plot: movie.plot,
+        awards: movie.awards,
+        boxOffice: movie.box_office,
+        production: movie.production,
         
         // Timestamps
-        createdAt: series.created_at,
-        statusUpdatedAt: series.status_updated_at,
-        ratingUpdatedAt: series.rating_updated_at,
-        lastModifiedAt: series.last_modified_at
+        createdAt: movie.created_at,
+        statusUpdatedAt: movie.status_updated_at,
+        ratingUpdatedAt: movie.rating_updated_at,
+        lastModifiedAt: movie.last_modified_at
       }))
     };
     
@@ -159,28 +159,37 @@ export function TVSeriesWatchlistPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <Tv className="h-12 w-12 text-purple-600" />
-            <h1 className="text-4xl font-bold text-slate-900">My TV Series Watchlist</h1>
-          </div>
-          <p className="text-lg text-slate-600">
-            Manage your personal collection of TV series
-          </p>
-          
-          {/* Download Button */}
-          {movies.length > 0 && (
-            <div className="mt-6">
-              <button
-                onClick={() => downloadTVWatchlist(movies)}
-                className="inline-flex items-center px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors shadow-lg hover:shadow-xl"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download My List ({movies.length} series)
-              </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Header - Matching MyCollections style */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center">
+                <Tv className="h-8 w-8 text-purple-600 mr-3" />
+                My TV Series
+              </h1>
+              <p className="text-slate-600 mt-2">
+                Manage your personal collection of TV series
+              </p>
             </div>
-          )}
+            
+            <div className="flex items-center space-x-3">
+              {/* Download Button */}
+              {movies.length > 0 && (
+                <button
+                  onClick={() => downloadTVWatchlist(movies)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download My List</span>
+                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
+                    {movies.length}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {error && (
