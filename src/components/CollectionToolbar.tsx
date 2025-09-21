@@ -27,7 +27,7 @@ interface CollectionToolbarProps {
   onDuplicateManagement: () => void;
   exportSuccess: string | null;
   setExportSuccess: (message: string | null) => void;
-  onImportSuccess?: () => void; // NEW: Callback for successful import
+  onImportSuccess={() => refetch()}
 }
 
 export function CollectionToolbar({
