@@ -2,10 +2,11 @@
 import React, { useState, useMemo } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
+import { ImportListsModal } from './ImportListsModal';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Film, AlertCircle, Download } from 'lucide-react';
+import { Filter, Film, AlertCircle, Download, Upload, Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -22,6 +23,7 @@ interface FilterState {
 export function MovieWatchlistPage() {
   const { isAuthenticated } = useAuth();
   const { movies, loading, error, updateMovie, deleteMovie } = useMovies('movie');
+  const [showImportModal, setShowImportModal] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     yearRange: { min: 1900, max: 2025 },
     imdbRating: { min: 0, max: 10 },
@@ -124,6 +126,11 @@ export function MovieWatchlistPage() {
     await updateMovie(id, updates);
   };
 
+  const handleAddItem = () => {
+    // TODO: Implement add movie modal
+    alert('Add Movie functionality coming soon!');
+  };
+
   const movieCounts = useMemo(() => {
     return {
       total: movies.length,
@@ -175,19 +182,37 @@ export function MovieWatchlistPage() {
             </div>
             
             <div className="flex items-center space-x-3">
-              {/* Download Button */}
+              {/* Export Lists Button (previously Download My List) */}
               {movies.length > 0 && (
                 <button
                   onClick={() => downloadMovieWatchlist(movies)}
                   className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
                 >
                   <Download className="h-4 w-4" />
-                  <span>Download My List</span>
+                  <span>Export Lists</span>
                   <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
                     {movies.length}
                   </span>
                 </button>
               )}
+
+              {/* Import Lists Button */}
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Import Lists</span>
+              </button>
+
+              {/* Add Item Button */}
+              <button
+                onClick={handleAddItem}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Item</span>
+              </button>
             </div>
           </div>
         </div>
@@ -260,6 +285,13 @@ export function MovieWatchlistPage() {
             <p className="text-slate-500">Try adjusting your filter criteria to see more results.</p>
           </div>
         )}
+
+        {/* Import Lists Modal */}
+        <ImportListsModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          pageType="movies"
+        />
       </div>
     </div>
   );
