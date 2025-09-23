@@ -1,5 +1,5 @@
-// src/components/ImportListsModal.tsx - ENHANCED VERSION WITH INLINE IMPORT SECTION
-import React, { useState } from 'react';
+// src/components/ImportListsModal.tsx - FIXED VERSION USING EXISTING CSV LOGIC
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Upload, 
@@ -10,10 +10,13 @@ import {
   File,
   AlertCircle,
   CheckCircle,
-  Loader
+  Loader,
+  Download
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { useAuth } from '../hooks/useAuth';
-import { csvImportService } from '../services/csvImportService';
+import { supabase } from '../lib/supabase';
+import { omdbApi } from '../lib/omdb';
 
 interface ImportListsModalProps {
   isOpen: boolean;
@@ -23,6 +26,40 @@ interface ImportListsModalProps {
 }
 
 type ImportType = 'csv' | 'airtable' | 'google-sheets' | null;
+
+interface CSVRow {
+  Title: string;
+  Year?: string;
+  Format?: string;
+  'Collection Type'?: string;
+  'IMDb ID'?: string;
+  Genre?: string;
+  Director?: string;
+  'Poster URL'?: string;
+  'Purchase Date'?: string;
+  'Purchase Price'?: string;
+  'Purchase Location'?: string;
+  Condition?: string;
+  'Personal Rating'?: string;
+  Notes?: string;
+}
+
+interface ProcessedItem {
+  title: string;
+  year?: number;
+  format: string;
+  collection_type: string;
+  imdb_id?: string;
+  genre?: string;
+  director?: string;
+  poster_url?: string;
+  purchase_date?: string;
+  purchase_price?: number;
+  purchase_location?: string;
+  condition: string;
+  personal_rating?: number;
+  notes?: string;
+}
 
 interface ImportResult {
   success: number;
@@ -45,6 +82,7 @@ export function ImportListsModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -111,13 +149,12 @@ export function ImportListsModal({
     onClose();
   };
 
-  // CSV Import functions
-  const handleFileSelect = (file: File) => {
-    if (file && (file.name.endsWith('.csv') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+  // CSV Import functions (copied from CSVImportModal.tsx)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
       setSelectedFile(file);
       setImportResult(null);
-    } else {
-      alert('Please select a CSV or Excel file (.csv, .xlsx, .xls)');
     }
   };
 
@@ -126,34 +163,173 @@ export function ImportListsModal({
     setDragOver(false);
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      handleFileSelect(files[0]);
+      setSelectedFile(files[0]);
+      setImportResult(null);
     }
   };
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFileSelect(files[0]);
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragOver(true);
+    } else if (e.type === "dragleave") {
+      setDragOver(false);
     }
   };
 
+  // Generate sample CSV template
+  const generateTemplate = () => {
+    const templateData = [
+      {
+        'Title': 'The Matrix',
+        'Year': '1999',
+        'Format': 'Blu-ray',
+        'Collection Type': 'owned',
+        'Genre': 'Action, Sci-Fi',
+        'Director': 'Lana Wachowski, Lilly Wachowski',
+        'Purchase Date': '2023-01-15',
+        'Purchase Price': '19.99',
+        'Purchase Location': 'Amazon',
+        'Condition': 'New',
+        'Personal Rating': '5',
+        'Notes': 'Great movie!'
+      }
+    ];
+
+    const csv = Papa.unparse(templateData);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'collection-template.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Process CSV file (logic from CSVImportModal.tsx)
   const processImport = async () => {
     if (!selectedFile || !user) return;
 
     setIsProcessing(true);
+    const result: ImportResult = {
+      success: 0,
+      failed: 0,
+      errors: [],
+      notEnriched: []
+    };
+
     try {
-      const result = await csvImportService.importFromFile(selectedFile, {
-        userId: user.id,
-        pageType,
-        enrichData: true,
-        skipDuplicates: true
+      // Parse CSV file
+      const csvText = await selectedFile.text();
+      const parseResult = Papa.parse<CSVRow>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim()
       });
+
+      if (parseResult.errors.length > 0) {
+        result.errors.push(`CSV parsing errors: ${parseResult.errors.map(e => e.message).join(', ')}`);
+      }
+
+      const rows = parseResult.data;
+      console.log(`Processing ${rows.length} rows from CSV`);
+
+      // Process each row
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        
+        if (!row.Title?.trim()) {
+          result.errors.push(`Row ${i + 2}: Missing title`);
+          result.failed++;
+          continue;
+        }
+
+        try {
+          // Process the row data
+          const processedItem: ProcessedItem = {
+            title: row.Title.trim(),
+            year: row.Year ? parseInt(row.Year) : undefined,
+            format: row.Format || 'Blu-ray',
+            collection_type: row['Collection Type'] || 'owned',
+            genre: row.Genre || '',
+            director: row.Director || '',
+            purchase_date: row['Purchase Date'] || null,
+            purchase_price: row['Purchase Price'] ? parseFloat(row['Purchase Price']) : null,
+            purchase_location: row['Purchase Location'] || '',
+            condition: row.Condition || 'Good',
+            personal_rating: row['Personal Rating'] ? parseFloat(row['Personal Rating']) : null,
+            notes: row.Notes || ''
+          };
+
+          // Try to enrich with OMDB data if no IMDb ID provided
+          if (!row['IMDb ID'] && (!row.Genre || !row.Director)) {
+            try {
+              const searchQuery = processedItem.year 
+                ? `${processedItem.title} ${processedItem.year}`
+                : processedItem.title;
+              
+              const omdbResult = await omdbApi.searchMovies(searchQuery);
+              
+              if (omdbResult.Search && omdbResult.Search.length > 0) {
+                const movie = omdbResult.Search[0];
+                const details = await omdbApi.getMovieDetails(movie.imdbID);
+                
+                if (details && details.Response === 'True') {
+                  processedItem.imdb_id = details.imdbID;
+                  processedItem.genre = processedItem.genre || details.Genre;
+                  processedItem.director = processedItem.director || details.Director;
+                  processedItem.poster_url = details.Poster && details.Poster !== 'N/A' ? details.Poster : null;
+                  processedItem.year = processedItem.year || (details.Year ? parseInt(details.Year) : undefined);
+                }
+              } else {
+                result.notEnriched.push({
+                  title: processedItem.title,
+                  year: processedItem.year
+                });
+              }
+            } catch (omdbError) {
+              console.warn(`OMDB enrichment failed for "${processedItem.title}":`, omdbError);
+              result.notEnriched.push({
+                title: processedItem.title,
+                year: processedItem.year
+              });
+            }
+          }
+
+          // Insert into database
+          const { error: insertError } = await supabase
+            .from('physical_media_collection')
+            .insert({
+              ...processedItem,
+              user_id: user.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (insertError) {
+            console.error(`Insert error for "${processedItem.title}":`, insertError);
+            result.errors.push(`Row ${i + 2} ("${processedItem.title}"): ${insertError.message}`);
+            result.failed++;
+          } else {
+            result.success++;
+          }
+
+        } catch (processError) {
+          console.error(`Processing error for row ${i + 2}:`, processError);
+          result.errors.push(`Row ${i + 2}: ${processError instanceof Error ? processError.message : 'Unknown error'}`);
+          result.failed++;
+        }
+      }
 
       setImportResult(result);
       
       if (result.success > 0 && onImportSuccess) {
         onImportSuccess();
       }
+
     } catch (error) {
       console.error('Import failed:', error);
       setImportResult({
@@ -272,12 +448,34 @@ export function ImportListsModal({
             <div className="space-y-6">
               {!importResult ? (
                 <>
+                  {/* Template Download */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-blue-900">Need a template?</h4>
+                        <p className="text-sm text-blue-700 mt-1">
+                          Download our CSV template to see the proper format and required columns.
+                        </p>
+                        <button
+                          onClick={generateTemplate}
+                          className="inline-flex items-center space-x-2 mt-3 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download Template</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* File Upload Area */}
                   <div
                     onDrop={handleDrop}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    onDragOver={handleDrag}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
                       dragOver 
                         ? 'border-blue-400 bg-blue-50' 
                         : selectedFile
@@ -295,7 +493,10 @@ export function ImportListsModal({
                           </p>
                         </div>
                         <button
-                          onClick={() => setSelectedFile(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFile(null);
+                          }}
                           className="text-sm text-green-600 hover:text-green-800 underline"
                         >
                           Choose different file
@@ -306,7 +507,7 @@ export function ImportListsModal({
                         <File className="h-12 w-12 text-gray-400 mx-auto" />
                         <div>
                           <p className="text-lg font-medium text-gray-900">
-                            Drop your CSV/Excel file here
+                            Drop your CSV file here
                           </p>
                           <p className="text-sm text-gray-500">
                             or click to browse files
@@ -315,17 +516,16 @@ export function ImportListsModal({
                         <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
                           <span>Supports:</span>
                           <span className="bg-gray-100 px-2 py-1 rounded">.csv</span>
-                          <span className="bg-gray-100 px-2 py-1 rounded">.xlsx</span>
-                          <span className="bg-gray-100 px-2 py-1 rounded">.xls</span>
                         </div>
                       </div>
                     )}
                     
                     <input
+                      ref={fileInputRef}
                       type="file"
-                      accept=".csv,.xlsx,.xls"
-                      onChange={handleFileInput}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
                     />
                   </div>
 
