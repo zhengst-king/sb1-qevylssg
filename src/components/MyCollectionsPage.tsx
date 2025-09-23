@@ -1,4 +1,4 @@
-// src/components/MyCollectionsPage.tsx
+// src/components/MyCollectionsPage.tsx - COMPLETE FIXED VERSION
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
@@ -65,31 +65,23 @@ const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
   return (
     <div 
       className={`bg-white rounded-xl p-4 shadow-sm border transition-all cursor-pointer ${colorClasses[color]} ${
-        onClick ? 'hover:shadow-md' : ''
+        onClick ? 'hover:scale-105' : ''
       }`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          {Icon && (
-            <div className={`p-2 rounded-lg ${colorClasses[color].split(' ')[1]}`}>
-              <Icon className={`h-4 w-4 ${colorClasses[color].split(' ')[0]}`} />
-            </div>
+        <div>
+          <p className="text-sm font-medium text-slate-600">{label}</p>
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
           )}
-          <div>
-            <div className={`text-2xl font-bold ${colorClasses[color].split(' ')[0]}`}>
-              {value}
-            </div>
-            <div className="text-xs text-slate-500 uppercase tracking-wide font-medium">
-              {label}
-            </div>
-            {subtitle && (
-              <div className="text-xs text-slate-400 mt-0.5">
-                {subtitle}
-              </div>
-            )}
-          </div>
         </div>
+        {Icon && (
+          <div className={`p-2 rounded-lg ${colorClasses[color].split(' ')[1]} ${colorClasses[color].split(' ')[0]}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -99,14 +91,7 @@ const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
 interface CollectionTypeTabsProps {
   activeType: CollectionType | 'all';
   onTypeChange: (type: CollectionType | 'all') => void;
-  stats: {
-    owned: number;
-    wishlist: number;
-    for_sale: number;
-    loaned_out: number;
-    missing: number;
-    total: number;
-  };
+  stats: Record<string, number>;
 }
 
 const CollectionTypeTabs: React.FC<CollectionTypeTabsProps> = ({
@@ -115,12 +100,12 @@ const CollectionTypeTabs: React.FC<CollectionTypeTabsProps> = ({
   stats
 }) => {
   const tabs = [
-    { id: 'all' as const, label: 'All Items', count: stats.total, icon: Package, color: 'bg-slate-600' },
-    { id: 'owned' as const, label: 'Owned', count: stats.owned, icon: Disc3, color: 'bg-blue-600' },
-    { id: 'wishlist' as const, label: 'Wishlist', count: stats.wishlist, icon: Heart, color: 'bg-red-600' },
-    { id: 'for_sale' as const, label: 'For Sale', count: stats.for_sale, icon: DollarSign, color: 'bg-green-600' },
-    { id: 'loaned_out' as const, label: 'Loaned Out', count: stats.loaned_out, icon: UserCheck, color: 'bg-orange-600' },
-    { id: 'missing' as const, label: 'Missing', count: stats.missing, icon: AlertTriangle, color: 'bg-yellow-600' }
+    { id: 'all' as const, label: 'All Items', icon: Package, color: 'text-slate-600' },
+    { id: 'owned' as const, label: 'Owned', icon: Disc3, color: 'text-blue-600' },
+    { id: 'wishlist' as const, label: 'Wishlist', icon: Heart, color: 'text-red-600' },
+    { id: 'for_sale' as const, label: 'For Sale', icon: DollarSign, color: 'text-green-600' },
+    { id: 'loaned_out' as const, label: 'Loaned Out', icon: UserCheck, color: 'text-orange-600' },
+    { id: 'missing' as const, label: 'Missing', icon: AlertTriangle, color: 'text-red-600' },
   ];
 
   return (
@@ -128,79 +113,14 @@ const CollectionTypeTabs: React.FC<CollectionTypeTabsProps> = ({
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeType === tab.id;
+        const count = tab.id === 'all' ? stats.total : stats[tab.id] || 0;
         
         return (
           <button
             key={tab.id}
             onClick={() => onTypeChange(tab.id)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
-              isActive
-                ? `${tab.color} text-white shadow-md`
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            <span>{tab.label}</span>
-            <span className={`inline-flex items-center justify-center w-5 h-5 text-xs rounded-full font-bold ${
+            className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-all text-sm font-medium ${
               isActive 
-                ? 'bg-white bg-opacity-20 text-white' 
-                : 'bg-slate-200 text-slate-700'
-            }`}>
-              {tab.count}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-};
-
-// Format Distribution Tabs
-interface FormatDistributionTabsProps {
-  collections: PhysicalMediaCollection[];
-  activeFormat: 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
-  onFormatChange: (format: 'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray') => void;
-}
-
-const FormatDistributionTabs: React.FC<FormatDistributionTabsProps> = ({
-  collections,
-  activeFormat,
-  onFormatChange
-}) => {
-  const formatStats = useMemo(() => {
-    const stats = {
-      all: collections.length,
-      'DVD': collections.filter(item => item.format === 'DVD').length,
-      'Blu-ray': collections.filter(item => item.format === 'Blu-ray').length,
-      '4K UHD': collections.filter(item => item.format === '4K UHD').length,
-      '3D Blu-ray': collections.filter(item => item.format === '3D Blu-ray').length,
-    };
-    return stats;
-  }, [collections]);
-
-  const formatTabs = [
-    { id: 'all' as const, label: 'All Formats', icon: Monitor, color: 'text-slate-600' },
-    { id: 'DVD' as const, label: 'DVD', icon: Disc3, color: 'text-red-600' },
-    { id: 'Blu-ray' as const, label: 'Blu-ray', icon: Disc3, color: 'text-blue-600' },
-    { id: '4K UHD' as const, label: '4K UHD', icon: Monitor, color: 'text-purple-600' },
-    { id: '3D Blu-ray' as const, label: '3D Blu-ray', icon: FileVideo, color: 'text-green-600' }
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {formatTabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeFormat === tab.id;
-        const count = formatStats[tab.id];
-        
-        if (count === 0 && tab.id !== 'all') return null;
-        
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onFormatChange(tab.id)}
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              isActive
                 ? 'bg-white shadow-sm border border-slate-200'
                 : 'bg-slate-50 hover:bg-slate-100'
             }`}
@@ -232,23 +152,23 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     addToCollection, 
     removeFromCollection, 
     updateCollection,
-    moveToCollectionType,
-    getCollectionStats,
-    getAllCollections,
     refetch 
-  } = useCollections({ 
-    collectionType: activeCollectionType,
-    includeAll: activeCollectionType === 'all'
-  });
+  } = useCollections();
 
-  // UI state
+  // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCSVImportModal, setShowCSVImportModal] = useState(false); // NEW: CSV modal state
+  
+  // Filter and sort states
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('all');
-  const [sortBy, setSortBy] = useState<'title' | 'year' | 'purchase_date' | 'personal_rating'>('title');
-  const [selectedItems, setSelectedItems] = useState<PhysicalMediaCollection[]>([]);
-
+  const [sortBy, setSortBy] = useState<'title' | 'year' | 'dateAdded' | 'value'>('title');
+  
+  // Selection and bulk operation states
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  
   // CSV Export state
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
@@ -288,6 +208,19 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     };
   }, [collections]);
 
+  // NEW: Handle CSV import click from ImportListsModal
+  const handleCSVImportClick = () => {
+    setShowCSVImportModal(true);
+  };
+
+  // NEW: Handle CSV import success
+  const handleCSVImportSuccess = (importedCount: number) => {
+    setShowCSVImportModal(false);
+    setExportSuccess(`Successfully imported ${importedCount} items from CSV`);
+    setTimeout(() => setExportSuccess(null), 5000);
+    refetch(); // Refresh the collections
+  };
+
   // Handle collection type change
   const handleCollectionTypeChange = (type: CollectionType | 'all') => {
     setActiveCollectionType(type);
@@ -296,32 +229,48 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   };
 
   // Move item to different collection type
-  const handleMoveToType = async (itemId: string, newType: CollectionType) => {
+  const handleMoveToType = async (item: PhysicalMediaCollection, newType: CollectionType) => {
     try {
-      await moveToCollectionType(itemId, newType);
+      await updateCollection(item.id, { collection_type: newType });
+      refetch();
     } catch (error) {
-      console.error('Failed to move item:', error);
+      console.error('Error moving item:', error);
+      alert('Failed to move item. Please try again.');
     }
   };
 
   // CSV Export functionality
   const handleExportCSV = async () => {
-    if (collections.length === 0) return;
-    
+    if (!user?.id) {
+      alert('Please log in to export your collection');
+      return;
+    }
+
+    if (collections.length === 0) {
+      alert('No collection items to export');
+      return;
+    }
+
     setIsExporting(true);
+    setExportSuccess(null);
+
     try {
-      const filename = activeCollectionType === 'all' 
-        ? 'my_complete_collection' 
-        : `my_${activeCollectionType}_collection`;
-      
-      await csvExportService.exportCollections(collections, filename);
-      setExportSuccess(`Successfully exported ${collections.length} items to CSV!`);
-      
-      // Clear success message after 5 seconds
-      setTimeout(() => setExportSuccess(null), 5000);
+      const result = await csvExportService.exportCollectionToCSV(user.id, {
+        includeHeaders: true,
+        includeTechnicalSpecs: true,
+        dateFormat: 'iso',
+        filename: `my-${activeCollectionType === 'all' ? 'complete' : activeCollectionType}-collection`
+      });
+
+      if (result.success) {
+        setExportSuccess(`Successfully exported ${result.recordCount} items to ${result.filename}`);
+        setTimeout(() => setExportSuccess(null), 5000); // Clear after 5 seconds
+      } else {
+        throw new Error(result.error || 'Export failed');
+      }
     } catch (error) {
-      console.error('Export failed:', error);
-      setExportSuccess('Export failed. Please try again.');
+      console.error('[Collection Page] CSV export error:', error);
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
     }
@@ -330,6 +279,11 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   // Filter and sort collections
   const filteredAndSortedCollections = useMemo(() => {
     let filtered = [...collections];
+
+    // Apply collection type filter
+    if (activeCollectionType !== 'all') {
+      filtered = filtered.filter(item => (item.collection_type || 'owned') === activeCollectionType);
+    }
 
     // Apply search filter
     if (searchQuery) {
@@ -352,17 +306,17 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           return a.title.localeCompare(b.title);
         case 'year':
           return (b.year || 0) - (a.year || 0);
-        case 'purchase_date':
-          return new Date(b.purchase_date || 0).getTime() - new Date(a.purchase_date || 0).getTime();
-        case 'personal_rating':
-          return (b.personal_rating || 0) - (a.personal_rating || 0);
+        case 'dateAdded':
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case 'value':
+          return (b.purchase_price || 0) - (a.purchase_price || 0);
         default:
           return 0;
       }
     });
 
     return sorted;
-  }, [collections, searchQuery, formatFilter, sortBy]);
+  }, [collections, activeCollectionType, searchQuery, formatFilter, sortBy]);
 
   if (loading) {
     return (
@@ -394,8 +348,8 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Export Success Message */}
         {exportSuccess && (
@@ -429,7 +383,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             </div>
             
             <div className="flex items-center space-x-3">
-              {/* Export Lists Button (previously Export CSV) */}
+              {/* Export Lists Button */}
               <button
                 onClick={handleExportCSV}
                 disabled={isExporting || collections.length === 0}
@@ -459,7 +413,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                     <span>Export Lists</span>
                     {collections.length > 0 && (
                       <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
-                        {collections.length}
+                        {filteredAndSortedCollections.length}
                       </span>
                     )}
                   </>
@@ -486,8 +440,8 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
             </div>
           </div>
 
-          {/* Enhanced Collection Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Enhanced Collection Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
             <CollectionStatsCard
               label="Total Items"
               value={collectionStats.total}
@@ -496,105 +450,98 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
               onClick={() => handleCollectionTypeChange('all')}
             />
             <CollectionStatsCard
-              label="Total Value"
-              value={`$${enhancedStats.totalValue.toFixed(0)}`}
+              label="Collection Value"
+              value={enhancedStats.totalValue > 0 ? `$${enhancedStats.totalValue.toFixed(0)}` : '$0'}
               icon={DollarSign}
               color="green"
-              subtitle="Owned items only"
-            />
-            <CollectionStatsCard
-              label="Wishlist Value"
-              value={`$${enhancedStats.wishlistValue.toFixed(0)}`}
-              icon={Heart}
-              color="red"
-              subtitle={`${collectionStats.wishlist} items`}
-              onClick={() => handleCollectionTypeChange('wishlist')}
+              subtitle="Owned items"
             />
             <CollectionStatsCard
               label="Avg Rating"
-              value={enhancedStats.avgRating.toFixed(1)}
+              value={enhancedStats.avgRating > 0 ? enhancedStats.avgRating.toFixed(1) : '0.0'}
               icon={Award}
               color="purple"
               subtitle="Your ratings"
             />
+            <CollectionStatsCard
+              label="Wishlist Value"
+              value={enhancedStats.wishlistValue > 0 ? `$${enhancedStats.wishlistValue.toFixed(0)}` : '$0'}
+              icon={Heart}
+              color="red"
+              onClick={() => handleCollectionTypeChange('wishlist')}
+            />
+            <CollectionStatsCard
+              label="4K Collection"
+              value={collections.filter(item => item.format === '4K UHD').length}
+              icon={Monitor}
+              color="orange"
+              subtitle="Ultra HD titles"
+            />
+            <CollectionStatsCard
+              label="Most Expensive"
+              value={enhancedStats.mostExpensive.purchase_price ? `$${enhancedStats.mostExpensive.purchase_price}` : 'N/A'}
+              icon={Sparkles}
+              color="slate"
+              subtitle={enhancedStats.mostExpensive.title ? enhancedStats.mostExpensive.title.substring(0, 20) + '...' : 'None'}
+            />
           </div>
-
-          {/* Collection Type Tabs */}
-          <CollectionTypeTabs
-            activeType={activeCollectionType}
-            onTypeChange={handleCollectionTypeChange}
-            stats={collectionStats}
-          />
-
-          {/* Format Distribution Tabs */}
-          <FormatDistributionTabs
-            collections={collections}
-            activeFormat={formatFilter}
-            onFormatChange={setFormatFilter}
-          />
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-6">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder={`Search ${activeCollectionType === 'all' ? 'collections' : activeCollectionType}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900"
-              />
-            </div>
+        {/* Collection Type Filter Tabs */}
+        <CollectionTypeTabs
+          activeType={activeCollectionType}
+          onTypeChange={handleCollectionTypeChange}
+          stats={collectionStats}
+        />
 
-            {/* Sort Controls */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <SortAsc className="h-4 w-4 text-slate-500" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="title">Title A-Z</option>
-                  <option value="year">Year (Newest)</option>
-                  <option value="purchase_date">Purchase Date</option>
-                  <option value="personal_rating">Your Rating</option>
-                </select>
+        {/* Search and Filter Controls */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search by title, director, or genre..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             </div>
-          </div>
 
-          {/* Active Filters Display */}
-          {(searchQuery || formatFilter !== 'all') && (
-            <div className="mt-4 flex items-center space-x-2">
-              <span className="text-sm text-slate-500">Active filters:</span>
-              {searchQuery && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Search: "{searchQuery}"
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-              {formatFilter !== 'all' && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                  Format: {formatFilter}
-                  <button
-                    onClick={() => setFormatFilter('all')}
-                    className="ml-1 text-purple-600 hover:text-purple-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
+            {/* Format Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <select
+                value={formatFilter}
+                onChange={(e) => setFormatFilter(e.target.value as any)}
+                className="pl-10 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              >
+                <option value="all">All Formats</option>
+                <option value="DVD">DVD</option>
+                <option value="Blu-ray">Blu-ray</option>
+                <option value="4K UHD">4K UHD</option>
+                <option value="3D Blu-ray">3D Blu-ray</option>
+              </select>
             </div>
-          )}
+
+            {/* Sort */}
+            <div className="relative">
+              <SortAsc className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="pl-10 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              >
+                <option value="title">Sort by Title</option>
+                <option value="year">Sort by Year</option>
+                <option value="dateAdded">Sort by Date Added</option>
+                <option value="value">Sort by Value</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Collections Grid */}
@@ -642,12 +589,19 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           defaultCollectionType={activeCollectionType !== 'all' ? activeCollectionType : 'owned'}
         />
 
-        {/* Import Lists Modal */}
+        {/* Import Lists Modal - UPDATED with CSV callback */}
         <ImportListsModal
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           pageType="collections"
-          onImportSuccess={() => refetch()}
+          onCSVImportClick={handleCSVImportClick} // NEW: Pass callback
+        />
+
+        {/* CSV Import Modal - NEW: Moved to parent */}
+        <CSVImportModal
+          isOpen={showCSVImportModal}
+          onClose={() => setShowCSVImportModal(false)}
+          onSuccess={handleCSVImportSuccess}
         />
       </div>
     </div>
