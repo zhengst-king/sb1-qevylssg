@@ -1,4 +1,4 @@
-// src/components/MyCollectionsPage.tsx - COMPLETE FIXED VERSION
+// src/components/MyCollectionsPage.tsx - SIMPLIFIED VERSION
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
@@ -30,9 +30,7 @@ import { useAuth } from '../hooks/useAuth';
 import { CollectionItemCard } from './CollectionItemCard';
 import { AddToCollectionModal } from './AddToCollectionModal';
 import { ImportListsModal } from './ImportListsModal';
-import { CollectionToolbar } from './CollectionToolbar';
 import { csvExportService } from '../services/csvExportService';
-import { CSVImportModal } from './CSVImportModal';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
 // Enhanced Collection Stats Card
@@ -144,7 +142,7 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   // Collection type state
   const [activeCollectionType, setActiveCollectionType] = useState<CollectionType | 'all'>('all');
   
-  // Use enhanced collections hook with filtering
+  // Use enhanced collections hook
   const { 
     collections, 
     loading, 
@@ -155,19 +153,14 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     refetch 
   } = useCollections();
 
-  // Modal states
+  // Modal states - SIMPLIFIED: Only need ImportListsModal now
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showCSVImportModal, setShowCSVImportModal] = useState(false); // NEW: CSV modal state
   
   // Filter and sort states
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('all');
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'dateAdded' | 'value'>('title');
-  
-  // Selection and bulk operation states
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   
   // CSV Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -207,19 +200,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
       )
     };
   }, [collections]);
-
-  // NEW: Handle CSV import click from ImportListsModal
-  const handleCSVImportClick = () => {
-    setShowCSVImportModal(true);
-  };
-
-  // NEW: Handle CSV import success
-  const handleCSVImportSuccess = (importedCount: number) => {
-    setShowCSVImportModal(false);
-    setExportSuccess(`Successfully imported ${importedCount} items from CSV`);
-    setTimeout(() => setExportSuccess(null), 5000);
-    refetch(); // Refresh the collections
-  };
 
   // Handle collection type change
   const handleCollectionTypeChange = (type: CollectionType | 'all') => {
@@ -274,6 +254,14 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // SIMPLIFIED: Handle import success
+  const handleImportSuccess = () => {
+    setShowImportModal(false);
+    refetch(); // Refresh the collections
+    setExportSuccess('Import completed successfully!');
+    setTimeout(() => setExportSuccess(null), 5000);
   };
 
   // Filter and sort collections
@@ -589,19 +577,12 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           defaultCollectionType={activeCollectionType !== 'all' ? activeCollectionType : 'owned'}
         />
 
-        {/* Import Lists Modal - UPDATED with CSV callback */}
+        {/* Import Lists Modal - SIMPLIFIED: Single modal with embedded import section */}
         <ImportListsModal
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           pageType="collections"
-          onCSVImportClick={handleCSVImportClick} // NEW: Pass callback
-        />
-
-        {/* CSV Import Modal - NEW: Moved to parent */}
-        <CSVImportModal
-          isOpen={showCSVImportModal}
-          onClose={() => setShowCSVImportModal(false)}
-          onSuccess={handleCSVImportSuccess}
+          onImportSuccess={handleImportSuccess}
         />
       </div>
     </div>
