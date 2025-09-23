@@ -301,7 +301,7 @@ export function ImportListsModal({
 
           // Insert into database
           const { error: insertError } = await supabase
-            .from('physical_media_collection')
+            .from('physical_media_collections')
             .insert({
               ...processedItem,
               user_id: user.id,
