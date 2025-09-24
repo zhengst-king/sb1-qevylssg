@@ -50,7 +50,6 @@ export function MovieWatchlistPage() {
   }, [movies]);
 
   const downloadMovieWatchlist = (movies: Movie[]) => {
-    // Sort by user rating descending (highest rated first), then by IMDb rating
     const sortedMovies = [...movies].sort((a, b) => {
       const aRating = a.user_rating || a.imdb_score || 0;
       const bRating = b.user_rating || b.imdb_score || 0;
@@ -65,13 +64,10 @@ export function MovieWatchlistPage() {
         sortedBy: 'user_rating_desc'
       },
       movies: sortedMovies.map(movie => ({
-        // Core identification
         id: movie.id,
         title: movie.title,
         imdbID: movie.imdb_id,
         mediaType: movie.media_type,
-        
-        // Basic movie info
         year: movie.year,
         genre: movie.genre,
         country: movie.country,
@@ -79,35 +75,23 @@ export function MovieWatchlistPage() {
         runtime: movie.runtime,
         rated: movie.rated,
         released: movie.released,
-        
-        // People
         director: movie.director,
         writer: movie.writer,
         actors: movie.actors,
-        
-        // Ratings and scores
         myRating: movie.user_rating,
         imdbRating: movie.imdb_score,
         metascore: movie.metascore,
         imdbVotes: movie.imdb_votes,
-        
-        // User tracking
         status: movie.status,
         dateWatched: movie.date_watched,
         userReview: movie.user_review,
-        
-        // URLs and media
         posterUrl: movie.poster_url,
         imdbUrl: movie.imdb_url,
         website: movie.website,
-        
-        // Additional info
         plot: movie.plot,
         awards: movie.awards,
         boxOffice: movie.box_office,
         production: movie.production,
-        
-        // Timestamps
         createdAt: movie.created_at,
         statusUpdatedAt: movie.status_updated_at,
         ratingUpdatedAt: movie.rating_updated_at,
@@ -193,39 +177,40 @@ export function MovieWatchlistPage() {
                   Manage your personal collection of movies
                 </p>
               </div>
-            
-            <div className="flex items-center space-x-3">
-              {/* Export Lists Button (previously Download My List) */}
-              {movies.length > 0 && (
+              
+              <div className="flex items-center space-x-3">
+                {/* Export Lists Button */}
+                {movies.length > 0 && (
+                  <button
+                    onClick={() => downloadMovieWatchlist(movies)}
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export Lists</span>
+                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
+                      {movies.length}
+                    </span>
+                  </button>
+                )}
+
+                {/* Import Lists Button */}
                 <button
-                  onClick={() => downloadMovieWatchlist(movies)}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
+                  onClick={() => setShowImportModal(true)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  <Download className="h-4 w-4" />
-                  <span>Export Lists</span>
-                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
-                    {movies.length}
-                  </span>
+                  <Upload className="h-4 w-4" />
+                  <span>Import Lists</span>
                 </button>
-              )}
 
-              {/* Import Lists Button */}
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                <span>Import Lists</span>
-              </button>
-
-              {/* Add Item Button */}
-              <button
-                onClick={handleAddItem}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Item</span>
-              </button>
+                {/* Add Item Button */}
+                <button
+                  onClick={handleAddItem}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Item</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -257,6 +242,7 @@ export function MovieWatchlistPage() {
           </>
         )}
 
+        {/* Empty State */}
         {movies.length === 0 && !loading && (
           <div className="text-center py-16">
             <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -265,6 +251,7 @@ export function MovieWatchlistPage() {
           </div>
         )}
 
+        {/* Movies List */}
         <div className="space-y-6">
           {filteredMovies.map((movie) => (
             <WatchlistCard
@@ -278,6 +265,7 @@ export function MovieWatchlistPage() {
           ))}
         </div>
 
+        {/* No Results State */}
         {movies.length > 0 && filteredMovies.length === 0 && (
           <div className="text-center py-12">
             <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -286,14 +274,13 @@ export function MovieWatchlistPage() {
           </div>
         )}
 
-        {/* Import Lists Modal */}
+        {/* Modals */}
         <ImportListsModal
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           pageType="movies"
         />
 
-        {/* Movie Search Modal */}
         <MovieSearchModal
           isOpen={showSearchModal}
           onClose={() => setShowSearchModal(false)}
