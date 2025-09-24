@@ -1,4 +1,4 @@
-// src/components/ImportListsModal.tsx - FIXED VERSION USING EXISTING CSV LOGIC
+// src/components/ImportListsModal.tsx - FIXED VERSION WITH IMPROVED CSV IMPORT
 import React, { useState, useRef } from 'react';
 import { 
   X, 
@@ -178,7 +178,7 @@ export function ImportListsModal({
     }
   };
 
-  // Generate sample CSV template
+  // Generate sample CSV template (UPDATED with minimal required fields)
   const generateTemplate = () => {
     const templateData = [
       {
@@ -194,6 +194,13 @@ export function ImportListsModal({
         'Condition': 'New',
         'Personal Rating': '5',
         'Notes': 'Great movie!'
+      },
+      {
+        'Title': 'Monster Hunters',
+        'Format': '4K UHD',
+        'Purchase Location': 'Amazon',
+        'Collection Type': 'owned',
+        'Condition': 'Good'
       }
     ];
 
@@ -209,7 +216,7 @@ export function ImportListsModal({
     document.body.removeChild(a);
   };
 
-  // Process CSV file (logic from CSVImportModal.tsx)
+  // Process CSV file (IMPROVED with better error handling and validation)
   const processImport = async () => {
     if (!selectedFile || !user) return;
 
@@ -241,89 +248,144 @@ export function ImportListsModal({
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         
+        // More detailed logging for debugging
+        console.log(`Processing row ${i + 2}:`, row);
+        
+        // Validate required fields - only title is absolutely required
         if (!row.Title?.trim()) {
-          result.errors.push(`Row ${i + 2}: Missing title`);
+          result.errors.push(`Row ${i + 2}: Missing required field "Title"`);
           result.failed++;
           continue;
         }
 
         try {
-          // Process the row data
+          // Process the row data with better validation
           const processedItem: ProcessedItem = {
             title: row.Title.trim(),
-            year: row.Year ? parseInt(row.Year) : undefined,
-            format: row.Format || 'Blu-ray',
-            collection_type: row['Collection Type'] || 'owned',
-            genre: row.Genre || '',
-            director: row.Director || '',
-            purchase_date: row['Purchase Date'] || null,
-            purchase_price: row['Purchase Price'] ? parseFloat(row['Purchase Price']) : null,
-            purchase_location: row['Purchase Location'] || '',
-            condition: row.Condition || 'Good',
-            personal_rating: row['Personal Rating'] ? parseFloat(row['Personal Rating']) : null,
-            notes: row.Notes || ''
+            year: row.Year ? parseInt(row.Year.toString()) : undefined,
+            format: row.Format?.trim() || 'Blu-ray', // Default to Blu-ray if not specified
+            collection_type: (row['Collection Type']?.trim() || 'owned').toLowerCase(),
+            genre: row.Genre?.trim() || '',
+            director: row.Director?.trim() || '',
+            purchase_date: row['Purchase Date']?.trim() || null,
+            purchase_price: row['Purchase Price'] ? parseFloat(row['Purchase Price'].toString()) : null,
+            purchase_location: row['Purchase Location']?.trim() || '',
+            condition: row.Condition?.trim() || 'Good', // Default condition
+            personal_rating: row['Personal Rating'] ? parseFloat(row['Personal Rating'].toString()) : null,
+            notes: row.Notes?.trim() || ''
           };
 
-          // Try to enrich with OMDB data if no IMDb ID provided
-          if (!row['IMDb ID'] && (!row.Genre || !row.Director)) {
+          // Validate format
+          const validFormats = ['DVD', 'Blu-ray', '4K UHD', '3D Blu-ray'];
+          if (!validFormats.includes(processedItem.format)) {
+            console.warn(`Invalid format "${processedItem.format}" for "${processedItem.title}", defaulting to Blu-ray`);
+            processedItem.format = 'Blu-ray';
+          }
+
+          // Validate collection type
+          const validCollectionTypes = ['owned', 'wishlist', 'for_sale', 'loaned_out', 'missing'];
+          if (!validCollectionTypes.includes(processedItem.collection_type)) {
+            console.warn(`Invalid collection type "${processedItem.collection_type}" for "${processedItem.title}", defaulting to owned`);
+            processedItem.collection_type = 'owned';
+          }
+
+          // Try to enrich with OMDB data
+          let enrichmentAttempted = false;
+          if (!row['IMDb ID']?.trim()) {
             try {
+              enrichmentAttempted = true;
               const searchQuery = processedItem.year 
                 ? `${processedItem.title} ${processedItem.year}`
                 : processedItem.title;
               
+              console.log(`Searching OMDB for: "${searchQuery}"`);
               const omdbResult = await omdbApi.searchMovies(searchQuery);
               
               if (omdbResult.Search && omdbResult.Search.length > 0) {
                 const movie = omdbResult.Search[0];
+                console.log(`Found OMDB match: ${movie.Title} (${movie.Year})`);
+                
                 const details = await omdbApi.getMovieDetails(movie.imdbID);
                 
                 if (details && details.Response === 'True') {
+                  // Enrich the data
                   processedItem.imdb_id = details.imdbID;
                   processedItem.genre = processedItem.genre || details.Genre;
                   processedItem.director = processedItem.director || details.Director;
-                  processedItem.poster_url = details.Poster && details.Poster !== 'N/A' ? details.Poster : null;
+                  
+                  // Handle poster URL more carefully
+                  if (details.Poster && details.Poster !== 'N/A' && details.Poster.startsWith('http')) {
+                    processedItem.poster_url = details.Poster;
+                    console.log(`Added poster URL for "${processedItem.title}": ${processedItem.poster_url}`);
+                  }
+                  
+                  // Update year if not provided
                   processedItem.year = processedItem.year || (details.Year ? parseInt(details.Year) : undefined);
+                } else {
+                  console.warn(`OMDB details fetch failed for "${processedItem.title}"`);
+                  result.notEnriched.push({ title: processedItem.title, year: processedItem.year });
                 }
               } else {
-                result.notEnriched.push({
-                  title: processedItem.title,
-                  year: processedItem.year
-                });
+                console.warn(`No OMDB search results for "${processedItem.title}"`);
+                result.notEnriched.push({ title: processedItem.title, year: processedItem.year });
               }
             } catch (omdbError) {
-              console.warn(`OMDB enrichment failed for "${processedItem.title}":`, omdbError);
-              result.notEnriched.push({
-                title: processedItem.title,
-                year: processedItem.year
-              });
+              console.error(`OMDB enrichment failed for "${processedItem.title}":`, omdbError);
+              result.notEnriched.push({ title: processedItem.title, year: processedItem.year });
+            }
+          } else {
+            // If IMDb ID is provided, use it
+            processedItem.imdb_id = row['IMDb ID'].trim();
+            if (row['Poster URL']?.trim()) {
+              processedItem.poster_url = row['Poster URL'].trim();
             }
           }
 
+          // Clean up data before insert
+          const insertData = {
+            ...processedItem,
+            user_id: user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          // Remove undefined values to prevent database errors
+          Object.keys(insertData).forEach(key => {
+            if (insertData[key] === undefined) {
+              delete insertData[key];
+            }
+          });
+
+          console.log(`Inserting into database:`, insertData);
+
           // Insert into database
-          const { error: insertError } = await supabase
+          const { data: insertedData, error: insertError } = await supabase
             .from('physical_media_collections')
-            .insert({
-              ...processedItem,
-              user_id: user.id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
+            .insert(insertData)
+            .select('*');
 
           if (insertError) {
             console.error(`Insert error for "${processedItem.title}":`, insertError);
             result.errors.push(`Row ${i + 2} ("${processedItem.title}"): ${insertError.message}`);
             result.failed++;
           } else {
+            console.log(`Successfully inserted "${processedItem.title}"`);
             result.success++;
           }
 
         } catch (processError) {
           console.error(`Processing error for row ${i + 2}:`, processError);
-          result.errors.push(`Row ${i + 2}: ${processError instanceof Error ? processError.message : 'Unknown error'}`);
+          result.errors.push(`Row ${i + 2} ("${row.Title || 'Unknown Title'}"): ${processError instanceof Error ? processError.message : 'Unknown processing error'}`);
           result.failed++;
+        }
+
+        // Add small delay to avoid overwhelming the OMDB API
+        if (enrichmentAttempted) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
+      console.log('Import completed:', result);
       setImportResult(result);
       
       if (result.success > 0 && onImportSuccess) {
@@ -436,10 +498,12 @@ export function ImportListsModal({
               <div className="p-4 bg-slate-50 rounded-lg">
                 <h4 className="font-medium text-slate-900 mb-2">💡 Import Tips</h4>
                 <ul className="text-sm text-slate-600 space-y-1">
+                  <li>• <strong>Required field:</strong> Only "Title" is absolutely required</li>
+                  <li>• <strong>Format:</strong> Defaults to "Blu-ray" if not specified (valid: DVD, Blu-ray, 4K UHD, 3D Blu-ray)</li>
+                  <li>• <strong>Condition:</strong> Defaults to "Good" if not specified</li>
                   <li>• <strong>IMDb:</strong> Go to "Your Ratings" → Export → Download CSV</li>
                   <li>• <strong>Letterboxd:</strong> Settings → Account Export → Download ZIP</li>
-                  <li>• <strong>Excel files:</strong> Save as CSV format before importing</li>
-                  <li>• <strong>Template available:</strong> Download our template for proper formatting</li>
+                  <li>• <strong>Auto-enrichment:</strong> Movie details will be fetched automatically from OMDB</li>
                 </ul>
               </div>
             </>
@@ -455,8 +519,13 @@ export function ImportListsModal({
                       <div className="flex-1">
                         <h4 className="font-medium text-blue-900">Need a template?</h4>
                         <p className="text-sm text-blue-700 mt-1">
-                          Download our CSV template to see the proper format and required columns.
+                          Download our CSV template to see the proper format. <strong>Only "Title" is required!</strong>
                         </p>
+                        <div className="text-xs text-blue-600 mt-2 space-y-1">
+                          <p><strong>Required:</strong> Title</p>
+                          <p><strong>Optional but recommended:</strong> Format, Year, Purchase Price, Condition</p>
+                          <p><strong>Auto-filled if missing:</strong> Format (Blu-ray), Condition (Good), Collection Type (owned)</p>
+                        </div>
                         <button
                           onClick={generateTemplate}
                           className="inline-flex items-center space-x-2 mt-3 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
@@ -601,6 +670,11 @@ export function ImportListsModal({
                         <div>
                           <p className="text-sm text-green-700">
                             <strong>Success!</strong> {importResult.success} items have been added to your {pageType === 'collections' ? 'collection' : 'watchlist'}.
+                            {importResult.notEnriched.length > 0 && (
+                              <span className="block mt-1">
+                                <strong>Note:</strong> {importResult.notEnriched.length} items couldn't be auto-enriched with movie details but were still added successfully.
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
