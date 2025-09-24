@@ -258,6 +258,9 @@ export function ImportListsModal({
           continue;
         }
 
+        // Declare enrichmentAttempted variable outside try-catch for proper scope
+        let enrichmentAttempted = false;
+
         try {
           // Process the row data with better validation
           const processedItem: ProcessedItem = {
@@ -290,7 +293,6 @@ export function ImportListsModal({
           }
 
           // Try to enrich with OMDB data
-          let enrichmentAttempted = false;
           if (!row['IMDb ID']?.trim()) {
             try {
               enrichmentAttempted = true;
