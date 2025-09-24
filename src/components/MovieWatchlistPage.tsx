@@ -184,15 +184,15 @@ export function MovieWatchlistPage() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8">
           <div className="p-6 border-b border-slate-200">
             <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
-                <Film className="h-8 w-8 text-blue-600" />
-                My Movies
-              </h1>
-              <p className="text-slate-600 mt-2">
-                Manage your personal collection of movies
-              </p>
-            </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
+                  <Film className="h-8 w-8 text-blue-600" />
+                  My Movies
+                </h1>
+                <p className="text-slate-600 mt-2">
+                  Manage your personal collection of movies
+                </p>
+              </div>
             
             <div className="flex items-center space-x-3">
               {/* Export Lists Button (previously Download My List) */}
