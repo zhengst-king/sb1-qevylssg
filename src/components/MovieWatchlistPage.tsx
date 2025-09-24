@@ -23,7 +23,7 @@ interface FilterState {
 
 export function MovieWatchlistPage() {
   const { isAuthenticated } = useAuth();
-  const { movies, loading, error, updateMovie, deleteMovie } = useMovies('movie');
+  const { movies, loading, error, updateMovie, deleteMovie, refetch } = useMovies('movie');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -120,6 +120,12 @@ export function MovieWatchlistPage() {
 
   const handleUpdateMovie = async (id: string, updates: Partial<Movie>) => {
     await updateMovie(id, updates);
+  };
+
+  const handleMovieAdded = () => {
+    // Refresh the movies list when a movie is successfully added
+    console.log('[MovieWatchlistPage] Movie added, refreshing list...');
+    refetch();
   };
 
   const handleAddItem = () => {
@@ -284,6 +290,7 @@ export function MovieWatchlistPage() {
         <MovieSearchModal
           isOpen={showSearchModal}
           onClose={() => setShowSearchModal(false)}
+          onMovieAdded={handleMovieAdded}
         />
       </div>
     </div>
