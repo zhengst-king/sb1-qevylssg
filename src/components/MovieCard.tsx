@@ -1,3 +1,4 @@
+// src/components/MovieCard.tsx
 import React, { useState } from 'react';
 import { Star, Plus, Check, Calendar, MapPin, User, Users, Clock, Award, DollarSign, Globe, Film, Tv } from 'lucide-react';
 import { OMDBMovieDetails } from '../lib/omdb';
@@ -7,9 +8,10 @@ interface MovieCardProps {
   movie: OMDBMovieDetails;
   posterUrl: string | null;
   imdbUrl: string | null;
+  onMovieAdded?: () => void; // NEW: Optional callback for when movie is added
 }
 
-export function MovieCard({ movie, posterUrl, imdbUrl }: MovieCardProps) {
+export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
 
@@ -102,6 +104,12 @@ export function MovieCard({ movie, posterUrl, imdbUrl }: MovieCardProps) {
         console.log('Insert succeeded:', inserted);
         // Mark this card as added without a popup
         setIsInWatchlist(true);
+        
+        // NEW: Call the callback to refresh parent component if provided
+        if (onMovieAdded) {
+          console.log('[MovieCard] Calling onMovieAdded callback');
+          onMovieAdded();
+        }
       }
 
     } catch (error) {
@@ -119,7 +127,7 @@ export function MovieCard({ movie, posterUrl, imdbUrl }: MovieCardProps) {
           {posterUrl && posterUrl !== 'N/A' ? (
             <img
               src={posterUrl}
-              alt={movie.title}
+              alt={movie.Title}
               className="w-full h-72 md:h-full object-cover"
             />
           ) : (
@@ -177,118 +185,80 @@ export function MovieCard({ movie, posterUrl, imdbUrl }: MovieCardProps) {
             <div className="flex items-center space-x-4 text-sm text-slate-600">
               <div className="flex items-center space-x-1">
                 <Calendar className="h-4 w-4" />
-                <span>{movie.Year !== 'N/A' ? movie.Year : 'Unknown'}</span>
+                <span>{movie.Year !== 'N/A' ? movie.Year : 'Unknown Year'}</span>
               </div>
               
               {movie.imdbRating !== 'N/A' && (
                 <div className="flex items-center space-x-1">
-                  <Star className="h-4 w-4 text-yellow-500" />
-                  <span className="font-medium">{movie.imdbRating}</span>
-                  {movie.imdbVotes !== 'N/A' && (
-                    <span className="text-slate-400">({movie.imdbVotes} votes)</span>
-                  )}
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span>{movie.imdbRating}</span>
                 </div>
               )}
               
-              {movie.Metascore !== 'N/A' && (
+              {movie.Runtime !== 'N/A' && (
                 <div className="flex items-center space-x-1">
-                  <Award className="h-4 w-4 text-green-500" />
-                  <span className="font-medium">{movie.Metascore}</span>
-                  <span className="text-slate-400">Metascore</span>
+                  <Clock className="h-4 w-4" />
+                  <span>{movie.Runtime}</span>
                 </div>
               )}
             </div>
-            
+
             {movie.Genre !== 'N/A' && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1">
                 {movie.Genre.split(', ').map((genre, index) => (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                    className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs"
                   >
                     {genre}
                   </span>
                 ))}
               </div>
             )}
-            
-            {movie.Runtime !== 'N/A' && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <Clock className="h-4 w-4" />
-                <span>{movie.Runtime}</span>
-              </div>
+
+            {movie.Plot !== 'N/A' && (
+              <p className="text-slate-600 text-sm leading-relaxed">
+                {movie.Plot.length > 200 ? `${movie.Plot.substring(0, 200)}...` : movie.Plot}
+              </p>
             )}
-            
-            {movie.Country !== 'N/A' && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <MapPin className="h-4 w-4" />
-                <span>{movie.Country}</span>
-              </div>
-            )}
-            
-            {movie.Director !== 'N/A' && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <User className="h-4 w-4" />
-                <span><strong>Director:</strong> {movie.Director}</span>
-              </div>
-            )}
-            
-            {movie.Actors !== 'N/A' && (
-              <div className="flex items-start space-x-1 text-sm text-slate-600">
-                <Users className="h-4 w-4 mt-0.5" />
-                <div>
-                  <strong>Cast:</strong> {movie.Actors}
+
+            <div className="space-y-2 text-sm">
+              {movie.Director !== 'N/A' && (
+                <div className="flex items-center space-x-1">
+                  <User className="h-3 w-3 text-slate-400" />
+                  <span className="text-slate-600"><strong>Director:</strong> {movie.Director}</span>
                 </div>
-              </div>
-            )}
-            
-            {movie.BoxOffice !== 'N/A' && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <DollarSign className="h-4 w-4" />
-                <span><strong>Box Office:</strong> {movie.BoxOffice}</span>
-              </div>
-            )}
-            
-            {movie.Awards !== 'N/A' && movie.Awards !== 'N/A' && (
-              <div className="flex items-start space-x-1 text-sm text-slate-600">
-                <Award className="h-4 w-4 mt-0.5" />
-                <div>
-                  <strong>Awards:</strong> {movie.Awards}
+              )}
+              
+              {movie.Actors !== 'N/A' && (
+                <div className="flex items-start space-x-1">
+                  <Users className="h-3 w-3 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-slate-600"><strong>Cast:</strong> {movie.Actors}</span>
                 </div>
-              </div>
-            )}
+              )}
+              
+              {movie.Country !== 'N/A' && (
+                <div className="flex items-center space-x-1">
+                  <MapPin className="h-3 w-3 text-slate-400" />
+                  <span className="text-slate-600">{movie.Country}</span>
+                </div>
+              )}
+            </div>
           </div>
-          
-          {movie.Plot !== 'N/A' && (
-            <p className="text-slate-700 text-sm leading-relaxed mb-4">
-              {movie.Plot.length > 300 ? `${movie.Plot.substring(0, 300)}...` : movie.Plot}
-            </p>
-          )}
-          
-          <div className="flex space-x-3">
-            {imdbUrl && (
+
+          {imdbUrl && (
+            <div className="pt-4 border-t border-slate-200">
               <a
                 href={imdbUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors duration-200"
+                className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
               >
-                View on IMDb
+                <Globe className="h-4 w-4" />
+                <span>View on IMDb</span>
               </a>
-            )}
-            
-            {movie.Website !== 'N/A' && (
-              <a
-                href={movie.Website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
-              >
-                <Globe className="h-4 w-4 mr-2" />
-                Official Site
-              </a>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
