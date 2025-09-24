@@ -7,9 +7,10 @@ import { MovieCard } from './MovieCard';
 interface MovieSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onMovieAdded?: () => void; // NEW: Optional callback for when movie is added
 }
 
-export function MovieSearchModal({ isOpen, onClose }: MovieSearchModalProps) {
+export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchModalProps) {
   const [query, setQuery] = useState('');
   const [movies, setMovies] = useState<OMDBMovieDetails[]>([]);
   const [loading, setLoading] = useState(false);
@@ -176,6 +177,7 @@ export function MovieSearchModal({ isOpen, onClose }: MovieSearchModalProps) {
                   movie={movie}
                   posterUrl={movie.Poster !== 'N/A' ? movie.Poster : null}
                   imdbUrl={movie.imdbID ? `https://www.imdb.com/title/${movie.imdbID}/` : null}
+                  onMovieAdded={onMovieAdded}
                 />
               ))}
             </div>
