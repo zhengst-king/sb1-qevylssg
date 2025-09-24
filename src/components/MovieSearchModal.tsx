@@ -21,22 +21,39 @@ export function MovieSearchModal({ isOpen, onClose }: MovieSearchModalProps) {
     
     setLoading(true);
     setError(null);
+    setMovies([]);
     setHasSearched(true);
-    
+
     try {
       console.log('[MovieSearchModal] Searching for:', query);
-      const results = await omdbApi.searchMovies(query);
+      const searchResults = await omdbApi.searchMovies(query);
       
-      if (results.length === 0) {
-        setMovies([]);
-        console.log('[MovieSearchModal] No results found for:', query);
-      } else {
-        setMovies(results);
-        console.log('[MovieSearchModal] Found', results.length, 'movies');
+      if (searchResults.Response === 'False') {
+        throw new Error(searchResults.Error || 'No results found');
       }
+
+      // Fetch detailed information for each movie
+      const searchItems = searchResults.Search || [];
+      const detailedMovies: OMDBMovieDetails[] = [];
+      
+      for (const item of searchItems) {
+        try {
+          const details = await omdbApi.getMovieDetails(item.imdbID);
+          if (details.Response === 'True') {
+            detailedMovies.push(details);
+          }
+        } catch (error) {
+          console.warn(`[MovieSearchModal] Failed to fetch details for ${item.Title}:`, error);
+          // Skip this movie if we can't get details
+        }
+      }
+      
+      setMovies(detailedMovies);
+      console.log('[MovieSearchModal] Found', detailedMovies.length, 'detailed movies');
     } catch (err) {
       console.error('[MovieSearchModal] Search error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to search movies');
+      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      setError(errorMessage);
       setMovies([]);
     } finally {
       setLoading(false);
