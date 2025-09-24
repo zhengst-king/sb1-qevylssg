@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
+import { MovieSearchModal } from './MovieSearchModal';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
@@ -24,6 +25,7 @@ export function MovieWatchlistPage() {
   const { isAuthenticated } = useAuth();
   const { movies, loading, error, updateMovie, deleteMovie } = useMovies('movie');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     yearRange: { min: 1900, max: 2025 },
     imdbRating: { min: 0, max: 10 },
@@ -36,6 +38,16 @@ export function MovieWatchlistPage() {
   });
 
   const filteredMovies = useMovieFilters(movies, filters);
+
+  // Calculate movie counts by status for statistics
+  const movieCounts = useMemo(() => {
+    return {
+      toWatch: movies.filter(m => m.status === 'To Watch').length,
+      watching: movies.filter(m => m.status === 'Watching').length,
+      watched: movies.filter(m => m.status === 'Watched').length,
+      toWatchAgain: movies.filter(m => m.status === 'To Watch Again').length,
+    };
+  }, [movies]);
 
   const downloadMovieWatchlist = (movies: Movie[]) => {
     // Sort by user rating descending (highest rated first), then by IMDb rating
@@ -127,27 +139,16 @@ export function MovieWatchlistPage() {
   };
 
   const handleAddItem = () => {
-    // TODO: Implement add movie modal
-    alert('Add Movie functionality coming soon!');
+    setShowSearchModal(true);
   };
-
-  const movieCounts = useMemo(() => {
-    return {
-      total: movies.length,
-      toWatch: movies.filter(m => m.status === 'To Watch').length,
-      watching: movies.filter(m => m.status === 'Watching').length,
-      watched: movies.filter(m => m.status === 'Watched').length,
-      toWatchAgain: movies.filter(m => m.status === 'To Watch Again').length,
-    };
-  }, [movies]);
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-slate-600 mb-2">Sign in required</h3>
-          <p className="text-slate-500">Please sign in to view your movie watchlist.</p>
+          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Sign in to view your movies</h2>
+          <p className="text-slate-600">You need to be signed in to manage your movie watchlist.</p>
         </div>
       </div>
     );
@@ -155,25 +156,37 @@ export function MovieWatchlistPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading your movie watchlist...</p>
+          <p className="text-slate-600">Loading your movies...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Error loading movies</h2>
+          <p className="text-slate-600">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Header - Matching MyCollections style */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8">
+          <div className="p-6 border-b border-slate-200">
+            <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 flex items-center">
-                <Film className="h-8 w-8 text-blue-600 mr-3" />
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
+                <Film className="h-8 w-8 text-blue-600" />
                 My Movies
               </h1>
               <p className="text-slate-600 mt-2">
@@ -217,36 +230,23 @@ export function MovieWatchlistPage() {
           </div>
         </div>
 
-        {error && (
-          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-center space-x-3">
-              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-700">{error}</p>
-            </div>
-          </div>
-        )}
-
+        {/* Statistics Cards */}
         {movies.length > 0 && (
           <>
-            {/* Statistics */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-              <div className="bg-white rounded-lg p-4 text-center shadow-sm border border-slate-200">
-                <div className="text-2xl font-bold text-slate-900">{movieCounts.total}</div>
-                <div className="text-sm text-slate-600">Total Movies</div>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center shadow-sm border border-blue-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-2xl font-bold text-blue-700">{movieCounts.toWatch}</div>
                 <div className="text-sm text-blue-600">To Watch</div>
               </div>
-              <div className="bg-yellow-50 rounded-lg p-4 text-center shadow-sm border border-yellow-200">
-                <div className="text-2xl font-bold text-yellow-700">{movieCounts.watching}</div>
-                <div className="text-sm text-yellow-600">Watching</div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="text-2xl font-bold text-amber-700">{movieCounts.watching}</div>
+                <div className="text-sm text-amber-600">Currently Watching</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center shadow-sm border border-green-200">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="text-2xl font-bold text-green-700">{movieCounts.watched}</div>
                 <div className="text-sm text-green-600">Watched</div>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4 text-center shadow-sm border border-purple-200">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="text-2xl font-bold text-purple-700">{movieCounts.toWatchAgain}</div>
                 <div className="text-sm text-purple-600">To Watch Again</div>
               </div>
@@ -291,6 +291,12 @@ export function MovieWatchlistPage() {
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           pageType="movies"
+        />
+
+        {/* Movie Search Modal */}
+        <MovieSearchModal
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
         />
       </div>
     </div>
