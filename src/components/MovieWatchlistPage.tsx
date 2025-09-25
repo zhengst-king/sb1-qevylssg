@@ -28,9 +28,9 @@ export function MovieWatchlistPage() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showSortDropdown, setShowSortDropdown] = useState(false); // NEW: Sort dropdown state
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() + 5 }, // NEW: Dynamic year range
+    yearRange: { min: 1900, max: new Date().getFullYear() + 5 },
     imdbRating: { min: 0, max: 10 },
     genres: [],
     directors: [],
@@ -42,7 +42,93 @@ export function MovieWatchlistPage() {
 
   const filteredMovies = useMovieFilters(movies, filters);
 
-  // NEW: Apply sorting to filtered movies
+  // FIXED: Calculate counts based on filtered results (ignoring status filter for accurate counts)
+  const movieCounts = useMemo(() => {
+    // Apply all filters except status to get base filtered set
+    const baseFiltered = movies.filter(movie => {
+      // Year filter
+      if (movie.year) {
+        if (movie.year < filters.yearRange.min || movie.year > filters.yearRange.max) {
+          return false;
+        }
+      }
+      // IMDb rating filter
+      if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
+        const score = Number(movie.imdb_score);
+        if (score < filters.imdbRating.min || score > filters.imdbRating.max) {
+          return false;
+        }
+      }
+      // My rating filter
+      if (movie.user_rating !== null && movie.user_rating !== undefined) {
+        if (movie.user_rating < filters.myRating.min || movie.user_rating > filters.myRating.max) {
+          return false;
+        }
+      }
+      // Genre filter
+      if (filters.genres.length > 0 && movie.genre) {
+        const movieGenres = movie.genre.split(', ').map(g => g.trim());
+        const hasMatchingGenre = filters.genres.some(filterGenre =>
+          movieGenres.includes(filterGenre)
+        );
+        if (!hasMatchingGenre) {
+          return false;
+        }
+      }
+      // Director filter
+      if (filters.directors.length > 0) {
+        if (!movie.director) return false;
+        const movieDirector = movie.director.trim().toLowerCase();
+        const hasMatchingDirector = filters.directors.some(filterDirector =>
+          movieDirector.includes(filterDirector.toLowerCase())
+        );
+        if (!hasMatchingDirector) return false;
+      }
+      // Country filter
+      if (filters.countries.length > 0) {
+        if (!movie.country) return false;
+        const countrySeparators = [', ', ',', ' / ', '/', ' | ', '|'];
+        let movieCountries = [movie.country.trim()];
+        countrySeparators.forEach(separator => {
+          const newList: string[] = [];
+          movieCountries.forEach(country => {
+            if (country.includes(separator)) {
+              newList.push(...country.split(separator).map(c => c.trim()));
+            } else {
+              newList.push(country);
+            }
+          });
+          movieCountries = newList;
+        });
+        const hasMatchingCountry = filters.countries.some(filterCountry =>
+          movieCountries.includes(filterCountry)
+        );
+        if (!hasMatchingCountry) return false;
+      }
+      // Actor filter
+      if (filters.actors.trim()) {
+        if (!movie.actors || movie.actors.trim() === '' || movie.actors === 'N/A') {
+          return false;
+        }
+        const searchTerm = filters.actors.toLowerCase().trim();
+        const movieActors = movie.actors.toLowerCase();
+        if (!movieActors.includes(searchTerm)) {
+          return false;
+        }
+      }
+      return true;
+    });
+    
+    return {
+      total: baseFiltered.length,
+      toWatch: baseFiltered.filter(m => m.status === 'To Watch').length,
+      watching: baseFiltered.filter(m => m.status === 'Watching').length,
+      watched: baseFiltered.filter(m => m.status === 'Watched').length,
+      toWatchAgain: baseFiltered.filter(m => m.status === 'To Watch Again').length,
+    };
+  }, [movies, filters]);
+
+  // Apply sorting to filtered movies
   const sortedMovies = useMemo(() => {
     const sorted = [...filteredMovies].sort((a, b) => {
       let aValue: any;
@@ -81,17 +167,6 @@ export function MovieWatchlistPage() {
 
     return sorted;
   }, [filteredMovies, sortBy, sortOrder]);
-
-  // Calculate movie counts by status for statistics
-  const movieCounts = useMemo(() => {
-    return {
-      total: movies.length, // NEW: Total count for "All" button
-      toWatch: movies.filter(m => m.status === 'To Watch').length,
-      watching: movies.filter(m => m.status === 'Watching').length,
-      watched: movies.filter(m => m.status === 'Watched').length,
-      toWatchAgain: movies.filter(m => m.status === 'To Watch Again').length,
-    };
-  }, [movies]);
 
   const downloadMovieWatchlist = (movies: Movie[]) => {
     const sortedMovies = [...movies].sort((a, b) => {
@@ -167,7 +242,6 @@ export function MovieWatchlistPage() {
   };
 
   const handleMovieAdded = () => {
-    // Refresh the movies list when a movie is successfully added
     console.log('[MovieWatchlistPage] Movie added, refreshing list...');
     refetch();
   };
@@ -176,25 +250,20 @@ export function MovieWatchlistPage() {
     setShowSearchModal(true);
   };
 
-  // NEW: Handle status filter button clicks
   const handleStatusFilter = (status: 'All' | Movie['status']) => {
     setFilters(prev => ({ ...prev, status }));
   };
 
-  // NEW: Handle sorting changes
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (newSortBy === sortBy) {
-      // Toggle sort order if same field
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
-      // Set new sort field with default order
       setSortBy(newSortBy);
-      setSortOrder(newSortBy === 'title' ? 'asc' : 'desc'); // Title defaults to A-Z, others to highest first
+      setSortOrder(newSortBy === 'title' ? 'asc' : 'desc');
     }
-    setShowSortDropdown(false); // Close dropdown after selection
+    setShowSortDropdown(false);
   };
 
-  // NEW: Handle outside clicks for sort dropdown
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -265,7 +334,6 @@ export function MovieWatchlistPage() {
               </div>
               
               <div className="flex items-center space-x-3">
-                {/* Export Lists Button */}
                 {movies.length > 0 && (
                   <button
                     onClick={() => downloadMovieWatchlist(movies)}
@@ -279,7 +347,6 @@ export function MovieWatchlistPage() {
                   </button>
                 )}
 
-                {/* Import Lists Button */}
                 <button
                   onClick={() => setShowImportModal(true)}
                   className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -288,7 +355,6 @@ export function MovieWatchlistPage() {
                   <span>Import Lists</span>
                 </button>
 
-                {/* Add Item Button */}
                 <button
                   onClick={handleAddItem}
                   className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -305,7 +371,6 @@ export function MovieWatchlistPage() {
         {movies.length > 0 && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              {/* All Status Button */}
               <button
                 onClick={() => handleStatusFilter('All')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -318,7 +383,6 @@ export function MovieWatchlistPage() {
                 <div className="text-sm text-slate-600">All Movies</div>
               </button>
 
-              {/* To Watch Button */}
               <button
                 onClick={() => handleStatusFilter('To Watch')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -331,7 +395,6 @@ export function MovieWatchlistPage() {
                 <div className="text-sm text-blue-600">To Watch</div>
               </button>
 
-              {/* Currently Watching Button */}
               <button
                 onClick={() => handleStatusFilter('Watching')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -344,7 +407,6 @@ export function MovieWatchlistPage() {
                 <div className="text-sm text-amber-600">Currently Watching</div>
               </button>
 
-              {/* Watched Button */}
               <button
                 onClick={() => handleStatusFilter('Watched')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -357,7 +419,6 @@ export function MovieWatchlistPage() {
                 <div className="text-sm text-green-600">Watched</div>
               </button>
 
-              {/* To Watch Again Button */}
               <button
                 onClick={() => handleStatusFilter('To Watch Again')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -377,7 +438,6 @@ export function MovieWatchlistPage() {
                 <FilterPanel movies={movies} onFiltersChange={setFilters} />
               </div>
               
-              {/* NEW: Sorting Dropdown */}
               <div className="lg:w-80 sort-dropdown">
                 <div className="bg-white rounded-xl shadow-lg border border-slate-200">
                   <button
@@ -461,7 +521,6 @@ export function MovieWatchlistPage() {
           </>
         )}
 
-        {/* Empty State */}
         {movies.length === 0 && !loading && (
           <div className="text-center py-16">
             <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -470,7 +529,6 @@ export function MovieWatchlistPage() {
           </div>
         )}
 
-        {/* Movies List */}
         <div className="space-y-6">
           {sortedMovies.map((movie) => (
             <WatchlistCard
@@ -484,7 +542,6 @@ export function MovieWatchlistPage() {
           ))}
         </div>
 
-        {/* No Results State */}
         {movies.length > 0 && sortedMovies.length === 0 && (
           <div className="text-center py-12">
             <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -493,7 +550,6 @@ export function MovieWatchlistPage() {
           </div>
         )}
 
-        {/* Modals */}
         <ImportListsModal
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
