@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// src/components/FilterPanel.tsx
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronUp, X, Filter, Search } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 
@@ -18,8 +19,12 @@ interface FilterPanelProps {
   onFiltersChange: (filters: FilterState) => void;
 }
 
+// NEW: Dynamic year calculation (current year + 5)
+const getCurrentYear = () => new Date().getFullYear();
+const getMaxYear = () => getCurrentYear() + 5;
+
 const DEFAULT_FILTERS: FilterState = {
-  yearRange: { min: 1900, max: 2025 },
+  yearRange: { min: 1900, max: getMaxYear() }, // NEW: Dynamic max year
   imdbRating: { min: 0, max: 10 },
   genres: [],
   directors: [],
@@ -32,7 +37,25 @@ const DEFAULT_FILTERS: FilterState = {
 export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [directorSearch, setDirectorSearch] = useState('');
+  const [directorSearch, setDirectorSearch] = useState(''); // NEW: Director search instead of checkboxes
+  const filterRef = useRef<HTMLDivElement>(null); // NEW: For outside click detection
+
+  // NEW: Handle outside clicks to collapse filter panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    if (isExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isExpanded]);
 
   // Extract unique values from movies
   const filterOptions = useMemo(() => {
@@ -47,8 +70,32 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
       if (movie.director) {
         directors.add(movie.director.trim());
       }
+      
+      // NEW: Split countries properly for individual selection
       if (movie.country) {
-        countries.add(movie.country.trim());
+        // Handle various country separators
+        const countrySeparators = [', ', ',', ' / ', '/', ' | ', '|'];
+        let countryList = [movie.country.trim()];
+        
+        // Split by each separator
+        countrySeparators.forEach(separator => {
+          const newList: string[] = [];
+          countryList.forEach(country => {
+            if (country.includes(separator)) {
+              newList.push(...country.split(separator).map(c => c.trim()));
+            } else {
+              newList.push(country);
+            }
+          });
+          countryList = newList;
+        });
+        
+        // Add each individual country
+        countryList.forEach(country => {
+          if (country && country !== 'N/A') {
+            countries.add(country);
+          }
+        });
       }
     });
 
@@ -65,6 +112,8 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
     if (savedFilters) {
       try {
         const parsed = JSON.parse(savedFilters);
+        // Update year range max to current dynamic value
+        parsed.yearRange.max = Math.max(parsed.yearRange.max, getMaxYear());
         setFilters(parsed);
         onFiltersChange(parsed);
       } catch (error) {
@@ -81,14 +130,15 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
   };
 
   const clearAllFilters = () => {
-    updateFilters(DEFAULT_FILTERS);
+    const clearedFilters = { ...DEFAULT_FILTERS, yearRange: { min: 1900, max: getMaxYear() } };
+    updateFilters(clearedFilters);
     setDirectorSearch('');
   };
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.yearRange.min !== DEFAULT_FILTERS.yearRange.min || 
-        filters.yearRange.max !== DEFAULT_FILTERS.yearRange.max) count++;
+        filters.yearRange.max !== getMaxYear()) count++;
     if (filters.imdbRating.min !== DEFAULT_FILTERS.imdbRating.min || 
         filters.imdbRating.max !== DEFAULT_FILTERS.imdbRating.max) count++;
     if (filters.genres.length > 0) count++;
@@ -101,14 +151,23 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
     return count;
   }, [filters]);
 
-  const filteredDirectors = useMemo(() => {
-    return filterOptions.directors.filter(director =>
-      director.toLowerCase().includes(directorSearch.toLowerCase())
-    );
-  }, [filterOptions.directors, directorSearch]);
+  // NEW: Director filtering logic for search bar
+  const handleDirectorSearch = (searchTerm: string) => {
+    setDirectorSearch(searchTerm);
+    if (searchTerm.trim()) {
+      // Find directors that match the search and add them to filter
+      const matchingDirectors = filterOptions.directors.filter(director =>
+        director.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      updateFilters({ ...filters, directors: matchingDirectors });
+    } else {
+      // Clear director filter when search is empty
+      updateFilters({ ...filters, directors: [] });
+    }
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 mb-8">
+    <div ref={filterRef} className="bg-white rounded-xl shadow-lg border border-slate-200 mb-8">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors rounded-xl"
@@ -122,45 +181,21 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
             </span>
           )}
         </div>
-        {isExpanded ? (
-          <ChevronUp className="h-5 w-5 text-slate-600" />
-        ) : (
-          <ChevronDown className="h-5 w-5 text-slate-600" />
-        )}
+        {isExpanded ? <ChevronUp className="h-5 w-5 text-slate-600" /> : <ChevronDown className="h-5 w-5 text-slate-600" />}
       </button>
 
       {isExpanded && (
-        <div className="px-6 pb-6 border-t border-slate-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Status</label>
-              <div className="space-y-2">
-                {(['All', 'To Watch', 'Watching', 'Watched', 'To Watch Again'] as const).map(status => (
-                  <label key={status} className="flex items-center">
-                    <input
-                      type="radio"
-                      name="status"
-                      value={status}
-                      checked={filters.status === status}
-                      onChange={(e) => updateFilters({ ...filters, status: e.target.value as FilterState['status'] })}
-                      className="mr-2 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-slate-700">{status}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
+        <div className="px-6 pb-6 space-y-6 border-t border-slate-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
             {/* Year Range */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-3">Year Range</label>
               <div className="space-y-2">
-                <div className="flex space-x-2">
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     type="number"
                     min="1900"
-                    max="2025"
+                    max={getMaxYear()}
                     value={filters.yearRange.min}
                     onChange={(e) => updateFilters({
                       ...filters,
@@ -172,11 +207,11 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
                   <input
                     type="number"
                     min="1900"
-                    max="2025"
+                    max={getMaxYear()}
                     value={filters.yearRange.max}
                     onChange={(e) => updateFilters({
                       ...filters,
-                      yearRange: { ...filters.yearRange, max: parseInt(e.target.value) || 2025 }
+                      yearRange: { ...filters.yearRange, max: parseInt(e.target.value) || getMaxYear() }
                     })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="To"
@@ -274,42 +309,22 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
               </div>
             </div>
 
-            {/* Directors */}
+            {/* Directors - NEW: Search bar instead of checkboxes */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Directors</label>
-              <div className="space-y-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={directorSearch}
-                    onChange={(e) => setDirectorSearch(e.target.value)}
-                    placeholder="Search directors..."
-                    className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
-                  {filteredDirectors.map(director => (
-                    <label key={director} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={filters.directors.includes(director)}
-                        onChange={(e) => {
-                          const newDirectors = e.target.checked
-                            ? [...filters.directors, director]
-                            : filters.directors.filter(d => d !== director);
-                          updateFilters({ ...filters, directors: newDirectors });
-                        }}
-                        className="mr-2 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-slate-700">{director}</span>
-                    </label>
-                  ))}
-                </div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">Director</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={directorSearch}
+                  onChange={(e) => handleDirectorSearch(e.target.value)}
+                  placeholder="Search by director name..."
+                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
             </div>
 
-            {/* Countries */}
+            {/* Countries - UPDATED: Individual countries */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-3">Countries</label>
               <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
@@ -335,13 +350,16 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
             {/* Actors */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-3">Cast/Actors</label>
-              <input
-                type="text"
-                value={filters.actors}
-                onChange={(e) => updateFilters({ ...filters, actors: e.target.value })}
-                placeholder="Search by actor name..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={filters.actors}
+                  onChange={(e) => updateFilters({ ...filters, actors: e.target.value })}
+                  placeholder="Search by actor name..."
+                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
           </div>
 
