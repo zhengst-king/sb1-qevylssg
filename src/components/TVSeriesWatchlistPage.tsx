@@ -1,39 +1,82 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// DEBUG VERSION - Step 3: Add useMovieFilters hook
+// DEBUG VERSION - Step 3B: Debug which filter is removing movies
 import React, { useState } from 'react';
 import { Tv, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useMovies } from '../hooks/useMovies';
-import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-
-interface FilterState {
-  yearRange: { min: number; max: number };
-  imdbRating: { min: number; max: number };
-  genres: string[];
-  directors: string[];
-  actors: string;
-  countries: string[];
-  myRating: { min: number; max: number };
-  status: 'All' | Movie['status'];
-}
 
 export function TVSeriesWatchlistPage() {
   const { isAuthenticated } = useAuth();
   const { movies, loading, error } = useMovies('series');
 
-  const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() },
-    imdbRating: { min: 0, max: 10 },
-    genres: [],
-    directors: [],
-    actors: '',
-    countries: [],
-    myRating: { min: 0, max: 10 },
-    status: 'All'
-  });
+  // Test each filter individually to find the culprit
+  const debugFilters = (movies: Movie[]) => {
+    if (!movies || movies.length === 0) return {};
 
-  const { filteredMovies } = useMovieFilters(movies, filters);
+    const results: any = {};
+
+    // Test year filter
+    const yearFilterMin = 1900;
+    const yearFilterMax = new Date().getFullYear();
+    const yearFiltered = movies.filter(movie => {
+      if (movie.year) {
+        return movie.year >= yearFilterMin && movie.year <= yearFilterMax;
+      }
+      return true; // Include if no year
+    });
+    results.yearFilter = `${yearFiltered.length}/${movies.length} (${yearFilterMin}-${yearFilterMax})`;
+
+    // Test IMDB rating filter
+    const imdbFiltered = movies.filter(movie => {
+      if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
+        const score = Number(movie.imdb_score);
+        return score >= 0 && score <= 10;
+      }
+      return true; // Include if no rating
+    });
+    results.imdbFilter = `${imdbFiltered.length}/${movies.length} (0-10 IMDB)`;
+
+    // Test user rating filter - THIS IS LIKELY THE CULPRIT
+    const userRatingFiltered = movies.filter(movie => {
+      if (movie.user_rating !== null && movie.user_rating !== undefined) {
+        return movie.user_rating >= 0 && movie.user_rating <= 10;
+      }
+      return true; // Include if no user rating
+    });
+    results.userRatingFilter = `${userRatingFiltered.length}/${movies.length} (0-10 user rating)`;
+
+    // Test if movies have user_rating field
+    const moviesWithUserRating = movies.filter(m => m.user_rating !== null && m.user_rating !== undefined);
+    const moviesWithoutUserRating = movies.filter(m => m.user_rating === null || m.user_rating === undefined);
+    results.userRatingData = `${moviesWithUserRating.length} have ratings, ${moviesWithoutUserRating.length} don't`;
+
+    // Test genres filter (empty array should pass all)
+    const genreFiltered = movies.filter(movie => {
+      const filterGenres: string[] = []; // Empty like our filter
+      if (filterGenres.length > 0 && movie.genre) {
+        const movieGenres = movie.genre.split(', ').map(g => g.trim());
+        return filterGenres.some(filterGenre => movieGenres.includes(filterGenre));
+      }
+      return true; // Pass all if no genre filter
+    });
+    results.genreFilter = `${genreFiltered.length}/${movies.length} (no genre filter)`;
+
+    // Test empty arrays and strings
+    const emptyArrayFiltered = movies.filter(movie => {
+      const emptyDirectors: string[] = [];
+      const emptyCountries: string[] = [];
+      const emptyActors = '';
+
+      // These should all pass
+      return (emptyDirectors.length === 0) && 
+             (emptyCountries.length === 0) && 
+             (emptyActors.trim() === '');
+    });
+    results.emptyArrayFilter = `${emptyArrayFiltered.length}/${movies.length} (empty arrays/strings)`;
+
+    return results;
+  };
 
   // Step 1: Just render basic content
   if (!isAuthenticated) {
@@ -81,17 +124,17 @@ export function TVSeriesWatchlistPage() {
           <div className="p-6">
             <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
               <Tv className="h-8 w-8 text-purple-600" />
-              My TV Series - DEBUG STEP 3
+              My TV Series - DEBUG STEP 3B
             </h1>
             <p className="text-slate-600 mt-2">
-              Testing useMovieFilters hook...
+              Analyzing which filter is removing all TV series...
             </p>
           </div>
         </div>
 
         {/* Debug Info */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-xl font-semibold mb-4">🔍 Debug Status - Step 3</h2>
+          <h2 className="text-xl font-semibold mb-4">🔍 Debug Status - Step 3B: Filter Analysis</h2>
           <div className="space-y-2">
             <p>✅ Component rendered successfully</p>
             <p>✅ useAuth hook working</p>
@@ -100,19 +143,35 @@ export function TVSeriesWatchlistPage() {
             <p>✅ Loading state: {loading ? 'Loading...' : 'Not loading'}</p>
             <p>✅ Error state: {error ? error : 'No errors'}</p>
             <p>✅ Movies count: {movies?.length || 0} TV series found</p>
-            <p>✅ useMovieFilters hook imported</p>
-            <p>✅ Filtered movies count: {filteredMovies?.length || 0} after filtering</p>
-            <p>✅ Filter state initialized: {JSON.stringify(filters.status)} status filter</p>
+            
             {movies && movies.length > 0 && (
-              <div className="mt-4">
-                <p className="font-semibold">First TV series:</p>
-                <p className="text-sm text-gray-600">{movies[0].title} ({movies[0].year})</p>
-              </div>
-            )}
-            {filteredMovies && filteredMovies.length > 0 && (
-              <div className="mt-4">
-                <p className="font-semibold">First filtered TV series:</p>
-                <p className="text-sm text-gray-600">{filteredMovies[0].title} ({filteredMovies[0].year})</p>
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p className="font-semibold text-red-600 mb-2">🔍 FILTER DEBUG RESULTS:</p>
+                {(() => {
+                  const debugResults = debugFilters(movies);
+                  return (
+                    <div className="space-y-1 text-sm">
+                      <p>📅 Year filter result: {debugResults.yearFilter}</p>
+                      <p>⭐ IMDB filter result: {debugResults.imdbFilter}</p>
+                      <p>👤 User rating filter result: {debugResults.userRatingFilter}</p>
+                      <p>📊 User rating data: {debugResults.userRatingData}</p>
+                      <p>🎭 Genre filter result: {debugResults.genreFilter}</p>
+                      <p>📝 Empty arrays filter result: {debugResults.emptyArrayFilter}</p>
+                    </div>
+                  );
+                })()}
+                
+                <div className="mt-4 p-3 bg-blue-50 rounded">
+                  <p className="font-semibold text-blue-800">Sample TV Series Data:</p>
+                  <div className="text-xs mt-2">
+                    <p>Title: {movies[0].title}</p>
+                    <p>Year: {movies[0].year || 'null'}</p>
+                    <p>IMDB Score: {movies[0].imdb_score || 'null'}</p>
+                    <p>User Rating: {movies[0].user_rating || 'null'}</p>
+                    <p>Status: {movies[0].status || 'null'}</p>
+                    <p>Genre: {movies[0].genre || 'null'}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
