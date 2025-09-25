@@ -4,7 +4,8 @@ import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
-import { EpisodeBrowser } from './EpisodeBrowser'; // NEW: Episode Browser
+// TEMPORARILY COMMENTED OUT - Episode Browser functionality
+// import { EpisodeBrowser } from './EpisodeBrowser';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
@@ -32,9 +33,9 @@ export function TVSeriesWatchlistPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   
-  // NEW: Episode Browser state
-  const [selectedSeries, setSelectedSeries] = useState<Movie | null>(null);
-  const [showEpisodeBrowser, setShowEpisodeBrowser] = useState(false);
+  // TEMPORARILY COMMENTED OUT - Episode Browser state
+  // const [selectedSeries, setSelectedSeries] = useState<Movie | null>(null);
+  // const [showEpisodeBrowser, setShowEpisodeBrowser] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
     yearRange: { min: 1900, max: new Date().getFullYear() },
@@ -130,16 +131,16 @@ export function TVSeriesWatchlistPage() {
     setShowSortDropdown(false);
   };
 
-  // NEW: Episode browser handlers
-  const handleViewEpisodes = (series: Movie) => {
-    setSelectedSeries(series);
-    setShowEpisodeBrowser(true);
-  };
+  // TEMPORARILY COMMENTED OUT - Episode browser handlers
+  // const handleViewEpisodes = (series: Movie) => {
+  //   setSelectedSeries(series);
+  //   setShowEpisodeBrowser(true);
+  // };
 
-  const handleCloseEpisodeBrowser = () => {
-    setShowEpisodeBrowser(false);
-    setSelectedSeries(null);
-  };
+  // const handleCloseEpisodeBrowser = () => {
+  //   setShowEpisodeBrowser(false);
+  //   setSelectedSeries(null);
+  // };
 
   // Handle outside clicks for sort dropdown
   React.useEffect(() => {
@@ -536,7 +537,8 @@ export function TVSeriesWatchlistPage() {
                   className="h-full"
                 />
                 
-                {/* NEW: Episodes Browser Button */}
+                {/* TEMPORARILY COMMENTED OUT - Episodes Browser Button */}
+                {/*
                 <button
                   onClick={() => handleViewEpisodes(movie)}
                   className="absolute top-3 right-3 bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg shadow-lg transition-colors group z-10"
@@ -544,6 +546,7 @@ export function TVSeriesWatchlistPage() {
                 >
                   <Tv className="h-4 w-4" />
                 </button>
+                */}
               </div>
             ))}
           </div>
@@ -557,20 +560,20 @@ export function TVSeriesWatchlistPage() {
           />
         )}
 
-        {/* NEW: Search Modal for adding TV series */}
+        {/* Search Modal for adding TV series */}
         {showSearchModal && (
           <MovieSearchModal
             onClose={() => setShowSearchModal(false)}
             onMovieAdded={handleSeriesAdded}
-            defaultSearchType="series" // Force search type to series
+            defaultSearchType="series"
           />
         )}
 
-        {/* NEW: Episode Browser Modal */}
+        {/* TEMPORARILY COMMENTED OUT - Episode Browser Modal */}
+        {/*
         {showEpisodeBrowser && selectedSeries && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
-              {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
                 <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                   <Tv className="h-6 w-6 text-purple-600" />
@@ -584,20 +587,19 @@ export function TVSeriesWatchlistPage() {
                 </button>
               </div>
               
-              {/* Modal Content */}
               <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
                 <EpisodeBrowser
                   seriesImdbId={selectedSeries.imdb_id}
                   seriesTitle={selectedSeries.title}
                   onEpisodeSelect={(episode) => {
                     console.log('Selected episode:', episode);
-                    // Optional: Add episode to collection, show details, etc.
                   }}
                 />
               </div>
             </div>
           </div>
         )}
+        */}
       </div>
     </div>
   );
