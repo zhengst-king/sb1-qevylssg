@@ -479,20 +479,22 @@ export function TVSeriesWatchlistPage() {
           </div>
         )}
 
-        {/* Import Lists Modal */}
+        {/* Import Lists Modal - FIXED: Added correct props */}
         {showImportModal && (
           <ImportListsModal
+            isOpen={showImportModal}
             onClose={() => setShowImportModal(false)}
-            onImportComplete={refetch}
+            pageType="tv-series"
+            onImportSuccess={refetch}
           />
         )}
 
-        {/* Search Modal for adding TV series */}
+        {/* Search Modal for adding TV series - FIXED: Removed unsupported defaultSearchType prop */}
         {showSearchModal && (
           <MovieSearchModal
+            isOpen={showSearchModal}
             onClose={() => setShowSearchModal(false)}
             onMovieAdded={handleSeriesAdded}
-            defaultSearchType="series"
           />
         )}
       </div>
