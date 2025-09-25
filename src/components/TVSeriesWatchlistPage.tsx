@@ -1,13 +1,39 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// DEBUG VERSION - Step 2: Add useMovies hook
+// DEBUG VERSION - Step 3: Add useMovieFilters hook
 import React, { useState } from 'react';
 import { Tv, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useMovies } from '../hooks/useMovies';
+import { useMovieFilters } from '../hooks/useMovieFilters';
+import { Movie } from '../lib/supabase';
+
+interface FilterState {
+  yearRange: { min: number; max: number };
+  imdbRating: { min: number; max: number };
+  genres: string[];
+  directors: string[];
+  actors: string;
+  countries: string[];
+  myRating: { min: number; max: number };
+  status: 'All' | Movie['status'];
+}
 
 export function TVSeriesWatchlistPage() {
   const { isAuthenticated } = useAuth();
   const { movies, loading, error } = useMovies('series');
+
+  const [filters, setFilters] = useState<FilterState>({
+    yearRange: { min: 1900, max: new Date().getFullYear() },
+    imdbRating: { min: 0, max: 10 },
+    genres: [],
+    directors: [],
+    actors: '',
+    countries: [],
+    myRating: { min: 0, max: 10 },
+    status: 'All'
+  });
+
+  const { filteredMovies } = useMovieFilters(movies, filters);
 
   // Step 1: Just render basic content
   if (!isAuthenticated) {
@@ -55,29 +81,38 @@ export function TVSeriesWatchlistPage() {
           <div className="p-6">
             <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
               <Tv className="h-8 w-8 text-purple-600" />
-              My TV Series - DEBUG STEP 2
+              My TV Series - DEBUG STEP 3
             </h1>
             <p className="text-slate-600 mt-2">
-              Testing useMovies hook...
+              Testing useMovieFilters hook...
             </p>
           </div>
         </div>
 
         {/* Debug Info */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-xl font-semibold mb-4">🔍 Debug Status - Step 2</h2>
+          <h2 className="text-xl font-semibold mb-4">🔍 Debug Status - Step 3</h2>
           <div className="space-y-2">
             <p>✅ Component rendered successfully</p>
             <p>✅ useAuth hook working</p>
             <p>✅ Authentication status: {isAuthenticated ? 'Logged in' : 'Not logged in'}</p>
-            <p>✅ useMovies hook imported</p>
+            <p>✅ useMovies hook working</p>
             <p>✅ Loading state: {loading ? 'Loading...' : 'Not loading'}</p>
             <p>✅ Error state: {error ? error : 'No errors'}</p>
             <p>✅ Movies count: {movies?.length || 0} TV series found</p>
+            <p>✅ useMovieFilters hook imported</p>
+            <p>✅ Filtered movies count: {filteredMovies?.length || 0} after filtering</p>
+            <p>✅ Filter state initialized: {JSON.stringify(filters.status)} status filter</p>
             {movies && movies.length > 0 && (
               <div className="mt-4">
                 <p className="font-semibold">First TV series:</p>
                 <p className="text-sm text-gray-600">{movies[0].title} ({movies[0].year})</p>
+              </div>
+            )}
+            {filteredMovies && filteredMovies.length > 0 && (
+              <div className="mt-4">
+                <p className="font-semibold">First filtered TV series:</p>
+                <p className="text-sm text-gray-600">{filteredMovies[0].title} ({filteredMovies[0].year})</p>
               </div>
             )}
           </div>
