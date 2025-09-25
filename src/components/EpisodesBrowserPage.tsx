@@ -1,575 +1,404 @@
-// src/components/TVSeriesWatchlistPage.tsx
-// Updated with Episode Browser navigation (Option B - Separate Page)
-import React, { useState, useMemo } from 'react';
-import { WatchlistCard } from './WatchlistCard';
-import { FilterPanel } from './FilterPanel';
-import { ImportListsModal } from './ImportListsModal';
-import { MovieSearchModal } from './MovieSearchModal';
-import { EpisodesBrowserPage } from './EpisodesBrowserPage';
-import { useMovies } from '../hooks/useMovies';
-import { useMovieFilters } from '../hooks/useMovieFilters';
+// src/components/EpisodesBrowserPage.tsx
+// Separate page for episode browsing - Option B implementation
+import React, { useState, useEffect } from 'react';
+import { 
+  ArrowLeft, 
+  Tv, 
+  Play, 
+  Clock, 
+  Calendar, 
+  Star, 
+  ChevronLeft, 
+  ChevronRight, 
+  Download, 
+  RefreshCw,
+  BarChart3,
+  Zap,
+  CheckCircle,
+  AlertCircle,
+  ExternalLink
+} from 'lucide-react';
+import { useEpisodeDiscovery, useEpisodeBrowser } from '../hooks/useEpisodeDiscovery';
+import { EpisodeData } from '../services/episodeDiscoveryService';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, Play } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 
-interface FilterState {
-  yearRange: { min: number; max: number };
-  imdbRating: { min: number; max: number };
-  genres: string[];
-  directors: string[];
-  actors: string;
-  countries: string[];
-  myRating: { min: number; max: number };
-  status: 'All' | Movie['status'];
+interface EpisodesBrowserPageProps {
+  series: Movie;
+  onBack: () => void;
 }
 
-export function TVSeriesWatchlistPage() {
-  const { isAuthenticated } = useAuth();
-  const { movies, loading, error, updateMovie, deleteMovie, refetch } = useMovies('series');
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
+export function EpisodesBrowserPage({ series, onBack }: EpisodesBrowserPageProps) {
+  const {
+    currentSeason,
+    currentEpisodes,
+    progress,
+    isCurrentSeasonLoading,
+    nextSeason,
+    prevSeason,
+    jumpToSeason,
+    loadSeason,
+    hasNextSeason,
+    hasPrevSeason,
+    totalSeasons,
+    episodesInSeason
+  } = useEpisodeBrowser(series.imdb_id);
 
-  // NEW: Episode Browser navigation state
-  const [selectedSeriesForEpisodes, setSelectedSeriesForEpisodes] = useState<Movie | null>(null);
+  const {
+    discoverSeries,
+    getDiscoveryProgress,
+    cacheStats,
+    loading: serviceLoading
+  } = useEpisodeDiscovery();
 
-  const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() },
-    imdbRating: { min: 0, max: 10 },
-    genres: [],
-    directors: [],
-    actors: '',
-    countries: [],
-    myRating: { min: 0, max: 10 },
-    status: 'All'
-  });
+  const [showStats, setShowStats] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  // FIXED: Use useMovieFilters correctly (returns array directly, not object)
-  const filteredMovies = useMovieFilters(movies, filters);
+  // Refresh progress periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getDiscoveryProgress(series.imdb_id);
+    }, 30000); // Every 30 seconds
 
-  // NEW: If viewing episodes, show episode browser page
-  if (selectedSeriesForEpisodes) {
-    return (
-      <EpisodesBrowserPage 
-        series={selectedSeriesForEpisodes}
-        onBack={() => setSelectedSeriesForEpisodes(null)}
-      />
-    );
-  }
+    return () => clearInterval(interval);
+  }, [series.imdb_id, getDiscoveryProgress]);
 
-  // Download watchlist as JSON
-  const downloadTVWatchlist = (movies: Movie[]) => {
-    const data = {
-      exportDate: new Date().toISOString(),
-      totalSeries: movies.length,
-      tvSeries: movies.map(movie => ({
-        title: movie.title,
-        year: movie.year,
-        genre: movie.genre,
-        director: movie.director,
-        actors: movie.actors,
-        plot: movie.plot,
-        country: movie.country,
-        language: movie.language,
-        userRating: movie.user_rating,
-        status: movie.status,
-        dateWatched: movie.date_watched,
-        userReview: movie.user_review,
-        imdbID: movie.imdb_id,
-        imdbRating: movie.imdb_score,
-        metascore: movie.metascore,
-        imdbVotes: movie.imdb_votes,
-        posterUrl: movie.poster_url,
-        imdbUrl: movie.imdb_url,
-        website: movie.website,
-        awards: movie.awards,
-        boxOffice: movie.box_office,
-        production: movie.production,
-        createdAt: movie.created_at,
-        statusUpdatedAt: movie.status_updated_at,
-        ratingUpdatedAt: movie.rating_updated_at,
-        lastModifiedAt: movie.last_modified_at
-      }))
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `my_tv_series_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleUpdateStatus = async (id: string, status: Movie['status']) => {
-    await updateMovie(id, { status });
-  };
-
-  const handleUpdateRating = async (id: string, user_rating: number | null) => {
-    await updateMovie(id, { user_rating });
-  };
-
-  const handleUpdateMovie = async (id: string, updates: Partial<Movie>) => {
-    await updateMovie(id, updates);
-  };
-
-  const handleSeriesAdded = () => {
-    console.log('[TVSeriesWatchlistPage] TV Series added, refreshing list...');
-    refetch();
-  };
-
-  const handleAddItem = () => {
-    setShowSearchModal(true);
-  };
-
-  const handleStatusFilter = (status: 'All' | Movie['status']) => {
-    setFilters(prev => ({ ...prev, status }));
-  };
-
-  const handleSortChange = (newSortBy: typeof sortBy) => {
-    if (newSortBy === sortBy) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(newSortBy);
-      setSortOrder(newSortBy === 'title' ? 'asc' : 'desc');
+  const handleDiscoverAll = async () => {
+    try {
+      const result = await discoverSeries(series.imdb_id);
+      
+      if (result.queued) {
+        alert(`Discovery queued! This will require approximately ${result.estimatedCalls} API calls and will process in the background.`);
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to start discovery');
     }
-    setShowSortDropdown(false);
   };
 
-  // NEW: Handle episode browser navigation
-  const handleViewEpisodes = (series: Movie) => {
-    setSelectedSeriesForEpisodes(series);
+  const handleRefreshSeason = async () => {
+    await loadSeason(currentSeason, false);
+    setLastRefresh(new Date());
   };
 
-  // Handle outside clicks for sort dropdown
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.sort-dropdown')) {
-        setShowSortDropdown(false);
-      }
-    };
-
-    if (showSortDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showSortDropdown]);
-
-  // Filter and sort movies
-  const filteredAndSortedMovies = useMemo(() => {
-    let result = [...filteredMovies];
-
-    // Sort
-    result.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortBy) {
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case 'year':
-          aValue = a.year || 0;
-          bValue = b.year || 0;
-          break;
-        case 'imdb_rating':
-          aValue = a.imdb_score || 0;
-          bValue = b.imdb_score || 0;
-          break;
-        case 'user_rating':
-          aValue = a.user_rating || 0;
-          bValue = b.user_rating || 0;
-          break;
-        case 'date_added':
-          aValue = new Date(a.created_at || 0);
-          bValue = new Date(b.created_at || 0);
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
+  const formatAirDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
     });
+  };
 
-    return result;
-  }, [filteredMovies, sortBy, sortOrder]);
+  const formatRuntime = (minutes: number | undefined) => {
+    if (!minutes) return 'Unknown';
+    return `${minutes}min`;
+  };
 
-  // Calculate movie counts
-  const movieCounts = useMemo(() => {
-    return {
-      total: movies.length,
-      toWatch: movies.filter(m => m.status === 'To Watch').length,
-      watching: movies.filter(m => m.status === 'Watching').length,
-      watched: movies.filter(m => m.status === 'Watched').length,
-      onHold: movies.filter(m => m.status === 'On Hold').length,
-      dropped: movies.filter(m => m.status === 'Dropped').length
-    };
-  }, [movies]);
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Tv className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Sign in to view your TV series</h2>
-          <p className="text-slate-600">You need to be signed in to manage your TV series watchlist.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading your TV series...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Error loading TV series</h2>
-          <p className="text-slate-600">{error}</p>
-        </div>
-      </div>
-    );
-  }
+  const handleEpisodeSelect = (episode: EpisodeData) => {
+    console.log('Selected episode:', episode);
+    // Could open episode details, add to watchlist, etc.
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+        
+        {/* Header with Back Button */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8">
           <div className="p-6 border-b border-slate-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
-                  <Tv className="h-8 w-8 text-purple-600" />
-                  My TV Series
-                </h1>
-                <p className="text-slate-600 mt-2">
-                  Manage your personal collection of TV series
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={onBack}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  Back to TV Series
+                </button>
+                
+                <div className="border-l border-gray-300 pl-4">
+                  <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                    <Tv className="h-8 w-8 text-purple-600" />
+                    {series.title}
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    Episode Browser & Discovery
+                  </p>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-3">
-                {/* Export Lists Button */}
-                {movies.length > 0 && (
-                  <button
-                    onClick={() => downloadTVWatchlist(movies)}
-                    className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Export Lists</span>
-                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
-                      {movies.length}
-                    </span>
-                  </button>
-                )}
-
-                {/* Import Lists Button */}
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowImportModal(true)}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  onClick={() => setShowStats(!showStats)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 >
-                  <Upload className="h-4 w-4" />
-                  <span>Import Lists</span>
+                  <BarChart3 className="h-4 w-4" />
+                  Stats
+                </button>
+                
+                <button
+                  onClick={handleDiscoverAll}
+                  disabled={serviceLoading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  Discover All
                 </button>
 
-                {/* Add Item Button */}
-                <button
-                  onClick={handleAddItem}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                <a
+                  href={`https://www.imdb.com/title/${series.imdb_id}/episodes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Item</span>
-                </button>
+                  <ExternalLink className="h-4 w-4" />
+                  View on IMDb
+                </a>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Statistics Cards / Filter Buttons */}
-        {movies.length > 0 && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              {/* All Status Button */}
-              <button
-                onClick={() => handleStatusFilter('All')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
-                  filters.status === 'All'
-                    ? 'bg-slate-100 border-slate-400 ring-2 ring-slate-500'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                }`}
-              >
-                <div className="text-2xl font-bold text-slate-700">{movieCounts.total}</div>
-                <div className="text-sm text-slate-600">All Series</div>
-              </button>
-
-              {/* To Watch Button */}
-              <button
-                onClick={() => handleStatusFilter('To Watch')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
-                  filters.status === 'To Watch'
-                    ? 'bg-blue-100 border-blue-400 ring-2 ring-blue-500'
-                    : 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
-                }`}
-              >
-                <div className="text-2xl font-bold text-blue-700">{movieCounts.toWatch}</div>
-                <div className="text-sm text-blue-600">To Watch</div>
-              </button>
-
-              {/* Currently Watching Button */}
-              <button
-                onClick={() => handleStatusFilter('Watching')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
-                  filters.status === 'Watching'
-                    ? 'bg-green-100 border-green-400 ring-2 ring-green-500'
-                    : 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300'
-                }`}
-              >
-                <div className="text-2xl font-bold text-green-700">{movieCounts.watching}</div>
-                <div className="text-sm text-green-600">Currently Watching</div>
-              </button>
-
-              {/* Watched Button */}
-              <button
-                onClick={() => handleStatusFilter('Watched')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
-                  filters.status === 'Watched'
-                    ? 'bg-purple-100 border-purple-400 ring-2 ring-purple-500'
-                    : 'bg-purple-50 border-purple-200 hover:bg-purple-100 hover:border-purple-300'
-                }`}
-              >
-                <div className="text-2xl font-bold text-purple-700">{movieCounts.watched}</div>
-                <div className="text-sm text-purple-600">Watched</div>
-              </button>
-
-              {/* On Hold/Dropped Combined */}
-              <button
-                onClick={() => handleStatusFilter('On Hold')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
-                  filters.status === 'On Hold'
-                    ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-500'
-                    : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300'
-                }`}
-              >
-                <div className="text-2xl font-bold text-yellow-700">{movieCounts.onHold + movieCounts.dropped}</div>
-                <div className="text-sm text-yellow-600">On Hold/Dropped</div>
-              </button>
-            </div>
-
-            {/* Controls Bar */}
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center space-x-4">
-                  {/* Filter Toggle */}
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors ${
-                      showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Filter className="h-4 w-4" />
-                    <span>Filters</span>
-                  </button>
-
-                  <div className="text-sm text-slate-600">
-                    Showing {filteredAndSortedMovies.length} of {movies.length} series
+        {/* Progress & Stats */}
+        {(progress || showStats) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {progress && (
+              <>
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Episodes Discovered
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {progress.episodes_discovered}
+                    {progress.total_episodes > 0 && (
+                      <span className="text-lg font-normal text-gray-500">
+                        /{progress.total_episodes}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {progress.discovery_percentage.toFixed(1)}% complete
                   </div>
                 </div>
 
-                {/* Sort Dropdown */}
-                <div className="relative sort-dropdown">
-                  <button
-                    onClick={() => setShowSortDropdown(!showSortDropdown)}
-                    className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
-                  >
-                    <span className="text-sm">
-                      Sort by: {sortBy === 'date_added' ? 'Date Added' : sortBy === 'imdb_rating' ? 'IMDb Rating' : sortBy === 'user_rating' ? 'My Rating' : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
-                    </span>
-                    {showSortDropdown ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <Zap className="h-4 w-4" />
+                    Estimated API Calls
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {progress.estimated_remaining_calls}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    remaining
+                  </div>
+                </div>
+              </>
+            )}
 
-                  {showSortDropdown && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
-                      <div className="py-1">
-                        <button
-                          onClick={() => handleSortChange('date_added')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'date_added'
-                              ? 'bg-purple-100 text-purple-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          Date Added {sortBy === 'date_added' && (sortOrder === 'desc' ? '↓' : '↑')}
-                        </button>
-                        <button
-                          onClick={() => handleSortChange('title')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'title'
-                              ? 'bg-purple-100 text-purple-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          Title {sortBy === 'title' && (sortOrder === 'asc' ? 'A-Z' : 'Z-A')}
-                        </button>
-                        <button
-                          onClick={() => handleSortChange('year')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'year'
-                              ? 'bg-purple-100 text-purple-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          Year {sortBy === 'year' && (sortOrder === 'desc' ? '↓' : '↑')}
-                        </button>
-                        <button
-                          onClick={() => handleSortChange('imdb_rating')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'imdb_rating'
-                              ? 'bg-purple-100 text-purple-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          IMDb Rating {sortBy === 'imdb_rating' && (sortOrder === 'desc' ? '↓' : '↑')}
-                        </button>
-                        <button
-                          onClick={() => handleSortChange('user_rating')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'user_rating'
-                              ? 'bg-purple-100 text-purple-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          My Rating {sortBy === 'user_rating' && (sortOrder === 'desc' ? '↓' : '↑')}
-                        </button>
-                      </div>
+            {showStats && cacheStats && (
+              <>
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <Star className="h-4 w-4" />
+                    Cache Efficiency
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {cacheStats.api_efficiency}%
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {cacheStats.cached_episodes} episodes cached
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Queue Status
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {cacheStats.queue_items}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    pending discoveries
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Season Navigation */}
+        <div className="bg-white rounded-lg p-4 mb-8 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Season {currentSeason}
+              </h2>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={prevSeason}
+                  disabled={!hasPrevSeason}
+                  className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                
+                <select
+                  value={currentSeason}
+                  onChange={(e) => jumpToSeason(parseInt(e.target.value))}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md bg-white text-gray-900"
+                >
+                  {Array.from({ length: totalSeasons || 10 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Season {i + 1} 
+                      {episodesInSeason(i + 1) > 0 && ` (${episodesInSeason(i + 1)} episodes)`}
+                    </option>
+                  ))}
+                </select>
+                
+                <button
+                  onClick={nextSeason}
+                  disabled={!hasNextSeason}
+                  className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                {currentEpisodes.length} episodes
+              </span>
+              
+              <button
+                onClick={handleRefreshSeason}
+                disabled={isCurrentSeasonLoading}
+                className="p-2 text-gray-400 hover:text-gray-600 disabled:animate-spin disabled:cursor-not-allowed"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Episode Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {isCurrentSeasonLoading && currentEpisodes.length === 0 ? (
+            // Loading state
+            Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white p-6 rounded-lg border border-gray-200 animate-pulse"
+              >
+                <div className="h-4 bg-gray-300 rounded mb-3"></div>
+                <div className="h-3 bg-gray-300 rounded mb-2"></div>
+                <div className="h-3 bg-gray-300 rounded w-2/3 mb-4"></div>
+                <div className="flex gap-2">
+                  <div className="h-6 bg-gray-300 rounded w-16"></div>
+                  <div className="h-6 bg-gray-300 rounded w-12"></div>
+                </div>
+              </div>
+            ))
+          ) : currentEpisodes.length > 0 ? (
+            // Episodes
+            currentEpisodes.map((episode) => (
+              <div
+                key={`${episode.season_number}-${episode.episode_number}`}
+                className="bg-white p-6 rounded-lg border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleEpisodeSelect(episode)}
+              >
+                {/* Episode Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 line-clamp-2">
+                      {episode.title || `Episode ${episode.episode_number}`}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      S{episode.season_number}E{episode.episode_number.toString().padStart(2, '0')}
+                    </p>
+                  </div>
+                  
+                  {episode.imdb_rating && (
+                    <div className="flex items-center gap-1 text-sm text-amber-600">
+                      <Star className="h-4 w-4 fill-current" />
+                      {episode.imdb_rating}
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Advanced Filters Panel */}
-            {showFilters && (
-              <div className="mb-6">
-                <FilterPanel
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  movies={movies}
-                />
-              </div>
-            )}
-          </>
-        )}
+                {/* Episode Details */}
+                <p className="text-sm text-gray-600 line-clamp-3 mb-4">
+                  {episode.plot || 'No description available.'}
+                </p>
 
-        {/* Main Content */}
-        {movies.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
-            <div className="text-center">
-              <Tv className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-slate-900 mb-2">No TV series yet</h2>
-              <p className="text-slate-600 mb-6">Start building your TV series collection by adding your first series.</p>
+                {/* Episode Meta */}
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  {episode.air_date && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {formatAirDate(episode.air_date)}
+                    </div>
+                  )}
+                  
+                  {episode.runtime_minutes && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatRuntime(episode.runtime_minutes)}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1 ml-auto">
+                    <Play className="h-3 w-3" />
+                    <span>Cached {episode.access_count || 0}x</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            // No episodes found
+            <div className="col-span-full text-center py-12">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No episodes found for Season {currentSeason}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                This season might not exist or hasn't been discovered yet.
+              </p>
               <button
-                onClick={handleAddItem}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                onClick={handleRefreshSeason}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
-                <Plus className="h-5 w-5" />
-                <span>Add Your First TV Series</span>
+                <RefreshCw className="h-4 w-4" />
+                Try discovering episodes
               </button>
             </div>
-          </div>
-        ) : filteredAndSortedMovies.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
-            <div className="text-center">
-              <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-slate-900 mb-2">No series match your filters</h2>
-              <p className="text-slate-600 mb-6">Try adjusting your filters to see more results.</p>
-              <button
-                onClick={() => setFilters({
-                  yearRange: { min: 1900, max: new Date().getFullYear() },
-                  imdbRating: { min: 0, max: 10 },
-                  genres: [],
-                  directors: [],
-                  actors: '',
-                  countries: [],
-                  myRating: { min: 0, max: 10 },
-                  status: 'All'
-                })}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
-              >
-                <Filter className="h-5 w-5" />
-                <span>Clear All Filters</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredAndSortedMovies.map((movie) => (
-              <div key={movie.id} className="relative">
-                <WatchlistCard
-                  movie={movie}
-                  onUpdateStatus={(status) => handleUpdateStatus(movie.id, status)}
-                  onUpdateRating={(rating) => handleUpdateRating(movie.id, rating)}
-                  onUpdateMovie={(updates) => handleUpdateMovie(movie.id, updates)}
-                  onDelete={() => {
-                    if (confirm('Are you sure you want to delete this TV series?')) {
-                      deleteMovie(movie.id);
-                    }
-                  }}
-                  className="h-full"
-                />
-                
-                {/* NEW: Episodes Browser Button */}
-                <button
-                  onClick={() => handleViewEpisodes(movie)}
-                  className="absolute top-3 right-3 bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg shadow-lg transition-colors group z-10"
-                  title="Browse Episodes"
-                >
-                  <Play className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Import Lists Modal */}
-        {showImportModal && (
-          <ImportListsModal
-            onClose={() => setShowImportModal(false)}
-            onImportComplete={refetch}
-          />
+        {/* Last refresh indicator */}
+        {lastRefresh && (
+          <div className="text-center text-xs text-gray-500">
+            Last refreshed: {lastRefresh.toLocaleTimeString()}
+          </div>
         )}
+      </div>
+    </div>
+  );
+}
 
-        {/* Search Modal for adding TV series */}
-        {showSearchModal && (
-          <MovieSearchModal
-            onClose={() => setShowSearchModal(false)}
-            onMovieAdded={handleSeriesAdded}
-            defaultSearchType="series"
-          />
-        )}
+// Standalone page component that can be routed to
+export function EpisodesBrowserPageStandalone() {
+  // This would get series data from URL params in a real router setup
+  // For now, we'll handle navigation from the TV series page
+  
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="text-center">
+        <Tv className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+        <h2 className="text-2xl font-semibold text-slate-900 mb-2">Episode Browser</h2>
+        <p className="text-slate-600">Navigate here from a TV series to browse episodes.</p>
       </div>
     </div>
   );
