@@ -46,6 +46,13 @@ export function TVSeriesWatchlistPage() {
 
   const filteredMovies = useMovieFilters(movies, filters);
 
+  // Cleanup function to restore body scroll on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   // Calculate counts based on filtered results
   const movieCounts = useMemo(() => {
     const baseFilteredMovies = movies.filter(movie => {
@@ -169,11 +176,15 @@ export function TVSeriesWatchlistPage() {
   const handleViewEpisodes = (series: Movie) => {
     setSelectedSeries(series);
     setShowEpisodesModal(true);
+    // Prevent background scrolling
+    document.body.style.overflow = 'hidden';
   };
 
   const handleCloseEpisodes = () => {
     setShowEpisodesModal(false);
     setSelectedSeries(null);
+    // Restore background scrolling
+    document.body.style.overflow = 'unset';
   };
 
   const handleStatusFilter = (status: 'All' | Movie['status']) => {
@@ -521,10 +532,11 @@ export function TVSeriesWatchlistPage() {
           />
         )}
 
-        {/* Episodes Browser Modal */}
+        {/* Episodes Browser Modal - FIXED: Proper modal structure to prevent background scrolling */}
         {showEpisodesModal && selectedSeries && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
+          <div className="fixed inset-0 z-50 overflow-hidden">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCloseEpisodes} />
+            <div className="fixed inset-4 md:inset-8 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
               <EpisodesBrowserPage 
                 series={selectedSeries} 
                 onBack={handleCloseEpisodes}
