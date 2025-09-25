@@ -5,10 +5,11 @@ import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
+import { EpisodesBrowserPage } from './EpisodesBrowserPage';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -27,6 +28,8 @@ export function TVSeriesWatchlistPage() {
   const { movies, loading, error, updateMovie, deleteMovie, refetch } = useMovies('series');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showEpisodesModal, setShowEpisodesModal] = useState(false);
+  const [selectedSeries, setSelectedSeries] = useState<Movie | null>(null);
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -161,6 +164,16 @@ export function TVSeriesWatchlistPage() {
 
   const handleAddItem = () => {
     setShowSearchModal(true);
+  };
+
+  const handleViewEpisodes = (series: Movie) => {
+    setSelectedSeries(series);
+    setShowEpisodesModal(true);
+  };
+
+  const handleCloseEpisodes = () => {
+    setShowEpisodesModal(false);
+    setSelectedSeries(null);
   };
 
   const handleStatusFilter = (status: 'All' | Movie['status']) => {
@@ -462,7 +475,7 @@ export function TVSeriesWatchlistPage() {
         ) : (
           <div className="space-y-6">
             {sortedMovies.map((movie) => (
-              <div key={movie.id} className="bg-white rounded-xl shadow-sm border border-slate-200">
+              <div key={movie.id} className="relative bg-white rounded-xl shadow-sm border border-slate-200">
                 <WatchlistCard
                   movie={movie}
                   onUpdateStatus={(status) => handleUpdateStatus(movie.id, status)}
@@ -474,6 +487,16 @@ export function TVSeriesWatchlistPage() {
                     }
                   }}
                 />
+                
+                {/* Episodes Button - Positioned in top-right corner */}
+                <button
+                  onClick={() => handleViewEpisodes(movie)}
+                  className="absolute top-4 right-4 inline-flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl z-10"
+                  title="Browse Episodes"
+                >
+                  <Play className="h-4 w-4" />
+                  <span>Episodes</span>
+                </button>
               </div>
             ))}
           </div>
@@ -496,6 +519,18 @@ export function TVSeriesWatchlistPage() {
             onClose={() => setShowSearchModal(false)}
             onMovieAdded={handleSeriesAdded}
           />
+        )}
+
+        {/* Episodes Browser Modal */}
+        {showEpisodesModal && selectedSeries && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
+              <EpisodesBrowserPage 
+                series={selectedSeries} 
+                onBack={handleCloseEpisodes}
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>
