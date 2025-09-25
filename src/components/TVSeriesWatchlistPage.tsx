@@ -3,11 +3,12 @@ import React, { useState, useMemo } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
-import { MovieSearchModal } from './MovieSearchModal'; // NEW: Import the same search modal
+import { MovieSearchModal } from './MovieSearchModal';
+import { EpisodeBrowser } from './EpisodeBrowser'; // NEW: Episode Browser
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -23,191 +24,56 @@ interface FilterState {
 
 export function TVSeriesWatchlistPage() {
   const { isAuthenticated } = useAuth();
-  const { movies, loading, error, updateMovie, deleteMovie, refetch } = useMovies('series'); // NEW: Added refetch
+  const { movies, loading, error, updateMovie, deleteMovie, refetch } = useMovies('series');
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false); // NEW: Search modal state
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  
+  // NEW: Episode Browser state
+  const [selectedSeries, setSelectedSeries] = useState<Movie | null>(null);
+  const [showEpisodeBrowser, setShowEpisodeBrowser] = useState(false);
+
   const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() + 5 }, // NEW: Dynamic year range
+    yearRange: { min: 1900, max: new Date().getFullYear() },
     imdbRating: { min: 0, max: 10 },
     genres: [],
     directors: [],
     actors: '',
     countries: [],
-    myRating: { min: 1, max: 10 },
+    myRating: { min: 0, max: 10 },
     status: 'All'
   });
 
-  const filteredMovies = useMovieFilters(movies, filters);
+  const { filteredMovies } = useMovieFilters(movies, filters);
 
-  // NEW: Calculate counts based on filtered results (ignoring status filter for accurate counts)
-  const movieCounts = useMemo(() => {
-    // Apply all filters except status to get base filtered set
-    const baseFiltered = movies.filter(movie => {
-      // Year filter
-      if (movie.year) {
-        if (movie.year < filters.yearRange.min || movie.year > filters.yearRange.max) {
-          return false;
-        }
-      }
-      // IMDb rating filter
-      if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
-        const score = Number(movie.imdb_score);
-        if (score < filters.imdbRating.min || score > filters.imdbRating.max) {
-          return false;
-        }
-      }
-      // My rating filter
-      if (movie.user_rating !== null && movie.user_rating !== undefined) {
-        if (movie.user_rating < filters.myRating.min || movie.user_rating > filters.myRating.max) {
-          return false;
-        }
-      }
-      // Genre filter
-      if (filters.genres.length > 0 && movie.genre) {
-        const movieGenres = movie.genre.split(', ').map(g => g.trim());
-        const hasMatchingGenre = filters.genres.some(filterGenre =>
-          movieGenres.includes(filterGenre)
-        );
-        if (!hasMatchingGenre) {
-          return false;
-        }
-      }
-      // Director filter
-      if (filters.directors.length > 0) {
-        if (!movie.director) return false;
-        const movieDirector = movie.director.trim().toLowerCase();
-        const hasMatchingDirector = filters.directors.some(filterDirector =>
-          movieDirector.includes(filterDirector.toLowerCase())
-        );
-        if (!hasMatchingDirector) return false;
-      }
-      // Country filter
-      if (filters.countries.length > 0) {
-        if (!movie.country) return false;
-        const countrySeparators = [', ', ',', ' / ', '/', ' | ', '|'];
-        let movieCountries = [movie.country.trim()];
-        countrySeparators.forEach(separator => {
-          const newList: string[] = [];
-          movieCountries.forEach(country => {
-            if (country.includes(separator)) {
-              newList.push(...country.split(separator).map(c => c.trim()));
-            } else {
-              newList.push(country);
-            }
-          });
-          movieCountries = newList;
-        });
-        const hasMatchingCountry = filters.countries.some(filterCountry =>
-          movieCountries.includes(filterCountry)
-        );
-        if (!hasMatchingCountry) return false;
-      }
-      // Actor filter
-      if (filters.actors.trim()) {
-        if (!movie.actors || movie.actors.trim() === '' || movie.actors === 'N/A') {
-          return false;
-        }
-        const searchTerm = filters.actors.toLowerCase().trim();
-        const movieActors = movie.actors.toLowerCase();
-        if (!movieActors.includes(searchTerm)) {
-          return false;
-        }
-      }
-      return true;
-    });
-    
-    return {
-      total: baseFiltered.length,
-      toWatch: baseFiltered.filter(m => m.status === 'To Watch').length,
-      watching: baseFiltered.filter(m => m.status === 'Watching').length,
-      watched: baseFiltered.filter(m => m.status === 'Watched').length,
-      toWatchAgain: baseFiltered.filter(m => m.status === 'To Watch Again').length,
-    };
-  }, [movies, filters]);
-
-  // NEW: Apply sorting to filtered movies
-  const sortedMovies = useMemo(() => {
-    const sorted = [...filteredMovies].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortBy) {
-        case 'title':
-          aValue = a.title?.toLowerCase() || '';
-          bValue = b.title?.toLowerCase() || '';
-          break;
-        case 'year':
-          aValue = a.year || 0;
-          bValue = b.year || 0;
-          break;
-        case 'imdb_rating':
-          aValue = a.imdb_score || 0;
-          bValue = b.imdb_score || 0;
-          break;
-        case 'user_rating':
-          aValue = a.user_rating || 0;
-          bValue = b.user_rating || 0;
-          break;
-        case 'date_added':
-        default:
-          aValue = new Date(a.created_at || 0);
-          bValue = new Date(b.created_at || 0);
-          break;
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
-    });
-
-    return sorted;
-  }, [filteredMovies, sortBy, sortOrder]);
-
+  // Download watchlist as JSON
   const downloadTVWatchlist = (movies: Movie[]) => {
-    const sortedMovies = [...movies].sort((a, b) => {
-      const aRating = a.user_rating || a.imdb_score || 0;
-      const bRating = b.user_rating || b.imdb_score || 0;
-      return bRating - aRating;
-    });
-
     const data = {
-      exportInfo: {
-        exportDate: new Date().toISOString(),
-        totalCount: movies.length,
-        exportType: 'tv_series_watchlist',
-        sortedBy: 'user_rating_desc'
-      },
-      tvSeries: sortedMovies.map(movie => ({
-        id: movie.id,
+      exportDate: new Date().toISOString(),
+      totalSeries: movies.length,
+      tvSeries: movies.map(movie => ({
         title: movie.title,
-        imdbID: movie.imdb_id,
-        mediaType: movie.media_type,
         year: movie.year,
         genre: movie.genre,
+        director: movie.director,
+        actors: movie.actors,
+        plot: movie.plot,
         country: movie.country,
         language: movie.language,
-        runtime: movie.runtime,
-        rated: movie.rated,
-        released: movie.released,
-        director: movie.director,
-        writer: movie.writer,
-        actors: movie.actors,
-        myRating: movie.user_rating,
-        imdbRating: movie.imdb_score,
-        metascore: movie.metascore,
-        imdbVotes: movie.imdb_votes,
+        userRating: movie.user_rating,
         status: movie.status,
         dateWatched: movie.date_watched,
         userReview: movie.user_review,
+        imdbID: movie.imdb_id,
+        imdbRating: movie.imdb_score,
+        metascore: movie.metascore,
+        imdbVotes: movie.imdb_votes,
         posterUrl: movie.poster_url,
         imdbUrl: movie.imdb_url,
         website: movie.website,
-        plot: movie.plot,
         awards: movie.awards,
         boxOffice: movie.box_office,
         production: movie.production,
@@ -241,36 +107,41 @@ export function TVSeriesWatchlistPage() {
     await updateMovie(id, updates);
   };
 
-  // NEW: Callback to refresh TV series list when item is added
   const handleSeriesAdded = () => {
     console.log('[TVSeriesWatchlistPage] TV Series added, refreshing list...');
     refetch();
   };
 
-  // NEW: Updated to open search modal instead of alert
   const handleAddItem = () => {
     setShowSearchModal(true);
   };
 
-  // NEW: Handle status filter button clicks
   const handleStatusFilter = (status: 'All' | Movie['status']) => {
     setFilters(prev => ({ ...prev, status }));
   };
 
-  // NEW: Handle sorting changes
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (newSortBy === sortBy) {
-      // Toggle sort order if same field
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
-      // Set new sort field with default order
       setSortBy(newSortBy);
-      setSortOrder(newSortBy === 'title' ? 'asc' : 'desc'); // Title defaults to A-Z, others to highest first
+      setSortOrder(newSortBy === 'title' ? 'asc' : 'desc');
     }
-    setShowSortDropdown(false); // Close dropdown after selection
+    setShowSortDropdown(false);
   };
 
-  // NEW: Handle outside clicks for sort dropdown
+  // NEW: Episode browser handlers
+  const handleViewEpisodes = (series: Movie) => {
+    setSelectedSeries(series);
+    setShowEpisodeBrowser(true);
+  };
+
+  const handleCloseEpisodeBrowser = () => {
+    setShowEpisodeBrowser(false);
+    setSelectedSeries(null);
+  };
+
+  // Handle outside clicks for sort dropdown
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -287,6 +158,62 @@ export function TVSeriesWatchlistPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showSortDropdown]);
+
+  // Filter and sort movies
+  const filteredAndSortedMovies = useMemo(() => {
+    let result = [...filteredMovies];
+
+    // Sort
+    result.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'year':
+          aValue = a.year || 0;
+          bValue = b.year || 0;
+          break;
+        case 'imdb_rating':
+          aValue = a.imdb_score || 0;
+          bValue = b.imdb_score || 0;
+          break;
+        case 'user_rating':
+          aValue = a.user_rating || 0;
+          bValue = b.user_rating || 0;
+          break;
+        case 'date_added':
+          aValue = new Date(a.created_at || 0);
+          bValue = new Date(b.created_at || 0);
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return result;
+  }, [filteredMovies, sortBy, sortOrder]);
+
+  // Calculate movie counts
+  const movieCounts = useMemo(() => {
+    return {
+      total: movies.length,
+      toWatch: movies.filter(m => m.status === 'To Watch').length,
+      watching: movies.filter(m => m.status === 'Watching').length,
+      watched: movies.filter(m => m.status === 'Watched').length,
+      onHold: movies.filter(m => m.status === 'On Hold').length,
+      dropped: movies.filter(m => m.status === 'Dropped').length
+    };
+  }, [movies]);
 
   if (!isAuthenticated) {
     return (
@@ -412,12 +339,12 @@ export function TVSeriesWatchlistPage() {
                 onClick={() => handleStatusFilter('Watching')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
                   filters.status === 'Watching'
-                    ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-500'
-                    : 'bg-amber-50 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                    ? 'bg-green-100 border-green-400 ring-2 ring-green-500'
+                    : 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300'
                 }`}
               >
-                <div className="text-2xl font-bold text-amber-700">{movieCounts.watching}</div>
-                <div className="text-sm text-amber-600">Currently Watching</div>
+                <div className="text-2xl font-bold text-green-700">{movieCounts.watching}</div>
+                <div className="text-sm text-green-600">Currently Watching</div>
               </button>
 
               {/* Watched Button */}
@@ -425,59 +352,63 @@ export function TVSeriesWatchlistPage() {
                 onClick={() => handleStatusFilter('Watched')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
                   filters.status === 'Watched'
-                    ? 'bg-green-100 border-green-400 ring-2 ring-green-500'
-                    : 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300'
-                }`}
-              >
-                <div className="text-2xl font-bold text-green-700">{movieCounts.watched}</div>
-                <div className="text-sm text-green-600">Watched</div>
-              </button>
-
-              {/* To Watch Again Button */}
-              <button
-                onClick={() => handleStatusFilter('To Watch Again')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
-                  filters.status === 'To Watch Again'
                     ? 'bg-purple-100 border-purple-400 ring-2 ring-purple-500'
                     : 'bg-purple-50 border-purple-200 hover:bg-purple-100 hover:border-purple-300'
                 }`}
               >
-                <div className="text-2xl font-bold text-purple-700">{movieCounts.toWatchAgain}</div>
-                <div className="text-sm text-purple-600">To Watch Again</div>
+                <div className="text-2xl font-bold text-purple-700">{movieCounts.watched}</div>
+                <div className="text-sm text-purple-600">Watched</div>
+              </button>
+
+              {/* On Hold/Dropped Combined */}
+              <button
+                onClick={() => handleStatusFilter('On Hold')}
+                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'On Hold'
+                    ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-500'
+                    : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-yellow-700">{movieCounts.onHold + movieCounts.dropped}</div>
+                <div className="text-sm text-yellow-600">On Hold/Dropped</div>
               </button>
             </div>
 
-            {/* Advanced Filters and Sorting */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <FilterPanel movies={movies} onFiltersChange={setFilters} />
-              </div>
-              
-              {/* Sorting Dropdown */}
-              <div className="lg:w-80 sort-dropdown">
-                <div className="bg-white rounded-xl shadow-lg border border-slate-200">
+            {/* Controls Bar */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center space-x-4">
+                  {/* Filter Toggle */}
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors ${
+                      showFilters ? 'bg-purple-50 border-purple-300 text-purple-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Filter className="h-4 w-4" />
+                    <span>Filters</span>
+                  </button>
+
+                  <div className="text-sm text-slate-600">
+                    Showing {filteredAndSortedMovies.length} of {movies.length} series
+                  </div>
+                </div>
+
+                {/* Sort Dropdown */}
+                <div className="relative sort-dropdown">
                   <button
                     onClick={() => setShowSortDropdown(!showSortDropdown)}
-                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors rounded-xl"
+                    className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
                   >
-                    <div className="flex items-center space-x-3">
-                      <Filter className="h-5 w-5 text-slate-600" />
-                      <span className="font-medium text-slate-900">Sort By</span>
-                      <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
-                        {sortBy === 'date_added' && 'Date Added'}
-                        {sortBy === 'title' && 'Title'}
-                        {sortBy === 'year' && 'Year'}
-                        {sortBy === 'imdb_rating' && 'IMDb Rating'}
-                        {sortBy === 'user_rating' && 'My Rating'}
-                        {sortBy === 'title' ? (sortOrder === 'asc' ? ' A-Z' : ' Z-A') : (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                      </span>
-                    </div>
-                    {showSortDropdown ? <ChevronUp className="h-5 w-5 text-slate-600" /> : <ChevronDown className="h-5 w-5 text-slate-600" />}
+                    <span className="text-sm">
+                      Sort by: {sortBy === 'date_added' ? 'Date Added' : sortBy === 'imdb_rating' ? 'IMDb Rating' : sortBy === 'user_rating' ? 'My Rating' : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
+                    </span>
+                    {showSortDropdown ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
 
                   {showSortDropdown && (
-                    <div className="px-6 pb-6 space-y-2 border-t border-slate-200">
-                      <div className="pt-4 space-y-1">
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
+                      <div className="py-1">
                         <button
                           onClick={() => handleSortChange('date_added')}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -534,54 +465,139 @@ export function TVSeriesWatchlistPage() {
                 </div>
               </div>
             </div>
+
+            {/* Advanced Filters Panel */}
+            {showFilters && (
+              <div className="mb-6">
+                <FilterPanel
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  movies={movies}
+                />
+              </div>
+            )}
           </>
         )}
 
-        {/* Empty State */}
-        {movies.length === 0 && !loading && (
-          <div className="text-center py-16">
-            <Tv className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-600 mb-2">Your TV series watchlist is empty</h3>
-            <p className="text-slate-500">Start by searching for TV series and adding them to your watchlist.</p>
+        {/* Main Content */}
+        {movies.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
+            <div className="text-center">
+              <Tv className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-slate-900 mb-2">No TV series yet</h2>
+              <p className="text-slate-600 mb-6">Start building your TV series collection by adding your first series.</p>
+              <button
+                onClick={handleAddItem}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Add Your First TV Series</span>
+              </button>
+            </div>
+          </div>
+        ) : filteredAndSortedMovies.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
+            <div className="text-center">
+              <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-slate-900 mb-2">No series match your filters</h2>
+              <p className="text-slate-600 mb-6">Try adjusting your filters to see more results.</p>
+              <button
+                onClick={() => setFilters({
+                  yearRange: { min: 1900, max: new Date().getFullYear() },
+                  imdbRating: { min: 0, max: 10 },
+                  genres: [],
+                  directors: [],
+                  actors: '',
+                  countries: [],
+                  myRating: { min: 0, max: 10 },
+                  status: 'All'
+                })}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                <Filter className="h-5 w-5" />
+                <span>Clear All Filters</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredAndSortedMovies.map((movie) => (
+              <div key={movie.id} className="relative">
+                <WatchlistCard
+                  movie={movie}
+                  onUpdateStatus={(status) => handleUpdateStatus(movie.id, status)}
+                  onUpdateRating={(rating) => handleUpdateRating(movie.id, rating)}
+                  onUpdateMovie={(updates) => handleUpdateMovie(movie.id, updates)}
+                  onDelete={() => {
+                    if (confirm('Are you sure you want to delete this TV series?')) {
+                      deleteMovie(movie.id);
+                    }
+                  }}
+                  className="h-full"
+                />
+                
+                {/* NEW: Episodes Browser Button */}
+                <button
+                  onClick={() => handleViewEpisodes(movie)}
+                  className="absolute top-3 right-3 bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg shadow-lg transition-colors group z-10"
+                  title="Browse Episodes"
+                >
+                  <Tv className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* TV Series List */}
-        <div className="space-y-6">
-          {sortedMovies.map((movie) => (
-            <WatchlistCard
-              key={movie.id}
-              movie={movie}
-              onUpdateStatus={handleUpdateStatus}
-              onUpdateRating={handleUpdateRating}
-              onUpdateMovie={handleUpdateMovie}
-              onDelete={deleteMovie}
-            />
-          ))}
-        </div>
-
-        {/* No Results State */}
-        {movies.length > 0 && sortedMovies.length === 0 && (
-          <div className="text-center py-12">
-            <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-600 mb-2">No TV series match your filters</h3>
-            <p className="text-slate-500">Try adjusting your filter criteria to see more results.</p>
-          </div>
+        {/* Import Lists Modal */}
+        {showImportModal && (
+          <ImportListsModal
+            onClose={() => setShowImportModal(false)}
+            onImportComplete={refetch}
+          />
         )}
 
-        {/* Modals */}
-        <ImportListsModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          pageType="tv-series"
-        />
+        {/* NEW: Search Modal for adding TV series */}
+        {showSearchModal && (
+          <MovieSearchModal
+            onClose={() => setShowSearchModal(false)}
+            onMovieAdded={handleSeriesAdded}
+            defaultSearchType="series" // Force search type to series
+          />
+        )}
 
-        {/* NEW: Search Modal - Same as movies but for TV series */}
-        <MovieSearchModal
-          isOpen={showSearchModal}
-          onClose={() => setShowSearchModal(false)}
-          onMovieAdded={handleSeriesAdded}
-        />
+        {/* NEW: Episode Browser Modal */}
+        {showEpisodeBrowser && selectedSeries && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                  <Tv className="h-6 w-6 text-purple-600" />
+                  {selectedSeries.title} - Episodes
+                </h2>
+                <button
+                  onClick={handleCloseEpisodeBrowser}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* Modal Content */}
+              <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+                <EpisodeBrowser
+                  seriesImdbId={selectedSeries.imdb_id}
+                  seriesTitle={selectedSeries.title}
+                  onEpisodeSelect={(episode) => {
+                    console.log('Selected episode:', episode);
+                    // Optional: Add episode to collection, show details, etc.
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
