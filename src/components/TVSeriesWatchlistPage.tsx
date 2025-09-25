@@ -1,14 +1,15 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// FINAL FIXED VERSION - Ready for production
+// Updated with Episode Browser navigation (Option B - Separate Page)
 import React, { useState, useMemo } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
+import { EpisodesBrowserPage } from './EpisodesBrowserPage';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -32,6 +33,9 @@ export function TVSeriesWatchlistPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
+  // NEW: Episode Browser navigation state
+  const [selectedSeriesForEpisodes, setSelectedSeriesForEpisodes] = useState<Movie | null>(null);
+
   const [filters, setFilters] = useState<FilterState>({
     yearRange: { min: 1900, max: new Date().getFullYear() },
     imdbRating: { min: 0, max: 10 },
@@ -45,6 +49,16 @@ export function TVSeriesWatchlistPage() {
 
   // FIXED: Use useMovieFilters correctly (returns array directly, not object)
   const filteredMovies = useMovieFilters(movies, filters);
+
+  // NEW: If viewing episodes, show episode browser page
+  if (selectedSeriesForEpisodes) {
+    return (
+      <EpisodesBrowserPage 
+        series={selectedSeriesForEpisodes}
+        onBack={() => setSelectedSeriesForEpisodes(null)}
+      />
+    );
+  }
 
   // Download watchlist as JSON
   const downloadTVWatchlist = (movies: Movie[]) => {
@@ -125,6 +139,11 @@ export function TVSeriesWatchlistPage() {
       setSortOrder(newSortBy === 'title' ? 'asc' : 'desc');
     }
     setShowSortDropdown(false);
+  };
+
+  // NEW: Handle episode browser navigation
+  const handleViewEpisodes = (series: Movie) => {
+    setSelectedSeriesForEpisodes(series);
   };
 
   // Handle outside clicks for sort dropdown
@@ -508,19 +527,29 @@ export function TVSeriesWatchlistPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredAndSortedMovies.map((movie) => (
-              <WatchlistCard
-                key={movie.id}
-                movie={movie}
-                onUpdateStatus={(status) => handleUpdateStatus(movie.id, status)}
-                onUpdateRating={(rating) => handleUpdateRating(movie.id, rating)}
-                onUpdateMovie={(updates) => handleUpdateMovie(movie.id, updates)}
-                onDelete={() => {
-                  if (confirm('Are you sure you want to delete this TV series?')) {
-                    deleteMovie(movie.id);
-                  }
-                }}
-                className="h-full"
-              />
+              <div key={movie.id} className="relative">
+                <WatchlistCard
+                  movie={movie}
+                  onUpdateStatus={(status) => handleUpdateStatus(movie.id, status)}
+                  onUpdateRating={(rating) => handleUpdateRating(movie.id, rating)}
+                  onUpdateMovie={(updates) => handleUpdateMovie(movie.id, updates)}
+                  onDelete={() => {
+                    if (confirm('Are you sure you want to delete this TV series?')) {
+                      deleteMovie(movie.id);
+                    }
+                  }}
+                  className="h-full"
+                />
+                
+                {/* NEW: Episodes Browser Button */}
+                <button
+                  onClick={() => handleViewEpisodes(movie)}
+                  className="absolute top-3 right-3 bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-lg shadow-lg transition-colors group z-10"
+                  title="Browse Episodes"
+                >
+                  <Play className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
         )}
