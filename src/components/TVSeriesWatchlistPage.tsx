@@ -1,6 +1,6 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// FIXED: Corrected function parameter passing to match EnhancedTVSeriesCard expectations
-import React, { useState, useMemo, useEffect } from 'react';
+// Complete working version with all fixes
+import React, { useState, useMemo } from 'react';
 import { EnhancedTVSeriesCard } from './EnhancedTVSeriesCard';
 import { EnhancedEpisodesBrowserPage } from './EnhancedEpisodesBrowserPage';
 import { FilterPanel } from './FilterPanel';
@@ -9,7 +9,7 @@ import { MovieSearchModal } from './MovieSearchModal';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { Filter, Tv, AlertCircle, Upload, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
