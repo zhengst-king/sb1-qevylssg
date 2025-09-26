@@ -430,10 +430,10 @@ export function TVSeriesWatchlistPage() {
               <EnhancedTVSeriesCard
                 key={movie.id}
                 movie={movie}
-                onUpdateStatus={(status) => handleUpdateStatus(movie.id!, status)}
-                onUpdateRating={(rating) => handleUpdateRating(movie.id!, rating)}
-                onUpdateMovie={(updates) => handleUpdateMovie(movie.id!, updates)}
-                onDelete={(movieId) => handleDelete(movieId)}
+                onUpdateStatus={handleUpdateStatus}
+                onUpdateRating={handleUpdateRating}
+                onUpdateMovie={handleUpdateMovie}
+                onDelete={handleDelete}
                 onViewEpisodes={handleViewEpisodes}
               />
             ))}
