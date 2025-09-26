@@ -1,15 +1,15 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// Complete working version with all fixes
-import React, { useState, useMemo } from 'react';
-import { EnhancedTVSeriesCard } from './EnhancedTVSeriesCard';
-import { EnhancedEpisodesBrowserPage } from './EnhancedEpisodesBrowserPage';
+// Final version using all the enhanced components with new features
+import React, { useState, useMemo, useEffect } from 'react';
+import { EnhancedTVSeriesCard } from './EnhancedTVSeriesCard'; // NEW: Enhanced card with delete, streaming, creators
+import { EnhancedEpisodesBrowserPage } from './EnhancedEpisodesBrowserPage'; // NEW: Enhanced episodes with background cache
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
-import { Filter, Tv, AlertCircle, Upload, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Filter, Tv, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp, Play } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface FilterState {
@@ -54,10 +54,12 @@ export function TVSeriesWatchlistPage() {
         movie.year <= filters.yearRange.max &&
         (movie.imdb_score ?? 0) >= filters.imdbRating.min &&
         (movie.imdb_score ?? 10) <= filters.imdbRating.max &&
-        (filters.actors === '' || (movie.actors && movie.actors.toLowerCase().includes(filters.actors.toLowerCase()))) &&
-        (filters.genres.length === 0 || filters.genres.some(genre => movie.genre?.toLowerCase().includes(genre.toLowerCase()))) &&
-        (filters.directors.length === 0 || filters.directors.some(dir => movie.director?.toLowerCase().includes(dir.toLowerCase()))) &&
-        (filters.countries.length === 0 || filters.countries.some(country => movie.country?.toLowerCase().includes(country.toLowerCase())))
+        (filters.genres.length === 0 || filters.genres.some(genre => movie.genres?.includes(genre))) &&
+        (filters.directors.length === 0 || filters.directors.some(director => movie.director?.includes(director))) &&
+        (filters.actors === '' || movie.actors?.toLowerCase().includes(filters.actors.toLowerCase())) &&
+        (filters.countries.length === 0 || filters.countries.some(country => movie.country?.includes(country))) &&
+        (movie.user_rating === null || movie.user_rating === undefined || 
+         (movie.user_rating >= filters.myRating.min && movie.user_rating <= filters.myRating.max))
       );
     });
 
@@ -71,13 +73,8 @@ export function TVSeriesWatchlistPage() {
   }, [movies, filters]);
 
   const sortedMovies = useMemo(() => {
-    const filtered = filteredMovies.filter(movie => 
-      filters.status === 'All' || movie.status === filters.status
-    );
-
-    return [...filtered].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+    return [...filteredMovies].sort((a, b) => {
+      let aValue: any, bValue: any;
 
       switch (sortBy) {
         case 'title':
@@ -85,33 +82,31 @@ export function TVSeriesWatchlistPage() {
           bValue = b.title.toLowerCase();
           break;
         case 'year':
-          aValue = a.year || 0;
-          bValue = b.year || 0;
+          aValue = a.year ?? 0;
+          bValue = b.year ?? 0;
           break;
         case 'imdb_rating':
-          aValue = a.imdb_score || 0;
-          bValue = b.imdb_score || 0;
+          aValue = a.imdb_score ?? 0;
+          bValue = b.imdb_score ?? 0;
           break;
         case 'user_rating':
-          aValue = a.user_rating || 0;
-          bValue = b.user_rating || 0;
+          aValue = a.user_rating ?? 0;
+          bValue = b.user_rating ?? 0;
           break;
         case 'date_added':
+        default:
           aValue = new Date(a.created_at || 0).getTime();
           bValue = new Date(b.created_at || 0).getTime();
           break;
-        default:
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
       }
 
       if (sortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        return aValue > bValue ? 1 : -1;
       } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        return aValue < bValue ? 1 : -1;
       }
     });
-  }, [filteredMovies, sortBy, sortOrder, filters.status]);
+  }, [filteredMovies, sortBy, sortOrder]);
 
   const handleStatusFilter = (status: FilterState['status']) => {
     setFilters(prev => ({ ...prev, status }));
@@ -127,41 +122,20 @@ export function TVSeriesWatchlistPage() {
     setShowSortDropdown(false);
   };
 
-  // FIXED: Updated handlers to match EnhancedTVSeriesCard expectations
   const handleUpdateStatus = async (movieId: string, status: Movie['status']) => {
-    try {
-      await updateMovie(movieId, { status });
-    } catch (error) {
-      console.error('Error updating status:', error);
-      throw error;
-    }
+    await updateMovie(movieId, { status });
   };
 
   const handleUpdateRating = async (movieId: string, rating: number | null) => {
-    try {
-      await updateMovie(movieId, { user_rating: rating });
-    } catch (error) {
-      console.error('Error updating rating:', error);
-      throw error;
-    }
+    await updateMovie(movieId, { user_rating: rating });
   };
 
   const handleUpdateMovie = async (movieId: string, updates: Partial<Movie>) => {
-    try {
-      await updateMovie(movieId, updates);
-    } catch (error) {
-      console.error('Error updating movie:', error);
-      throw error;
-    }
+    await updateMovie(movieId, updates);
   };
 
   const handleDelete = async (movieId: string) => {
-    try {
-      await deleteMovie(movieId);
-    } catch (error) {
-      console.error('Error deleting movie:', error);
-      throw error;
-    }
+    await deleteMovie(movieId);
   };
 
   const handleAddItem = () => {
@@ -189,18 +163,7 @@ export function TVSeriesWatchlistPage() {
         <div className="bg-white rounded-xl p-8 border border-slate-200 text-center">
           <AlertCircle className="h-16 w-16 text-amber-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Authentication Required</h2>
-          <p className="text-slate-600">Please sign in to manage your TV series watchlist.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-slate-600">Loading TV series...</span>
+          <p className="text-slate-600">Please sign in to view your TV series collection.</p>
         </div>
       </div>
     );
@@ -209,17 +172,16 @@ export function TVSeriesWatchlistPage() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <h3 className="text-red-800 font-medium">Error Loading TV Series</h3>
-          </div>
-          <p className="text-red-700 mt-2">{error}</p>
+        <div className="bg-white rounded-xl p-8 border border-red-200 text-center">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibual text-slate-900 mb-2">Error Loading TV Series</h2>
+          <p className="text-slate-600 mb-4">{error}</p>
           <button
             onClick={() => refetch()}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
-            Try Again
+            <Download className="h-4 w-4" />
+            <span>Try Again</span>
           </button>
         </div>
       </div>
@@ -228,26 +190,114 @@ export function TVSeriesWatchlistPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="space-y-8">
+      <div className="mb-8">
         {/* Header */}
-        <div className="flex justify-between items-start">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="flex items-center space-x-3 mb-2">
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
               <Tv className="h-8 w-8 text-purple-600" />
-              <h1 className="text-3xl font-bold text-slate-900">My TV Series</h1>
-            </div>
-            <p className="text-slate-600">Track and organize your TV series collection</p>
+              <span>My TV Series</span>
+            </h1>
+            <p className="text-slate-600 mt-2">
+              Track and organize your television series collection with enhanced features
+            </p>
           </div>
           
           <div className="flex items-center space-x-3">
+            {/* Filter Toggle */}
+            {movies.length > 0 && (
+              <button
+                onClick={() => document.getElementById('filter-panel')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <Filter className="h-4 w-4" />
+                <span>Filters</span>
+                {filteredMovies.length !== movies.length && (
+                  <span className="bg-purple-600 text-white px-2 py-1 rounded-full ml-1 text-xs">
+                    {filteredMovies.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Sort Dropdown */}
+            {movies.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortDropdown(!showSortDropdown)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  <span>Sort</span>
+                  {showSortDropdown ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+
+                {showSortDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-300 rounded-lg shadow-lg z-10">
+                    <div className="p-2">
+                      <button
+                        onClick={() => handleSortChange('date_added')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'date_added'
+                            ? 'bg-purple-100 text-purple-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        Date Added {sortBy === 'date_added' && (sortOrder === 'desc' ? '↓' : '↑')}
+                      </button>
+                      <button
+                        onClick={() => handleSortChange('title')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'title'
+                            ? 'bg-purple-100 text-purple-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        Title {sortBy === 'title' && (sortOrder === 'asc' ? 'A-Z' : 'Z-A')}
+                      </button>
+                      <button
+                        onClick={() => handleSortChange('year')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'year'
+                            ? 'bg-purple-100 text-purple-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        Year {sortBy === 'year' && (sortOrder === 'desc' ? '↓' : '↑')}
+                      </button>
+                      <button
+                        onClick={() => handleSortChange('imdb_rating')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'imdb_rating'
+                            ? 'bg-purple-100 text-purple-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        IMDb Rating {sortBy === 'imdb_rating' && (sortOrder === 'desc' ? '↓' : '↑')}
+                      </button>
+                      <button
+                        onClick={() => handleSortChange('user_rating')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'user_rating'
+                            ? 'bg-purple-100 text-purple-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        My Rating {sortBy === 'user_rating' && (sortOrder === 'desc' ? '↓' : '↑')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
               <Upload className="h-4 w-4" />
               <span>Import Lists</span>
             </button>
-            
+
             <button
               onClick={handleAddItem}
               className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
@@ -258,102 +308,99 @@ export function TVSeriesWatchlistPage() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-slate-200">
-            <div className="text-2xl font-bold text-slate-900">{movieCounts.total}</div>
-            <div className="text-sm text-slate-600">Total Series</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-slate-200">
-            <div className="text-2xl font-bold text-blue-600">{movieCounts.toWatch}</div>
-            <div className="text-sm text-slate-600">To Watch</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-slate-200">
-            <div className="text-2xl font-bold text-yellow-600">{movieCounts.watching}</div>
-            <div className="text-sm text-slate-600">Watching</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-slate-200">
-            <div className="text-2xl font-bold text-green-600">{movieCounts.watched}</div>
-            <div className="text-sm text-slate-600">Watched</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-slate-200">
-            <div className="text-2xl font-bold text-purple-600">{movieCounts.toWatchAgain}</div>
-            <div className="text-sm text-slate-600">Rewatch</div>
-          </div>
-        </div>
+        {/* Statistics Cards / Filter Buttons */}
+        {movies.length > 0 && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+              <button
+                onClick={() => handleStatusFilter('All')}
+                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'All'
+                    ? 'bg-slate-100 border-slate-400 ring-2 ring-slate-500'
+                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-slate-700">{movieCounts.total}</div>
+                <div className="text-sm text-slate-600">All Series</div>
+              </button>
 
-        {/* Status Filter & Sort Controls */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-slate-700">Status:</span>
-              <div className="flex items-center space-x-1">
-                {(['All', 'To Watch', 'Watching', 'Watched', 'To Watch Again'] as const).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => handleStatusFilter(status)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      filters.status === status
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
+              <button
+                onClick={() => handleStatusFilter('To Watch')}
+                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'To Watch'
+                    ? 'bg-blue-100 border-blue-400 ring-2 ring-blue-500'
+                    : 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-blue-700">{movieCounts.toWatch}</div>
+                <div className="text-sm text-blue-600">To Watch</div>
+              </button>
+
+              <button
+                onClick={() => handleStatusFilter('Watching')}
+                className={`w-full p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'Watching'
+                    ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-500'
+                    : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-yellow-700">{movieCounts.watching}</div>
+                <div className="text-sm text-yellow-600">Watching</div>
+              </button>
+
+              <button
+                onClick={() => handleStatusFilter('Watched')}
+                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'Watched'
+                    ? 'bg-green-100 border-green-400 ring-2 ring-green-500'
+                    : 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-green-700">{movieCounts.watched}</div>
+                <div className="text-sm text-green-600">Watched</div>
+              </button>
+
+              <button
+                onClick={() => handleStatusFilter('To Watch Again')}
+                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'To Watch Again'
+                    ? 'bg-purple-100 border-purple-400 ring-2 ring-purple-500'
+                    : 'bg-purple-50 border-purple-200 hover:bg-purple-100 hover:border-purple-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-purple-700">{movieCounts.toWatchAgain}</div>
+                <div className="text-sm text-purple-600">To Watch Again</div>
+              </button>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-slate-700">Sort by:</span>
-              <div className="relative">
-                <button
-                  onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-                >
-                  <span className="capitalize">
-                    {sortBy === 'date_added' ? 'Date Added' : 
-                     sortBy === 'imdb_rating' ? 'IMDb Rating' : 
-                     sortBy === 'user_rating' ? 'My Rating' : sortBy}
-                  </span>
-                  {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                
-                {showSortDropdown && (
-                  <div className="absolute top-full mt-1 right-0 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
-                    {[
-                      { key: 'title', label: 'Title' },
-                      { key: 'year', label: 'Year' },
-                      { key: 'imdb_rating', label: 'IMDb Rating' },
-                      { key: 'user_rating', label: 'My Rating' },
-                      { key: 'date_added', label: 'Date Added' }
-                    ].map((option) => (
-                      <button
-                        key={option.key}
-                        onClick={() => handleSortChange(option.key as typeof sortBy)}
-                        className="block w-full text-left px-4 py-2 hover:bg-slate-50 text-sm"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+
+            {/* Filter Panel */}
+            <div id="filter-panel">
+              <FilterPanel
+                movies={movies}
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Main Content */}
+        {movies.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
+            <div className="text-center">
+              <Tv className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-slate-900 mb-2">No TV series yet</h2>
+              <p className="text-slate-600 mb-6">Start building your TV series collection by adding your first show.</p>
+              <button
+                onClick={handleAddItem}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Add Your First TV Series</span>
+              </button>
             </div>
           </div>
-        </div>
-
-        {/* Filters Panel */}
-        <FilterPanel
-          filters={filters}
-          onFiltersChange={setFilters}
-          availableGenres={Array.from(new Set(movies.flatMap(m => m.genre?.split(', ') || [])))}
-          availableDirectors={Array.from(new Set(movies.flatMap(m => m.director?.split(', ') || [])))}
-          availableCountries={Array.from(new Set(movies.flatMap(m => m.country?.split(', ') || [])))}
-        />
-
-        {/* Series List */}
-        {sortedMovies.length === 0 ? (
+        ) : filteredMovies.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
             <div className="text-center">
               <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
@@ -383,10 +430,10 @@ export function TVSeriesWatchlistPage() {
               <EnhancedTVSeriesCard
                 key={movie.id}
                 movie={movie}
-                onUpdateStatus={handleUpdateStatus}
-                onUpdateRating={handleUpdateRating}
-                onUpdateMovie={handleUpdateMovie}
-                onDelete={handleDelete}
+                onUpdateStatus={(status) => handleUpdateStatus(movie.id!, status)}
+                onUpdateRating={(rating) => handleUpdateRating(movie.id!, rating)}
+                onUpdateMovie={(updates) => handleUpdateMovie(movie.id!, updates)}
+                onDelete={(movieId) => handleDelete(movieId)}
                 onViewEpisodes={handleViewEpisodes}
               />
             ))}
