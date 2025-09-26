@@ -1,21 +1,22 @@
 // src/components/EnhancedTVSeriesCard.tsx
-// Enhanced TV series card with all the new features
+// Enhanced TV series card matching Movies page styling exactly
 import React, { useState, useEffect } from 'react';
 import { 
   Star, 
   Trash2, 
   Calendar, 
+  MapPin, 
   User, 
   Users, 
   Clock, 
   Eye, 
   MessageSquare, 
   Award, 
+  Globe, 
   Film, 
   Tv,
   Play,
   ExternalLink,
-  Wifi,
   Monitor,
   Download
 } from 'lucide-react';
@@ -138,9 +139,8 @@ export function EnhancedTVSeriesCard({
     return director.split(',').map(name => name.trim()).slice(0, 3); // Limit to first 3
   };
 
-  const parseStreaming = (plot: string | null): string[] => {
-    // This is a simplified approach - in reality, you'd need a dedicated streaming API
-    // For now, we'll extract streaming mentions from plot or other fields
+  const parseStreamingServices = (plot: string | null): string[] => {
+    // Enhanced streaming service detection
     if (!plot) return [];
     
     const streamingServices = [];
@@ -157,45 +157,25 @@ export function EnhancedTVSeriesCard({
     return streamingServices;
   };
 
+  const getStreamingLink = (service: string): string => {
+    const links: { [key: string]: string } = {
+      'Netflix': `https://www.netflix.com/search?q=${encodeURIComponent(movie.title)}`,
+      'HBO Max': `https://www.hbomax.com/search?q=${encodeURIComponent(movie.title)}`,
+      'Hulu': `https://www.hulu.com/search?q=${encodeURIComponent(movie.title)}`,
+      'Prime Video': `https://www.amazon.com/s?k=${encodeURIComponent(movie.title)}&i=prime-instant-video`,
+      'Disney+': `https://www.disneyplus.com/search/${encodeURIComponent(movie.title)}`,
+      'Apple TV+': `https://tv.apple.com/search?term=${encodeURIComponent(movie.title)}`,
+      'Paramount+': `https://www.paramountplus.com/search/${encodeURIComponent(movie.title)}`
+    };
+    return links[service] || '#';
+  };
+
   const creators = parseCreators(movie.director);
-  const streamingServices = parseStreaming(movie.plot);
+  const streamingServices = parseStreamingServices(movie.plot);
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 relative overflow-hidden">
-        {/* Delete Button - Top Left Corner */}
-        <button
-          onClick={handleDelete}
-          className="absolute top-4 left-4 p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 z-10 group"
-          title="Delete from collection"
-        >
-          <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
-        </button>
-
-        {/* Episodes Button - Top Right Corner */}
-        <div className="absolute top-4 right-4 z-10">
-          <button
-            onClick={() => onViewEpisodes(movie)}
-            className="inline-flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl group"
-            title={episodeStatus.cached ? `Browse ${episodeStatus.totalEpisodes} episodes` : 'Browse Episodes'}
-          >
-            <Play className="h-4 w-4 group-hover:scale-110 transition-transform" />
-            <span>Episodes</span>
-            {episodeStatus.cached && (
-              <span className="bg-purple-800 text-purple-200 px-2 py-0.5 rounded-full text-xs">
-                {episodeStatus.totalEpisodes}
-              </span>
-            )}
-          </button>
-          
-          {/* Episode Cache Status Indicator */}
-          {episodeStatus.isBeingFetched && (
-            <div className="absolute -bottom-1 -right-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full animate-pulse">
-              Loading...
-            </div>
-          )}
-        </div>
-
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-slate-200">
         <div className="md:flex">
           {/* Poster Section */}
           <div className="md:w-32 md:flex-shrink-0">
@@ -214,15 +194,27 @@ export function EnhancedTVSeriesCard({
           
           <div className="p-6 flex-1">
             <div className="flex justify-between items-start mb-4">
-              <div className="flex-1 pr-20"> {/* Add padding to avoid button overlap */}
-                <div className="flex items-center space-x-2 mb-2">
+              <div className="flex-1">
+                {/* Title Line with TV Series Badge and IMDb Link */}
+                <div className="flex items-center space-x-2 mb-2 flex-wrap">
                   <h3 className="text-xl font-bold text-slate-900">{movie.title}</h3>
                   <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
                     <Tv className="h-3 w-3" />
                     <span>TV Series</span>
                   </div>
+                  {movie.imdb_id && (
+                    <a
+                      href={`https://www.imdb.com/title/${movie.imdb_id}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-3 py-1 rounded transition-colors duration-200"
+                    >
+                      IMDb
+                    </a>
+                  )}
                 </div>
                 
+                {/* Status and Basic Info */}
                 <div className="flex items-center space-x-3 mb-3 flex-wrap">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(movie.status)}`}>
                     {movie.status}
@@ -251,55 +243,53 @@ export function EnhancedTVSeriesCard({
                       <span>{movie.metascore} Metascore</span>
                     </div>
                   )}
+
+                  {movie.status === 'Watched' && movie.date_watched && (
+                    <div className="flex items-center space-x-1 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
+                      <Eye className="h-3 w-3" />
+                      <span>Watched {formatDateWatched(movie.date_watched)}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Creators Info */}
-                {creators.length > 0 && (
-                  <div className="mb-3">
-                    <div className="flex items-start space-x-2">
-                      <User className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <span className="text-sm font-medium text-slate-700">Creators: </span>
-                        <span className="text-sm text-slate-600">{creators.join(', ')}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Top Action Buttons Line - Episodes and Delete */}
+                <div className="flex items-center space-x-3 mb-4">
+                  <button
+                    onClick={() => onViewEpisodes(movie)}
+                    className="inline-flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all duration-200"
+                    title={episodeStatus.cached ? `Browse ${episodeStatus.totalEpisodes} episodes` : 'Browse Episodes'}
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Episodes</span>
+                    {episodeStatus.cached && (
+                      <span className="bg-purple-800 text-purple-200 px-2 py-0.5 rounded-full text-xs">
+                        {episodeStatus.totalEpisodes}
+                      </span>
+                    )}
+                  </button>
 
-                {/* Streaming Info */}
-                {streamingServices.length > 0 && (
-                  <div className="mb-3">
-                    <div className="flex items-start space-x-2">
-                      <Monitor className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <span className="text-sm font-medium text-slate-700">Available on: </span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {streamingServices.map(service => (
-                            <span key={service} className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                              {service}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Episode Cache Status */}
-                {episodeStatus.cached && (
-                  <div className="mb-3">
-                    <div className="flex items-center space-x-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
-                      <Download className="h-3 w-3" />
-                      <span>{episodeStatus.totalSeasons} seasons, {episodeStatus.totalEpisodes} episodes cached</span>
-                    </div>
-                  </div>
-                )}
+                  <button
+                    onClick={handleDelete}
+                    className="inline-flex items-center space-x-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all duration-200"
+                    title="Delete from collection"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete</span>
+                  </button>
+                </div>
               </div>
+              
+              {/* Episode Cache Status Indicator */}
+              {episodeStatus.isBeingFetched && (
+                <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                  Loading...
+                </div>
+              )}
             </div>
 
-            {/* Genre Pills */}
+            {/* Genres */}
             {movie.genres && movie.genres.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-4">
+              <div className="flex flex-wrap gap-1 mb-3">
                 {movie.genres.slice(0, 4).map(genre => (
                   <span key={genre} className="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs">
                     {genre}
@@ -313,71 +303,101 @@ export function EnhancedTVSeriesCard({
               </div>
             )}
 
-            {/* Plot */}
-            {movie.plot && (
-              <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">
-                {movie.plot}
-              </p>
-            )}
-
-            {/* User Rating */}
-            <div className="mb-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="text-sm font-medium text-slate-700">Your Rating:</span>
-                <div className="flex space-x-1">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      onClick={() => handleRatingChange(movie.user_rating === rating ? null : rating)}
-                      disabled={isUpdating}
-                      className="group disabled:opacity-50"
-                    >
-                      <Star
-                        className={`h-5 w-5 transition-colors ${
-                          movie.user_rating && rating <= movie.user_rating
-                            ? 'text-yellow-500 fill-current'
-                            : 'text-slate-300 group-hover:text-yellow-400'
-                        }`}
-                      />
-                    </button>
-                  ))}
+            {/* IMDb Data Fields - Matching Movies Page Style Exactly */}
+            <div className="space-y-2 mb-4 text-sm">
+              {/* Creators */}
+              {creators.length > 0 && (
+                <div className="flex items-start space-x-2">
+                  <User className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-slate-700">Creators: </span>
+                    <span className="text-slate-600">{creators.join(', ')}</span>
+                  </div>
                 </div>
-                {movie.user_rating && (
-                  <button
-                    onClick={() => handleRatingChange(null)}
-                    disabled={isUpdating}
-                    className="ml-2 text-xs text-slate-500 hover:text-slate-700 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
+              )}
+
+              {/* Actors/Stars */}
+              {movie.actors && movie.actors !== 'N/A' && (
+                <div className="flex items-start space-x-2">
+                  <Users className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-slate-700">Stars: </span>
+                    <span className="text-slate-600">{movie.actors}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Country/Locations */}
+              {movie.country && movie.country !== 'N/A' && (
+                <div className="flex items-start space-x-2">
+                  <MapPin className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-slate-700">Country: </span>
+                    <span className="text-slate-600">{movie.country}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Runtime */}
+              {movie.runtime && (
+                <div className="flex items-start space-x-2">
+                  <Clock className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-slate-700">Runtime: </span>
+                    <span className="text-slate-600">{movie.runtime} minutes</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Awards */}
+              {movie.awards && movie.awards !== 'N/A' && (
+                <div className="flex items-start space-x-2">
+                  <Award className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-slate-700">Awards: </span>
+                    <span className="text-slate-600">{movie.awards}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Streaming Services with Icon and Link */}
+              {streamingServices.length > 0 && (
+                <div className="flex items-start space-x-2">
+                  <Monitor className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-medium text-slate-700">Streaming: </span>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {streamingServices.map(service => (
+                        <a
+                          key={service}
+                          href={getStreamingLink(service)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span>{service}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Episode Cache Status */}
+              {episodeStatus.cached && (
+                <div className="flex items-center space-x-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
+                  <Download className="h-3 w-3" />
+                  <span>{episodeStatus.totalSeasons} seasons, {episodeStatus.totalEpisodes} episodes cached</span>
+                </div>
+              )}
             </div>
 
-            {/* Watch Date */}
-            {movie.status === 'Watched' && (
-              <div className="mb-4">
-                <div className="flex items-center space-x-2">
-                  <Eye className="h-4 w-4 text-green-600" />
-                  <label className="text-sm font-medium text-slate-700">Date Watched:</label>
-                  <input
-                    type="date"
-                    value={movie.date_watched || ''}
-                    onChange={(e) => handleDateWatchedChange(e.target.value)}
-                    max={getTodayDateString()}
-                    disabled={isUpdating}
-                    className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
-                  />
-                </div>
-                {dateWatchedError && (
-                  <p className="text-red-600 text-xs mt-1">{dateWatchedError}</p>
-                )}
-                {movie.date_watched && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Watched {formatDateWatched(movie.date_watched)}
-                  </p>
-                )}
-              </div>
+            {/* Plot */}
+            {movie.plot && (
+              <p className="text-sm text-slate-600 mb-4 line-clamp-3 leading-relaxed">
+                {movie.plot}
+              </p>
             )}
 
             {/* User Review */}
@@ -393,7 +413,105 @@ export function EnhancedTVSeriesCard({
               </div>
             )}
 
-            {/* Action Buttons */}
+            {/* Status Selection and Ratings Row - Exact Movies Page Style */}
+            <div className="flex items-center space-x-4 mb-4 flex-wrap">
+              {/* Status Selection - Using dropdown like Movies page */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-600">Status:</span>
+                <select
+                  value={movie.status}
+                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                  disabled={isUpdating}
+                  className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="To Watch">To Watch</option>
+                  <option value="Watching">Watching</option>
+                  <option value="Watched">Watched</option>
+                  <option value="To Watch Again">To Watch Again</option>
+                </select>
+              </div>
+
+              {/* Rating Dropdown - Exact Movies Page Style */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-600">My Rating:</span>
+                <select
+                  value={movie.user_rating || ''}
+                  onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
+                  disabled={isUpdating}
+                  className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">No rating</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
+                    <option key={rating} value={rating}>
+                      {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
+                    </option>
+                  ))}
+                </select>
+                {movie.rating_updated_at && (
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-3 w-3 text-slate-400" />
+                    <span 
+                      className="text-xs text-slate-500 cursor-help"
+                      title={`Rating updated: ${formatExactTimestamp(movie.rating_updated_at)}`}
+                    >
+                      {formatRelativeTime(movie.rating_updated_at)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Official Website Link - Movies page style */}
+              {movie.website && (
+                <a
+                  href={movie.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1 rounded transition-colors duration-200 inline-flex items-center space-x-1"
+                >
+                  <Globe className="h-3 w-3" />
+                  <span>Official Site</span>
+                </a>
+              )}
+
+              {movie.last_modified_at && (
+                <div className="flex items-center space-x-1 text-xs text-slate-400">
+                  <Clock className="h-3 w-3" />
+                  <span 
+                    className="cursor-help"
+                    title={`Last modified: ${formatExactTimestamp(movie.last_modified_at)}`}
+                  >
+                    Updated {formatRelativeTime(movie.last_modified_at)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Conditional Date Watched Field */}
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+              (movie.status === 'Watched' || movie.status === 'To Watch Again') ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+            }`}>
+              {(movie.status === 'Watched' || movie.status === 'To Watch Again') && (
+                <div className="mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Eye className="h-4 w-4 text-green-600" />
+                    <label className="text-sm font-medium text-slate-700">Date Watched:</label>
+                    <input
+                      type="date"
+                      value={movie.date_watched || ''}
+                      onChange={(e) => handleDateWatchedChange(e.target.value)}
+                      max={getTodayDateString()}
+                      disabled={isUpdating}
+                      className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
+                    />
+                  </div>
+                  {dateWatchedError && (
+                    <p className="text-red-600 text-xs mt-1">{dateWatchedError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons - Just Review button now */}
             <div className="flex items-center space-x-3 mb-4">
               <button
                 onClick={() => setShowReviewModal(true)}
@@ -403,40 +521,10 @@ export function EnhancedTVSeriesCard({
                 <MessageSquare className="h-4 w-4" />
                 <span>{movie.user_review ? 'Edit Review' : 'Add Review'}</span>
               </button>
-
-              {movie.imdb_id && (
-                <a
-                  href={`https://www.imdb.com/title/${movie.imdb_id}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 text-sm font-medium rounded-lg transition-colors"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  <span>IMDb</span>
-                </a>
-              )}
-            </div>
-
-            {/* Status Buttons */}
-            <div className="flex flex-wrap gap-2">
-              {(['To Watch', 'Watching', 'Watched', 'To Watch Again'] as const).map((status) => (
-                <button
-                  key={status}
-                  onClick={() => handleStatusChange(status)}
-                  disabled={isUpdating}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 ${
-                    movie.status === status
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:shadow-sm'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
             </div>
 
             {/* Metadata Footer */}
-            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-slate-500">
               <div className="flex items-center space-x-4">
                 {movie.created_at && (
                   <span title={formatExactTimestamp(movie.created_at)}>
