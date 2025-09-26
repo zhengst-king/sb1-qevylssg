@@ -1,11 +1,11 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// Fixed version with working Episodes button and separate component
+// Fixed working version without complex dependencies
 import React, { useState, useMemo, useEffect } from 'react';
 import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
-import { SimpleEpisodesBrowser } from './SimpleEpisodesBrowser';
+import { EpisodesBrowserPage } from './EpisodesBrowserPage';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
@@ -532,12 +532,12 @@ export function TVSeriesWatchlistPage() {
           />
         )}
 
-        {/* Episodes Browser Modal - Fixed: Using separate component */}
+        {/* Episodes Browser Modal - Fixed scroll behavior */}
         {showEpisodesModal && selectedSeries && (
           <div className="fixed inset-0 z-50 overflow-hidden">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCloseEpisodes} />
             <div className="fixed inset-4 md:inset-8 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-              <SimpleEpisodesBrowser 
+              <EpisodesBrowserPage 
                 series={selectedSeries} 
                 onBack={handleCloseEpisodes}
               />
