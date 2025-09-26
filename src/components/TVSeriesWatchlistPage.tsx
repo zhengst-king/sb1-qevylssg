@@ -1,11 +1,11 @@
 // src/components/TVSeriesWatchlistPage.tsx
-// Fixed version with proper EnhancedTVSeriesCard integration
+// Final version using all the enhanced components with new features
 import React, { useState, useMemo, useEffect } from 'react';
-import { WatchlistCard } from './WatchlistCard'; // Keep as fallback
+import { EnhancedTVSeriesCard } from './EnhancedTVSeriesCard'; // NEW: Enhanced card with delete, streaming, creators
+import { EnhancedEpisodesBrowserPage } from './EnhancedEpisodesBrowserPage'; // NEW: Enhanced episodes with background cache
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
-import { EpisodesBrowserPage } from './EpisodesBrowserPage';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
@@ -134,6 +134,10 @@ export function TVSeriesWatchlistPage() {
     await updateMovie(movieId, updates);
   };
 
+  const handleDelete = async (movieId: string) => {
+    await deleteMovie(movieId);
+  };
+
   const handleAddItem = () => {
     setShowSearchModal(true);
   };
@@ -170,7 +174,7 @@ export function TVSeriesWatchlistPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl p-8 border border-red-200 text-center">
           <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Error Loading TV Series</h2>
+          <h2 className="text-xl font-semibual text-slate-900 mb-2">Error Loading TV Series</h2>
           <p className="text-slate-600 mb-4">{error}</p>
           <button
             onClick={() => refetch()}
@@ -195,7 +199,7 @@ export function TVSeriesWatchlistPage() {
               <span>My TV Series</span>
             </h1>
             <p className="text-slate-600 mt-2">
-              Track and organize your television series collection
+              Track and organize your television series collection with enhanced features
             </p>
           </div>
           
@@ -334,7 +338,7 @@ export function TVSeriesWatchlistPage() {
 
               <button
                 onClick={() => handleStatusFilter('Watching')}
-                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                className={`w-full p-4 rounded-lg border transition-all duration-200 text-left ${
                   filters.status === 'Watching'
                     ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-500'
                     : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300'
@@ -423,29 +427,15 @@ export function TVSeriesWatchlistPage() {
         ) : (
           <div className="space-y-6">
             {sortedMovies.map((movie) => (
-              <div key={movie.id} className="relative bg-white rounded-xl shadow-sm border border-slate-200">
-                <WatchlistCard
-                  movie={movie}
-                  onUpdateStatus={(status) => handleUpdateStatus(movie.id!, status)}
-                  onUpdateRating={(rating) => handleUpdateRating(movie.id!, rating)}
-                  onUpdateMovie={(updates) => handleUpdateMovie(movie.id!, updates)}
-                  onDelete={() => {
-                    if (confirm('Are you sure you want to delete this TV series?')) {
-                      deleteMovie(movie.id!);
-                    }
-                  }}
-                />
-                
-                {/* Episodes Button - Positioned in top-right corner */}
-                <button
-                  onClick={() => handleViewEpisodes(movie)}
-                  className="absolute top-4 right-4 inline-flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-lg transition-all duration-200 hover:shadow-xl z-10"
-                  title="Browse Episodes"
-                >
-                  <Play className="h-4 w-4" />
-                  <span>Episodes</span>
-                </button>
-              </div>
+              <EnhancedTVSeriesCard
+                key={movie.id}
+                movie={movie}
+                onUpdateStatus={(status) => handleUpdateStatus(movie.id!, status)}
+                onUpdateRating={(rating) => handleUpdateRating(movie.id!, rating)}
+                onUpdateMovie={(updates) => handleUpdateMovie(movie.id!, updates)}
+                onDelete={(movieId) => handleDelete(movieId)}
+                onViewEpisodes={handleViewEpisodes}
+              />
             ))}
           </div>
         )}
@@ -469,12 +459,12 @@ export function TVSeriesWatchlistPage() {
           />
         )}
 
-        {/* Episodes Browser Modal */}
+        {/* Enhanced Episodes Browser Modal */}
         {showEpisodesModal && selectedSeries && (
           <div className="fixed inset-0 z-50 overflow-hidden">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCloseEpisodes} />
             <div className="fixed inset-4 md:inset-8 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-              <EpisodesBrowserPage 
+              <EnhancedEpisodesBrowserPage 
                 series={selectedSeries} 
                 onBack={handleCloseEpisodes}
               />
