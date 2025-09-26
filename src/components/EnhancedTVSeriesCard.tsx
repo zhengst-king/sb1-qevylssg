@@ -1,5 +1,5 @@
 // src/components/EnhancedTVSeriesCard.tsx
-// Enhanced TV series card matching Movies page styling exactly
+// Final fixed version with proper button positioning and genre enhancement
 import React, { useState, useEffect } from 'react';
 import { 
   Star, 
@@ -73,19 +73,25 @@ export function EnhancedTVSeriesCard({
     }
   }, [movie.imdb_id, movie.title]);
 
+  // FIXED: Proper status change handler
   const handleStatusChange = async (status: Movie['status']) => {
     setIsUpdating(true);
     try {
-      await onUpdateStatus(movie.id!, status);
+      await onUpdateStatus(movie.id!, status); // Fixed: pass both id and status
+    } catch (error) {
+      console.error('Error updating status:', error);
     } finally {
       setIsUpdating(false);
     }
   };
 
+  // FIXED: Proper rating change handler  
   const handleRatingChange = async (rating: number | null) => {
     setIsUpdating(true);
     try {
-      await onUpdateRating(movie.id!, rating);
+      await onUpdateRating(movie.id!, rating); // Fixed: pass both id and rating
+    } catch (error) {
+      console.error('Error updating rating:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -136,11 +142,10 @@ export function EnhancedTVSeriesCard({
 
   const parseCreators = (director: string | null): string[] => {
     if (!director || director === 'N/A') return [];
-    return director.split(',').map(name => name.trim()).slice(0, 3); // Limit to first 3
+    return director.split(',').map(name => name.trim()).slice(0, 3);
   };
 
   const parseStreamingServices = (plot: string | null): string[] => {
-    // Enhanced streaming service detection
     if (!plot) return [];
     
     const streamingServices = [];
@@ -155,6 +160,63 @@ export function EnhancedTVSeriesCard({
     if (plotLower.includes('paramount')) streamingServices.push('Paramount+');
     
     return streamingServices;
+  };
+
+  // Enhanced genre parsing with comprehensive sub-genres
+  const parseEnhancedGenres = (basicGenres: string | null, plot: string | null, title: string): string[] => {
+    const genres = new Set<string>();
+    
+    // Start with basic OMDb genres
+    if (basicGenres && basicGenres !== 'N/A') {
+      basicGenres.split(',').forEach(genre => genres.add(genre.trim()));
+    }
+
+    // Enhanced genre detection based on plot and title
+    const fullText = `${title} ${plot || ''}`.toLowerCase();
+    
+    // Sci-Fi sub-genres
+    if (fullText.includes('dystopian') || fullText.includes('post-apocalyptic')) genres.add('Dystopian Sci-Fi');
+    if (fullText.includes('time travel') || fullText.includes('temporal')) genres.add('Time Travel');
+    if (fullText.includes('cyberpunk') || fullText.includes('virtual reality')) genres.add('Cyberpunk');
+    if (fullText.includes('space') || fullText.includes('alien') || fullText.includes('galaxy')) genres.add('Space Opera');
+    
+    // Drama sub-genres
+    if (fullText.includes('psychological') || fullText.includes('mind') || fullText.includes('mental')) genres.add('Psychological Drama');
+    if (fullText.includes('family') || fullText.includes('father') || fullText.includes('mother')) genres.add('Family Drama');
+    if (fullText.includes('legal') || fullText.includes('court') || fullText.includes('lawyer')) genres.add('Legal Drama');
+    if (fullText.includes('medical') || fullText.includes('hospital') || fullText.includes('doctor')) genres.add('Medical Drama');
+    
+    // Horror sub-genres
+    if (fullText.includes('zombie') || fullText.includes('undead')) genres.add('Zombie Horror');
+    if (fullText.includes('supernatural') || fullText.includes('ghost') || fullText.includes('spirit')) genres.add('Supernatural Horror');
+    if (fullText.includes('slasher') || fullText.includes('serial killer')) genres.add('Slasher');
+    if (fullText.includes('psychological horror') || fullText.includes('disturbing')) genres.add('Psychological Horror');
+    
+    // Adventure sub-genres
+    if (fullText.includes('quest') || fullText.includes('journey') || fullText.includes('expedition')) genres.add('Quest');
+    if (fullText.includes('survival') || fullText.includes('stranded') || fullText.includes('wilderness')) genres.add('Survival');
+    if (fullText.includes('heist') || fullText.includes('robbery') || fullText.includes('steal')) genres.add('Heist');
+    
+    // Action sub-genres
+    if (fullText.includes('martial arts') || fullText.includes('kung fu') || fullText.includes('fighter')) genres.add('Martial Arts');
+    if (fullText.includes('spy') || fullText.includes('agent') || fullText.includes('espionage')) genres.add('Spy Thriller');
+    if (fullText.includes('military') || fullText.includes('soldier') || fullText.includes('combat')) genres.add('Military Action');
+    
+    // Comedy sub-genres
+    if (fullText.includes('romantic comedy') || fullText.includes('rom-com')) genres.add('Romantic Comedy');
+    if (fullText.includes('dark comedy') || fullText.includes('black comedy')) genres.add('Dark Comedy');
+    if (fullText.includes('satire') || fullText.includes('parody')) genres.add('Satirical Comedy');
+    
+    // Mystery/Crime sub-genres
+    if (fullText.includes('detective') || fullText.includes('investigation')) genres.add('Detective Mystery');
+    if (fullText.includes('noir') || fullText.includes('dark streets')) genres.add('Film Noir');
+    if (fullText.includes('organized crime') || fullText.includes('mafia') || fullText.includes('gang')) genres.add('Crime Saga');
+    
+    // Western sub-genres
+    if (fullText.includes('spaghetti western') || fullText.includes('sergio leone')) genres.add('Spaghetti Western');
+    if (fullText.includes('contemporary western') || fullText.includes('modern western')) genres.add('Neo-Western');
+    
+    return Array.from(genres).slice(0, 8); // Limit to 8 genres for UI
   };
 
   const getStreamingLink = (service: string): string => {
@@ -172,6 +234,7 @@ export function EnhancedTVSeriesCard({
 
   const creators = parseCreators(movie.director);
   const streamingServices = parseStreamingServices(movie.plot);
+  const enhancedGenres = parseEnhancedGenres(movie.genre, movie.plot, movie.title);
 
   return (
     <>
@@ -193,9 +256,9 @@ export function EnhancedTVSeriesCard({
           </div>
           
           <div className="p-6 flex-1">
+            {/* Title Line with Buttons - FIXED: Buttons moved to title line */}
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
-                {/* Title Line with TV Series Badge and IMDb Link */}
                 <div className="flex items-center space-x-2 mb-2 flex-wrap">
                   <h3 className="text-xl font-bold text-slate-900">{movie.title}</h3>
                   <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -213,72 +276,72 @@ export function EnhancedTVSeriesCard({
                     </a>
                   )}
                 </div>
-                
-                {/* Status and Basic Info */}
-                <div className="flex items-center space-x-3 mb-3 flex-wrap">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(movie.status)}`}>
-                    {movie.status}
-                  </span>
-                  
-                  {movie.year && (
-                    <div className="flex items-center space-x-1 text-sm text-slate-600">
-                      <Calendar className="h-3 w-3" />
-                      <span>{movie.year}</span>
-                    </div>
-                  )}
-                  
-                  {movie.imdb_score && (
-                    <div className="flex items-center space-x-1 text-sm text-slate-600">
-                      <Star className="h-3 w-3 text-yellow-500" />
-                      <span>{movie.imdb_score.toFixed(1)}</span>
-                      {movie.imdb_votes && (
-                        <span className="text-slate-400">({movie.imdb_votes} votes)</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {movie.metascore && (
-                    <div className="flex items-center space-x-1 text-sm text-slate-600">
-                      <Award className="h-3 w-3 text-green-500" />
-                      <span>{movie.metascore} Metascore</span>
-                    </div>
-                  )}
-
-                  {movie.status === 'Watched' && movie.date_watched && (
-                    <div className="flex items-center space-x-1 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
-                      <Eye className="h-3 w-3" />
-                      <span>Watched {formatDateWatched(movie.date_watched)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Top Action Buttons Line - Episodes and Delete */}
-                <div className="flex items-center space-x-3 mb-4">
-                  <button
-                    onClick={() => onViewEpisodes(movie)}
-                    className="inline-flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all duration-200"
-                    title={episodeStatus.cached ? `Browse ${episodeStatus.totalEpisodes} episodes` : 'Browse Episodes'}
-                  >
-                    <Play className="h-4 w-4" />
-                    <span>Episodes</span>
-                    {episodeStatus.cached && (
-                      <span className="bg-purple-800 text-purple-200 px-2 py-0.5 rounded-full text-xs">
-                        {episodeStatus.totalEpisodes}
-                      </span>
-                    )}
-                  </button>
-
-                  <button
-                    onClick={handleDelete}
-                    className="inline-flex items-center space-x-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all duration-200"
-                    title="Delete from collection"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span>Delete</span>
-                  </button>
-                </div>
               </div>
               
+              {/* FIXED: Episodes and Delete buttons on title line, matching Movies page style */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onViewEpisodes(movie)}
+                  className="inline-flex items-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-all duration-200"
+                  title={episodeStatus.cached ? `Browse ${episodeStatus.totalEpisodes} episodes` : 'Browse Episodes'}
+                >
+                  <Play className="h-4 w-4" />
+                  <span>Episodes</span>
+                  {episodeStatus.cached && (
+                    <span className="bg-purple-800 text-purple-200 px-2 py-0.5 rounded-full text-xs">
+                      {episodeStatus.totalEpisodes}
+                    </span>
+                  )}
+                </button>
+
+                {/* FIXED: Delete button style matching Movies page exactly */}
+                <button
+                  onClick={handleDelete}
+                  className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+                  title="Remove from watchlist"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Status and Basic Info */}
+            <div className="flex items-center space-x-3 mb-3 flex-wrap">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(movie.status)}`}>
+                {movie.status}
+              </span>
+              
+              {movie.year && (
+                <div className="flex items-center space-x-1 text-sm text-slate-600">
+                  <Calendar className="h-3 w-3" />
+                  <span>{movie.year}</span>
+                </div>
+              )}
+              
+              {movie.imdb_score && (
+                <div className="flex items-center space-x-1 text-sm text-slate-600">
+                  <Star className="h-3 w-3 text-yellow-500" />
+                  <span>{movie.imdb_score.toFixed(1)}</span>
+                  {movie.imdb_votes && (
+                    <span className="text-slate-400">({movie.imdb_votes} votes)</span>
+                  )}
+                </div>
+              )}
+              
+              {movie.metascore && (
+                <div className="flex items-center space-x-1 text-sm text-slate-600">
+                  <Award className="h-3 w-3 text-green-500" />
+                  <span>{movie.metascore} Metascore</span>
+                </div>
+              )}
+
+              {movie.status === 'Watched' && movie.date_watched && (
+                <div className="flex items-center space-x-1 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
+                  <Eye className="h-3 w-3" />
+                  <span>Watched {formatDateWatched(movie.date_watched)}</span>
+                </div>
+              )}
+
               {/* Episode Cache Status Indicator */}
               {episodeStatus.isBeingFetched && (
                 <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
@@ -287,23 +350,18 @@ export function EnhancedTVSeriesCard({
               )}
             </div>
 
-            {/* Genres */}
-            {movie.genres && movie.genres.length > 0 && (
+            {/* Enhanced Genres - FIXED: Now shows comprehensive genres */}
+            {enhancedGenres.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-3">
-                {movie.genres.slice(0, 4).map(genre => (
+                {enhancedGenres.map(genre => (
                   <span key={genre} className="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs">
                     {genre}
                   </span>
                 ))}
-                {movie.genres.length > 4 && (
-                  <span className="bg-slate-100 text-slate-500 px-2 py-1 rounded-full text-xs">
-                    +{movie.genres.length - 4} more
-                  </span>
-                )}
               </div>
             )}
 
-            {/* IMDb Data Fields - Matching Movies Page Style Exactly */}
+            {/* IMDb Data Fields */}
             <div className="space-y-2 mb-4 text-sm">
               {/* Creators */}
               {creators.length > 0 && (
@@ -316,7 +374,7 @@ export function EnhancedTVSeriesCard({
                 </div>
               )}
 
-              {/* Actors/Stars */}
+              {/* Stars */}
               {movie.actors && movie.actors !== 'N/A' && (
                 <div className="flex items-start space-x-2">
                   <Users className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
@@ -413,7 +471,7 @@ export function EnhancedTVSeriesCard({
               </div>
             )}
 
-            {/* Status Selection and Ratings Row - Exact Movies Page Style */}
+            {/* Status Selection and Ratings Row - FIXED: Exact Movies Page Style */}
             <div className="flex items-center space-x-4 mb-4 flex-wrap">
               {/* Status Selection - Using dropdown like Movies page */}
               <div className="flex items-center space-x-2">
@@ -538,9 +596,6 @@ export function EnhancedTVSeriesCard({
                 )}
               </div>
               <div className="flex items-center space-x-2">
-                {episodeStatus.isBeingFetched && (
-                  <span className="text-green-600 animate-pulse">Fetching episodes...</span>
-                )}
                 {movie.media_type && (
                   <span className="bg-slate-100 px-2 py-1 rounded">
                     {movie.media_type}
