@@ -1,7 +1,7 @@
 // src/components/TVSeriesWatchlistPage.tsx
 // Fixed working version without complex dependencies
 import React, { useState, useMemo, useEffect } from 'react';
-import { WatchlistCard } from './WatchlistCard';
+import { EnhancedTVSeriesCard } from './EnhancedTVSeriesCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
@@ -487,7 +487,7 @@ export function TVSeriesWatchlistPage() {
           <div className="space-y-6">
             {sortedMovies.map((movie) => (
               <div key={movie.id} className="relative bg-white rounded-xl shadow-sm border border-slate-200">
-                <WatchlistCard
+                <EnhancedTVSeriesCard
                   movie={movie}
                   onUpdateStatus={(status) => handleUpdateStatus(movie.id, status)}
                   onUpdateRating={(rating) => handleUpdateRating(movie.id, rating)}
@@ -495,6 +495,7 @@ export function TVSeriesWatchlistPage() {
                   onDelete={() => {
                     if (confirm('Are you sure you want to delete this TV series?')) {
                       deleteMovie(movie.id);
+                  onViewEpisodes={(series) => handleViewEpisodes(series)}
                     }
                   }}
                 />
@@ -537,7 +538,7 @@ export function TVSeriesWatchlistPage() {
           <div className="fixed inset-0 z-50 overflow-hidden">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCloseEpisodes} />
             <div className="fixed inset-4 md:inset-8 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-              <EpisodesBrowserPage 
+              <EnhancedEpisodesBrowserPage
                 series={selectedSeries} 
                 onBack={handleCloseEpisodes}
               />
