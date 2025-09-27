@@ -13,18 +13,14 @@ import {
   RefreshCw,
   AlertCircle,
   ExternalLink,
-  Info,
   MessageSquare,
   User,
   Users,
   Eye,
-  StarIcon,
   Award,
-  Film,
   Download,
   Zap,
-  Globe,
-  ThumbsUp
+  Globe
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
@@ -245,16 +241,6 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
   };
 
   // Helper functions for series information display
-  const getSeriesStatusColor = (status: Movie['status']) => {
-    switch (status) {
-      case 'To Watch': return 'bg-blue-100 text-blue-800';
-      case 'Watching': return 'bg-yellow-100 text-yellow-800';
-      case 'Watched': return 'bg-green-100 text-green-800';
-      case 'To Watch Again': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const formatDateWatched = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -262,24 +248,6 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
       day: 'numeric', 
       year: 'numeric' 
     });
-  };
-
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating / 2);
-    const hasHalfStar = rating % 2 >= 1;
-    const stars = [];
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<Star key={i} className="h-4 w-4 text-yellow-500 fill-current" />);
-    }
-    if (hasHalfStar) {
-      stars.push(<Star key="half" className="h-4 w-4 text-yellow-500 fill-current opacity-50" />);
-    }
-    for (let i = stars.length; i < 5; i++) {
-      stars.push(<Star key={i} className="h-4 w-4 text-gray-300" />);
-    }
-
-    return stars;
   };
 
   // Handle watch status changes (mockup for now)
@@ -308,14 +276,15 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                 <div className="flex items-center space-x-3">
                   <Play className="h-6 w-6 text-purple-600" />
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">Episodes</h2>
+                    <h1 className="text-2xl font-bold text-slate-900">{series.title}</h1>
                     <div className="flex items-center space-x-2 text-sm text-slate-600">
                       <span>Season {currentSeason}</span>
                       {episodes.length > 0 && <span>• {episodes.length} episodes</span>}
-                      {cacheStatus.cached && (
-                        <div className="flex items-center space-x-1 text-green-600">
+                      {/* Enhanced cache status like TV page */}
+                      {totalSeasons > 0 && cacheStatus.totalEpisodes > 0 && (
+                        <div className="flex items-center space-x-1 text-green-600 bg-green-50 px-2 py-1 rounded">
                           <Download className="h-3 w-3" />
-                          <span>cached</span>
+                          <span>{totalSeasons} seasons, {cacheStatus.totalEpisodes} episodes cached</span>
                         </div>
                       )}
                       {cacheStatus.isBeingFetched && (
@@ -380,75 +349,14 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
             {/* Series Information Header - Now scrollable */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
               
-              {/* Title and TV Series Badge */}
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-3">{series.title}</h1>
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-                      <Tv className="h-4 w-4" />
-                      <span>TV Series</span>
-                    </div>
-                    
-                    {/* Year */}
-                    {series.year && (
-                      <div className="flex items-center space-x-1 text-slate-600">
-                        <Calendar className="h-4 w-4" />
-                        <span className="font-medium">{series.year}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Watch Status Dropdown */}
-                <div className="flex flex-col items-end space-y-2">
-                  <span className={`px-4 py-2 rounded-full text-sm font-medium ${getSeriesStatusColor(series.status)}`}>
-                    {series.status}
-                  </span>
-                  
-                  {/* Status Change Dropdown */}
-                  <select
-                    value={series.status}
-                    onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                    className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  >
-                    <option value="To Watch">To Watch</option>
-                    <option value="Watching">Watching</option>
-                    <option value="Watched">Watched</option>
-                    <option value="To Watch Again">To Watch Again</option>
-                  </select>
-                </div>
-              </div>
-
               {/* Rating and Metadata Row */}
               <div className="flex flex-wrap items-center gap-6 mb-6">
                 
-                {/* IMDb Rating with Stars */}
-                {series.imdb_score && (
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center space-x-1">
-                      {renderStars(series.imdb_score)}
-                    </div>
-                    <span className="font-bold text-lg">{series.imdb_score.toFixed(1)}</span>
-                    {series.imdb_votes && (
-                      <span className="text-slate-500 text-sm">({series.imdb_votes} votes)</span>
-                    )}
-                  </div>
-                )}
-
                 {/* Metascore */}
                 {series.metascore && (
                   <div className="flex items-center space-x-2">
                     <Award className="h-5 w-5 text-green-500" />
                     <span className="font-medium">{series.metascore} Metascore</span>
-                  </div>
-                )}
-
-                {/* Runtime */}
-                {series.runtime && (
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-5 w-5 text-slate-500" />
-                    <span>{series.runtime} min</span>
                   </div>
                 )}
 
@@ -482,6 +390,17 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                     <div>
                       <span className="font-medium text-slate-700">Creators: </span>
                       <span className="text-slate-600">{series.director}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Awards */}
+                {series.awards && series.awards !== 'N/A' && (
+                  <div className="flex items-start space-x-2">
+                    <Award className="h-4 w-4 text-slate-500 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-slate-700">Awards: </span>
+                      <span className="text-slate-600">{series.awards}</span>
                     </div>
                   </div>
                 )}
@@ -527,42 +446,69 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3">
-                
-                {/* IMDb Link */}
-                {series.imdb_id && (
-                  <a
-                    href={`https://www.imdb.com/title/${series.imdb_id}/`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    <span>View on IMDb</span>
-                  </a>
-                )}
+              {/* User Actions Section */}
+              <div className="border-t border-slate-200 pt-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  
+                  {/* Left side: My Rating and Review */}
+                  <div className="flex items-center space-x-4">
+                    {/* User Rating */}
+                    <div className="flex items-center space-x-2">
+                      <Star className="h-5 w-5 text-purple-600" />
+                      <span className="font-medium text-slate-700">My Rating:</span>
+                      {series.user_rating ? (
+                        <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {series.user_rating}/10
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 text-sm">Not rated</span>
+                      )}
+                    </div>
 
-                {/* Official Website */}
-                {series.website && series.website !== 'N/A' && (
-                  <a
-                    href={series.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                  >
-                    <Globe className="h-4 w-4" />
-                    <span>Official Site</span>
-                  </a>
-                )}
-
-                {/* User Rating */}
-                {series.user_rating && (
-                  <div className="flex items-center space-x-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-lg">
-                    <ThumbsUp className="h-4 w-4" />
-                    <span className="font-medium">Your Rating: {series.user_rating}/10</span>
+                    {/* Add Review Button */}
+                    <button
+                      onClick={() => {
+                        // TODO: Implement review functionality for series
+                        console.log('Add review for series');
+                      }}
+                      className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>{series.user_review ? 'Edit Review' : 'Add Review'}</span>
+                    </button>
                   </div>
-                )}
+
+                  {/* Right side: Status and Website */}
+                  <div className="flex items-center space-x-3">
+                    {/* Watch Status Dropdown */}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-slate-700">Status:</span>
+                      <select
+                        value={series.status}
+                        onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                        className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      >
+                        <option value="To Watch">To Watch</option>
+                        <option value="Watching">Watching</option>
+                        <option value="Watched">Watched</option>
+                        <option value="To Watch Again">To Watch Again</option>
+                      </select>
+                    </div>
+
+                    {/* Official Website */}
+                    {series.website && series.website !== 'N/A' && (
+                      <a
+                        href={series.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                      >
+                        <Globe className="h-4 w-4" />
+                        <span>Official Site</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
             
