@@ -60,11 +60,29 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     isBeingFetched: false,
     lastUpdated: null as Date | null
   });
+  const [queueStatus, setQueueStatus] = useState({
+    queueLength: 0,
+    isProcessing: false,
+    currentlyProcessing: null
+  });
 
   // Load episodes for current season from background cache
   useEffect(() => {
     loadEpisodesFromCache(currentSeason);
   }, [currentSeason, series.imdb_id]);
+  // Load queue status
+  useEffect(() => {
+    const loadQueueStatus = async () => {
+      try {
+        const status = await serverSideEpisodeService.getQueueStatus();
+        setQueueStatus(status);
+      } catch (error) {
+        console.error('[Episodes] Error loading queue status:', error);
+      }
+    };
+  
+    loadQueueStatus();
+  }, []);
 
  // Monitor cache status and update available seasons with async service
  useEffect(() => {
@@ -256,8 +274,6 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     }
     return `https://www.imdb.com/title/${series.imdb_id}/episodes?season=${episode.season}`;
   };
-
-  const queueStatus = await serverSideEpisodeService.getQueueStatus();
 
   return (
     <>
