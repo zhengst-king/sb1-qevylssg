@@ -161,14 +161,30 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
         setLoading(false);
         console.log(`[Episodes] ✓ Loaded ${episodesWithUserData.length} episodes from cache`);
       } else {
-        // No cached data available
+        // FIX: NO CACHED DATA - AUTOMATICALLY TRIGGER DISCOVERY
+        console.log(`[Episodes] 🔍 No cache found for ${series.title} Season ${seasonNumber} - triggering discovery`);
+  
         setEpisodes([]);
-        const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id);
-      
-        if (status.isBeingFetched) {
-          setError(`Episodes are being fetched in the background. This may take a few moments...`);
-        } else {
-          setError(`No episodes found for Season ${seasonNumber}. The episodes may not be available or the season might not exist.`);
+  
+        try {
+          // Import and use integrationService to queue for discovery
+          const { integrationService } = await import('../services/integrationService');
+          const queueResult = await integrationService.queueSeriesDiscovery(
+            series.imdb_id,
+            series.title,
+            'high' // High priority for user-requested episodes
+          );
+    
+          console.log('[Episodes] 📥 Queued for discovery:', queueResult);
+    
+          if (queueResult.success) {
+            setError(`🔄 Episodes are being discovered in the background. This may take 30-60 seconds. Please click "Refresh" to check for updates.`);
+          } else {
+            setError(`Failed to start episode discovery: ${queueResult.message}`);
+          }
+        } catch (queueError) {
+          console.error('[Episodes] ❌ Failed to queue discovery:', queueError);
+          setError('Failed to start episode discovery. Please try again.');
         }
         setLoading(false);
       }
