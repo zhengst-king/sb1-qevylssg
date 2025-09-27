@@ -9,6 +9,7 @@ import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
 import { Filter, Film, AlertCircle, Download, Upload, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { runVerification } from '../utils/verifyServerSideService';
 
 interface FilterState {
   yearRange: { min: number; max: number };
@@ -353,6 +354,13 @@ export function MovieWatchlistPage() {
                 >
                   <Upload className="h-4 w-4" />
                   <span>Import Lists</span>
+                </button>
+
+                <button
+                  onClick={() => runVerification()}
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                >
+                 🧪 Test Server Service
                 </button>
 
                 <button
