@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigation } from './components/Navigation';
 import { AuthModal } from './components/AuthModal';
 import { SearchPage } from './components/SearchPage';
