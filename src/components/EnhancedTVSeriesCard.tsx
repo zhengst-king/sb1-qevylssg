@@ -21,7 +21,7 @@ import {
   Download
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
-import { backgroundEpisodeService } from '../services/backgroundEpisodeService';
+import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 import { ReviewModal } from './ReviewModal';
 
@@ -51,26 +51,69 @@ export function EnhancedTVSeriesCard({
     totalEpisodes: 0,
     isBeingFetched: false
   });
+  const [isLoadingEpisodeStatus, setIsLoadingEpisodeStatus] = useState(false);
 
-  // Check episode cache status
+  // Check episode cache status with async server-side service
   useEffect(() => {
-    if (movie.imdb_id) {
-      const status = backgroundEpisodeService.getSeriesStatus(movie.imdb_id);
-      setEpisodeStatus(status);
+    let isMounted = true; // Prevent state updates if component unmounts
 
-      // Add to background fetch queue if not cached
-      if (!status.cached && !status.isBeingFetched) {
-        backgroundEpisodeService.addSeriesToQueue(movie.imdb_id, movie.title, 'medium');
+    const checkEpisodeStatus = async () => {
+      if (!movie.imdb_id) return;
+
+      setIsLoadingEpisodeStatus(true);
+
+      try {
+        // Get series status from server
+        const status = await serverSideEpisodeService.getSeriesStatus(movie.imdb_id);
+      
+        if (!isMounted) return; // Component unmounted
+
+        setEpisodeStatus(status);
+
+        // Add to background fetch queue if not cached
+        if (!status.cached && !status.isBeingFetched) {
+          await serverSideEpisodeService.addSeriesToQueue(movie.imdb_id, movie.title, 'medium');
+        }
+
+      } catch (error) {
+        console.error('[EnhancedTVSeriesCard] Error checking episode status:', error);
+        if (isMounted) {
+          setEpisodeStatus({
+            cached: false,
+            totalSeasons: 0,
+            totalEpisodes: 0,
+            isBeingFetched: false
+          });
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingEpisodeStatus(false);
+        }
       }
+    };
 
-      // Set up interval to check status updates
-      const interval = setInterval(() => {
-        const updatedStatus = backgroundEpisodeService.getSeriesStatus(movie.imdb_id!);
-        setEpisodeStatus(updatedStatus);
-      }, 5000);
+    // Initial check
+    checkEpisodeStatus();
 
-      return () => clearInterval(interval);
-    }
+    // Set up interval to check status updates
+    const interval = setInterval(async () => {
+      if (!movie.imdb_id || !isMounted) return;
+
+      try {
+        const updatedStatus = await serverSideEpisodeService.getSeriesStatus(movie.imdb_id);
+        if (isMounted) {
+          setEpisodeStatus(updatedStatus);
+        }
+      } catch (error) {
+        console.error('[EnhancedTVSeriesCard] Error updating episode status:', error);
+      }
+    }, 3000); // Check every 3 seconds
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [movie.imdb_id, movie.title]);
 
   // FIXED: Proper status change handler
