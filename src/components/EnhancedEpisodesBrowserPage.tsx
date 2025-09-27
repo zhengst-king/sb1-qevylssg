@@ -1,6 +1,5 @@
 // src/components/EnhancedEpisodesBrowserPage.tsx
 // Episodes page that uses background-fetched data and dynamic season counts
-// STEP 1: Added comprehensive series information header
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
@@ -88,52 +87,52 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     loadQueueStatus();
   }, []);
 
-  // Monitor cache status and update available seasons with async service
-  useEffect(() => {
-    if (!series.imdb_id) return;
+ // Monitor cache status and update available seasons with async service
+ useEffect(() => {
+   if (!series.imdb_id) return;
   
-    let isMounted = true; // Prevent state updates if component unmounts
+   let isMounted = true; // Prevent state updates if component unmounts
 
-    const updateStatus = async () => {
-      try {
-        const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
+   const updateStatus = async () => {
+     try {
+       const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
       
-        if (!isMounted) return; // Component unmounted
+       if (!isMounted) return; // Component unmounted
       
-        setCacheStatus(status);
-        setTotalSeasons(status.totalSeasons);
+       setCacheStatus(status);
+       setTotalSeasons(status.totalSeasons);
       
-        // Update available seasons based on cached data
-        const seasons = [];
-        for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
-          seasons.push(i);
-        }
-        setAvailableSeasons(seasons);
+       // Update available seasons based on cached data
+       const seasons = [];
+       for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
+         seasons.push(i);
+       }
+       setAvailableSeasons(seasons);
       
-        // If current season is beyond available seasons, reset to season 1
-        if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
-          setCurrentSeason(1);
-        }
-      } catch (error) {
-        console.error('[Episodes] Error updating cache status:', error);
-      }
-    };
+       // If current season is beyond available seasons, reset to season 1
+       if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
+         setCurrentSeason(1);
+       }
+     } catch (error) {
+       console.error('[Episodes] Error updating cache status:', error);
+     }
+   };
 
-    // Initial update
-    updateStatus();
+   // Initial update
+   updateStatus();
 
-    // Set up interval to monitor changes
-    const interval = setInterval(() => {
-      if (isMounted) {
-        updateStatus();
-      }
-    }, 30000); // Check every 30 seconds
+   // Set up interval to monitor changes
+   const interval = setInterval(() => {
+     if (isMounted) {
+       updateStatus();
+     }
+   }, 30000); // Check every 30 seconds
 
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [series.imdb_id, currentSeason]);
+  return () => {
+    isMounted = false;
+    clearInterval(interval);
+  };
+}, [series.imdb_id, currentSeason]);
 
   const loadEpisodesFromCache = async (seasonNumber: number) => {
     if (!series.imdb_id) {
@@ -245,7 +244,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     return `https://www.imdb.com/title/${series.imdb_id}/episodes?season=${episode.season}`;
   };
 
-  // NEW: Helper functions for series information display
+  // Helper functions for series information display
   const getSeriesStatusColor = (status: Movie['status']) => {
     switch (status) {
       case 'To Watch': return 'bg-blue-100 text-blue-800';
@@ -283,7 +282,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     return stars;
   };
 
-  // NEW: Handle watch status changes (mockup for now)
+  // Handle watch status changes (mockup for now)
   const handleStatusChange = (newStatus: Movie['status']) => {
     // TODO: Implement status update logic
     console.log('Status change to:', newStatus);
@@ -293,236 +292,19 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
         
-        {/* NEW: Enhanced Series Information Header */}
-        <div className="bg-white border-b border-slate-200 flex-shrink-0">
-          <div className="max-w-6xl mx-auto px-6 py-6">
-            
-            {/* Back Button */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={onBack}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to TV</span>
-              </button>
-            </div>
-
-            {/* Series Header Information */}
-            <div className="flex flex-col lg:flex-row gap-6">
-              
-              {/* Series Poster */}
-              <div className="flex-shrink-0">
-                {series.poster_url ? (
-                  <img
-                    src={series.poster_url}
-                    alt={series.title}
-                    className="w-48 h-72 object-cover rounded-lg shadow-lg"
-                  />
-                ) : (
-                  <div className="w-48 h-72 bg-slate-200 rounded-lg shadow-lg flex items-center justify-center">
-                    <Tv className="h-16 w-16 text-slate-400" />
-                  </div>
-                )}
-              </div>
-
-              {/* Series Information */}
-              <div className="flex-1 space-y-4">
-                
-                {/* Title and TV Series Badge */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">{series.title}</h1>
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-                        <Tv className="h-4 w-4" />
-                        <span>TV Series</span>
-                      </div>
-                      
-                      {/* Year */}
-                      {series.year && (
-                        <div className="flex items-center space-x-1 text-slate-600">
-                          <Calendar className="h-4 w-4" />
-                          <span className="font-medium">{series.year}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Watch Status Dropdown */}
-                  <div className="flex flex-col items-end space-y-2">
-                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${getSeriesStatusColor(series.status)}`}>
-                      {series.status}
-                    </span>
-                    
-                    {/* Status Change Dropdown */}
-                    <select
-                      value={series.status}
-                      onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                      className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      <option value="To Watch">To Watch</option>
-                      <option value="Watching">Watching</option>
-                      <option value="Watched">Watched</option>
-                      <option value="To Watch Again">To Watch Again</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Rating and Metadata Row */}
-                <div className="flex flex-wrap items-center gap-6">
-                  
-                  {/* IMDb Rating with Stars */}
-                  {series.imdb_score && (
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1">
-                        {renderStars(series.imdb_score)}
-                      </div>
-                      <span className="font-bold text-lg">{series.imdb_score.toFixed(1)}</span>
-                      {series.imdb_votes && (
-                        <span className="text-slate-500 text-sm">({series.imdb_votes} votes)</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Metascore */}
-                  {series.metascore && (
-                    <div className="flex items-center space-x-2">
-                      <Award className="h-5 w-5 text-green-500" />
-                      <span className="font-medium">{series.metascore} Metascore</span>
-                    </div>
-                  )}
-
-                  {/* Runtime */}
-                  {series.runtime && (
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-5 w-5 text-slate-500" />
-                      <span>{series.runtime} min</span>
-                    </div>
-                  )}
-
-                  {/* Date Watched */}
-                  {series.status === 'Watched' && series.date_watched && (
-                    <div className="flex items-center space-x-2 text-green-700 bg-green-50 px-3 py-1 rounded-lg">
-                      <Eye className="h-4 w-4" />
-                      <span>Watched {formatDateWatched(series.date_watched)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Genres */}
-                {series.genre && series.genre !== 'N/A' && (
-                  <div className="flex flex-wrap gap-2">
-                    {series.genre.split(', ').map(genre => (
-                      <span key={genre} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
-                        {genre.trim()}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Additional Metadata */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  
-                  {/* Creators */}
-                  {series.director && series.director !== 'N/A' && (
-                    <div className="flex items-start space-x-2">
-                      <User className="h-4 w-4 text-slate-500 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-700">Creators: </span>
-                        <span className="text-slate-600">{series.director}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Stars */}
-                  {series.actors && series.actors !== 'N/A' && (
-                    <div className="flex items-start space-x-2">
-                      <Users className="h-4 w-4 text-slate-500 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-700">Stars: </span>
-                        <span className="text-slate-600">{series.actors}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Country */}
-                  {series.country && series.country !== 'N/A' && (
-                    <div className="flex items-start space-x-2">
-                      <Globe className="h-4 w-4 text-slate-500 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-700">Country: </span>
-                        <span className="text-slate-600">{series.country}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Language */}
-                  {series.language && series.language !== 'N/A' && (
-                    <div className="flex items-start space-x-2">
-                      <MessageSquare className="h-4 w-4 text-slate-500 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-700">Language: </span>
-                        <span className="text-slate-600">{series.language}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Plot */}
-                {series.plot && series.plot !== 'N/A' && (
-                  <div className="bg-slate-50 p-4 rounded-lg">
-                    <p className="text-slate-700 leading-relaxed">{series.plot}</p>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-3 pt-2">
-                  
-                  {/* IMDb Link */}
-                  {series.imdb_id && (
-                    <a
-                      href={`https://www.imdb.com/title/${series.imdb_id}/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span>View on IMDb</span>
-                    </a>
-                  )}
-
-                  {/* Official Website */}
-                  {series.website && series.website !== 'N/A' && (
-                    <a
-                      href={series.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-                    >
-                      <Globe className="h-4 w-4" />
-                      <span>Official Site</span>
-                    </a>
-                  )}
-
-                  {/* User Rating */}
-                  {series.user_rating && (
-                    <div className="flex items-center space-x-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-lg">
-                      <ThumbsUp className="h-4 w-4" />
-                      <span className="font-medium">Your Rating: {series.user_rating}/10</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Episodes Section Header */}
+        {/* Episodes Section Header - Fixed at top */}
         <div className="bg-white border-b border-slate-200 flex-shrink-0">
           <div className="max-w-6xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
+                <button
+                  onClick={onBack}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to TV</span>
+                </button>
+
                 <div className="flex items-center space-x-3">
                   <Play className="h-6 w-6 text-purple-600" />
                   <div>
@@ -591,9 +373,198 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
           </div>
         </div>
 
-        {/* Episodes Content */}
+        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="max-w-6xl mx-auto px-6 py-8">
+            
+            {/* Series Information Header - Now scrollable */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+              
+              {/* Title and TV Series Badge */}
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-3">{series.title}</h1>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                      <Tv className="h-4 w-4" />
+                      <span>TV Series</span>
+                    </div>
+                    
+                    {/* Year */}
+                    {series.year && (
+                      <div className="flex items-center space-x-1 text-slate-600">
+                        <Calendar className="h-4 w-4" />
+                        <span className="font-medium">{series.year}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Watch Status Dropdown */}
+                <div className="flex flex-col items-end space-y-2">
+                  <span className={`px-4 py-2 rounded-full text-sm font-medium ${getSeriesStatusColor(series.status)}`}>
+                    {series.status}
+                  </span>
+                  
+                  {/* Status Change Dropdown */}
+                  <select
+                    value={series.status}
+                    onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                    className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="To Watch">To Watch</option>
+                    <option value="Watching">Watching</option>
+                    <option value="Watched">Watched</option>
+                    <option value="To Watch Again">To Watch Again</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Rating and Metadata Row */}
+              <div className="flex flex-wrap items-center gap-6 mb-6">
+                
+                {/* IMDb Rating with Stars */}
+                {series.imdb_score && (
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
+                      {renderStars(series.imdb_score)}
+                    </div>
+                    <span className="font-bold text-lg">{series.imdb_score.toFixed(1)}</span>
+                    {series.imdb_votes && (
+                      <span className="text-slate-500 text-sm">({series.imdb_votes} votes)</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Metascore */}
+                {series.metascore && (
+                  <div className="flex items-center space-x-2">
+                    <Award className="h-5 w-5 text-green-500" />
+                    <span className="font-medium">{series.metascore} Metascore</span>
+                  </div>
+                )}
+
+                {/* Runtime */}
+                {series.runtime && (
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-5 w-5 text-slate-500" />
+                    <span>{series.runtime} min</span>
+                  </div>
+                )}
+
+                {/* Date Watched */}
+                {series.status === 'Watched' && series.date_watched && (
+                  <div className="flex items-center space-x-2 text-green-700 bg-green-50 px-3 py-1 rounded-lg">
+                    <Eye className="h-4 w-4" />
+                    <span>Watched {formatDateWatched(series.date_watched)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Genres */}
+              {series.genre && series.genre !== 'N/A' && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {series.genre.split(', ').map(genre => (
+                    <span key={genre} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
+                      {genre.trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Additional Metadata */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
+                
+                {/* Creators */}
+                {series.director && series.director !== 'N/A' && (
+                  <div className="flex items-start space-x-2">
+                    <User className="h-4 w-4 text-slate-500 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-slate-700">Creators: </span>
+                      <span className="text-slate-600">{series.director}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Stars */}
+                {series.actors && series.actors !== 'N/A' && (
+                  <div className="flex items-start space-x-2">
+                    <Users className="h-4 w-4 text-slate-500 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-slate-700">Stars: </span>
+                      <span className="text-slate-600">{series.actors}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Country */}
+                {series.country && series.country !== 'N/A' && (
+                  <div className="flex items-start space-x-2">
+                    <Globe className="h-4 w-4 text-slate-500 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-slate-700">Country: </span>
+                      <span className="text-slate-600">{series.country}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Language */}
+                {series.language && series.language !== 'N/A' && (
+                  <div className="flex items-start space-x-2">
+                    <MessageSquare className="h-4 w-4 text-slate-500 mt-0.5" />
+                    <div>
+                      <span className="font-medium text-slate-700">Language: </span>
+                      <span className="text-slate-600">{series.language}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Plot */}
+              {series.plot && series.plot !== 'N/A' && (
+                <div className="bg-slate-50 p-4 rounded-lg mb-6">
+                  <p className="text-slate-700 leading-relaxed">{series.plot}</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3">
+                
+                {/* IMDb Link */}
+                {series.imdb_id && (
+                  <a
+                    href={`https://www.imdb.com/title/${series.imdb_id}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span>View on IMDb</span>
+                  </a>
+                )}
+
+                {/* Official Website */}
+                {series.website && series.website !== 'N/A' && (
+                  <a
+                    href={series.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                  >
+                    <Globe className="h-4 w-4" />
+                    <span>Official Site</span>
+                  </a>
+                )}
+
+                {/* User Rating */}
+                {series.user_rating && (
+                  <div className="flex items-center space-x-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-lg">
+                    <ThumbsUp className="h-4 w-4" />
+                    <span className="font-medium">Your Rating: {series.user_rating}/10</span>
+                  </div>
+                )}
+              </div>
+            </div>
             
             {/* Loading State */}
             {loading && (
