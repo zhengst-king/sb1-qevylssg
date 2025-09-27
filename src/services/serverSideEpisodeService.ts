@@ -375,8 +375,6 @@ class ServerSideEpisodeService {
 
       const isValid = cacheAge < ttlMilliseconds;
       
-      console.log(`[ServerSideEpisodes] Cache validity check for ${seriesImdbId}: ${isValid} (age: ${Math.round(cacheAge / (24 * 60 * 60 * 1000))} days, TTL: ${finalTtlDays} days)`);
-      
       return isValid;
 
     } catch (error) {
