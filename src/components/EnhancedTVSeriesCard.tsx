@@ -107,7 +107,7 @@ export function EnhancedTVSeriesCard({
       } catch (error) {
         console.error('[EnhancedTVSeriesCard] Error updating episode status:', error);
       }
-    }, 3000); // Check every 3 seconds
+    }, 3000); // Check every 30 seconds
 
     // Cleanup function
     return () => {
