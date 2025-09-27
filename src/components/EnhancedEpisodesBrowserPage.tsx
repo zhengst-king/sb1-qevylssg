@@ -317,7 +317,7 @@ export function EnhancedEpisodesBrowserPage({
     }
   };
 
-  // Handle series review save
+  // Handle series review save - Fixed to match TV card pattern
   const handleSaveSeriesReview = async (review: string) => {
     // Update local state immediately for UI responsiveness
     setLocalReview(review);
@@ -355,8 +355,23 @@ export function EnhancedEpisodesBrowserPage({
 
                 <div className="flex items-center space-x-3">
                   <Play className="h-6 w-6 text-purple-600" />
-                  <div>
-                    <h1 className="text-2xl font-bold text-slate-900">{series.title}</h1>
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-1">
+                      <h1 className="text-2xl font-bold text-slate-900">{series.title}</h1>
+                      {/* Genre labels moved here to save space */}
+                      {series.genre && series.genre !== 'N/A' && (
+                        <div className="flex flex-wrap gap-1">
+                          {series.genre.split(',').map(genre => {
+                            const trimmedGenre = genre.trim();
+                            return trimmedGenre && (
+                              <span key={trimmedGenre} className="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs">
+                                {trimmedGenre}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2 text-sm text-slate-600">
                       <span>Season {currentSeason}</span>
                       {episodes.length > 0 && <span>• {episodes.length} episodes</span>}
@@ -448,20 +463,6 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 )}
               </div>
-
-              {/* Genres - Only actual IMDb genres */}
-              {series.genre && series.genre !== 'N/A' && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {series.genre.split(',').map(genre => {
-                    const trimmedGenre = genre.trim();
-                    return trimmedGenre && (
-                      <span key={trimmedGenre} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
-                        {trimmedGenre}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
 
               {/* Additional Metadata */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
@@ -790,13 +791,17 @@ export function EnhancedEpisodesBrowserPage({
         />
       )}
 
-      {/* Series Review Modal */}
+      {/* Series Review Modal - Fixed to match TV card exactly */}
       {showSeriesReviewModal && (
         <ReviewModal
-          movie={series}
+          movie={{
+            ...series,
+            user_review: localReview,
+            user_rating: localRating
+          }}
           onClose={() => setShowSeriesReviewModal(false)}
-          onUpdate={(updatedMovie) => {
-            handleSaveSeriesReview(updatedMovie.user_review || '');
+          onUpdate={async (review: string) => {
+            await handleSaveSeriesReview(review);
             setShowSeriesReviewModal(false);
           }}
         />
