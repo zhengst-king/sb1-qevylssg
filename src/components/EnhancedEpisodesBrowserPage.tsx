@@ -257,7 +257,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     return `https://www.imdb.com/title/${series.imdb_id}/episodes?season=${episode.season}`;
   };
 
-  const queueStatus = backgroundEpisodeService.getQueueStatus();
+  const queueStatus = await serverSideEpisodeService.getQueueStatus();
 
   return (
     <>
