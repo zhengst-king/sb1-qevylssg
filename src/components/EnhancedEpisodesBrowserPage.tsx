@@ -1,5 +1,6 @@
 // src/components/EnhancedEpisodesBrowserPage.tsx
 // Episodes page that uses background-fetched data and dynamic season counts
+// STEP 1: Added comprehensive series information header
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
@@ -22,7 +23,9 @@ import {
   Award,
   Film,
   Download,
-  Zap
+  Zap,
+  Globe,
+  ThumbsUp
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
@@ -70,6 +73,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
   useEffect(() => {
     loadEpisodesFromCache(currentSeason);
   }, [currentSeason, series.imdb_id]);
+
   // Load queue status
   useEffect(() => {
     const loadQueueStatus = async () => {
@@ -84,52 +88,52 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     loadQueueStatus();
   }, []);
 
- // Monitor cache status and update available seasons with async service
- useEffect(() => {
-   if (!series.imdb_id) return;
+  // Monitor cache status and update available seasons with async service
+  useEffect(() => {
+    if (!series.imdb_id) return;
   
-   let isMounted = true; // Prevent state updates if component unmounts
+    let isMounted = true; // Prevent state updates if component unmounts
 
-   const updateStatus = async () => {
-     try {
-       const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
+    const updateStatus = async () => {
+      try {
+        const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
       
-       if (!isMounted) return; // Component unmounted
+        if (!isMounted) return; // Component unmounted
       
-       setCacheStatus(status);
-       setTotalSeasons(status.totalSeasons);
+        setCacheStatus(status);
+        setTotalSeasons(status.totalSeasons);
       
-       // Update available seasons based on cached data
-       const seasons = [];
-       for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
-         seasons.push(i);
-       }
-       setAvailableSeasons(seasons);
+        // Update available seasons based on cached data
+        const seasons = [];
+        for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
+          seasons.push(i);
+        }
+        setAvailableSeasons(seasons);
       
-       // If current season is beyond available seasons, reset to season 1
-       if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
-         setCurrentSeason(1);
-       }
-     } catch (error) {
-       console.error('[Episodes] Error updating cache status:', error);
-     }
-   };
+        // If current season is beyond available seasons, reset to season 1
+        if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
+          setCurrentSeason(1);
+        }
+      } catch (error) {
+        console.error('[Episodes] Error updating cache status:', error);
+      }
+    };
 
-   // Initial update
-   updateStatus();
+    // Initial update
+    updateStatus();
 
-   // Set up interval to monitor changes
-   const interval = setInterval(() => {
-     if (isMounted) {
-       updateStatus();
-     }
-   }, 30000); // Check every 30 seconds
+    // Set up interval to monitor changes
+    const interval = setInterval(() => {
+      if (isMounted) {
+        updateStatus();
+      }
+    }, 30000); // Check every 30 seconds
 
-  return () => {
-    isMounted = false;
-    clearInterval(interval);
-  };
-}, [series.imdb_id, currentSeason]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [series.imdb_id, currentSeason]);
 
   const loadEpisodesFromCache = async (seasonNumber: number) => {
     if (!series.imdb_id) {
@@ -178,83 +182,33 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
           console.log('[Episodes] 📥 Queued for discovery:', queueResult);
     
           if (queueResult.success) {
-            setError(`🔄 Episodes are being discovered in the background. This may take 30-60 seconds. Please click "Refresh" to check for updates.`);
+            setError(`🔄 Episodes are being discovered in the background. This may take 30-60 seconds.`);
           } else {
-            setError(`Failed to start episode discovery: ${queueResult.message}`);
+            setError(`Failed to queue series for discovery: ${queueResult.error}`);
           }
-        } catch (queueError) {
-          console.error('[Episodes] ❌ Failed to queue discovery:', queueError);
-          setError('Failed to start episode discovery. Please try again.');
+        } catch (importError) {
+          console.error('[Episodes] Error importing integration service:', importError);
+          setError('Failed to initialize episode discovery. Please try again.');
         }
-        setLoading(false);
       }
+      
     } catch (error) {
-      console.error('[Episodes] Error loading episodes from cache:', error);
-      setEpisodes([]);
-      setError('Error loading episodes. Please try again.');
+      console.error('[Episodes] Error loading episodes:', error);
+      setError('Failed to load episodes. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
-  // Handle episode actions (same as before)
-  const handleStatusChange = (episode: Episode, status: Episode['status']) => {
-    const updatedEpisodes = episodes.map(ep => 
-      ep.season === episode.season && ep.episode === episode.episode
-        ? { 
-            ...ep, 
-            status, 
-            date_watched: status === 'Watched' ? new Date().toISOString().split('T')[0] : undefined 
-          }
-        : ep
-    );
-    setEpisodes(updatedEpisodes);
-  };
-
-  const handleRatingChange = (episode: Episode, rating: number) => {
-    const updatedEpisodes = episodes.map(ep => 
-      ep.season === episode.season && ep.episode === episode.episode
-        ? { ...ep, user_rating: rating }
-        : ep
-    );
-    setEpisodes(updatedEpisodes);
-  };
-
-  const handleReviewClick = (episode: Episode) => {
-    setSelectedEpisode(episode);
-    setShowReviewModal(true);
-  };
-
-  const handleSaveReview = (reviewText: string) => {
-    if (selectedEpisode) {
-      const updatedEpisodes = episodes.map(ep => 
-        ep.season === selectedEpisode.season && ep.episode === selectedEpisode.episode
-          ? { ...ep, user_review: reviewText }
-          : ep
-      );
-      setEpisodes(updatedEpisodes);
-    }
-    setShowReviewModal(false);
-    setSelectedEpisode(null);
-  };
-
-  const handleRefresh = async () => {
-    if (series.imdb_id) {
-      try {
-        // Force refresh the series in server-side service
-        await serverSideEpisodeService.forceRefreshSeries(series.imdb_id, series.title);
-      
-        // Show loading state
-        setLoading(true);
-        setError('Refreshing episodes...');
-      
-        // Check for updates after a delay
-        setTimeout(() => {
-          loadEpisodesFromCache(currentSeason);
-        }, 2000);
-      } catch (error) {
-        console.error('[Episodes] Error refreshing series:', error);
-        setError('Error refreshing episodes. Please try again.');
-      }
+  const handleManualRefresh = async () => {
+    if (!series.imdb_id) return;
+    
+    try {
+      console.log('[Episodes] Manual refresh triggered');
+      await loadEpisodesFromCache(currentSeason);
+    } catch (error) {
+      console.error('[Episodes] Manual refresh failed:', error);
+      setError('Refresh failed. Please try again.');
     }
   };
 
@@ -291,28 +245,290 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     return `https://www.imdb.com/title/${series.imdb_id}/episodes?season=${episode.season}`;
   };
 
+  // NEW: Helper functions for series information display
+  const getSeriesStatusColor = (status: Movie['status']) => {
+    switch (status) {
+      case 'To Watch': return 'bg-blue-100 text-blue-800';
+      case 'Watching': return 'bg-yellow-100 text-yellow-800';
+      case 'Watched': return 'bg-green-100 text-green-800';
+      case 'To Watch Again': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDateWatched = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating / 2);
+    const hasHalfStar = rating % 2 >= 1;
+    const stars = [];
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Star key={i} className="h-4 w-4 text-yellow-500 fill-current" />);
+    }
+    if (hasHalfStar) {
+      stars.push(<Star key="half" className="h-4 w-4 text-yellow-500 fill-current opacity-50" />);
+    }
+    for (let i = stars.length; i < 5; i++) {
+      stars.push(<Star key={i} className="h-4 w-4 text-gray-300" />);
+    }
+
+    return stars;
+  };
+
+  // NEW: Handle watch status changes (mockup for now)
+  const handleStatusChange = (newStatus: Movie['status']) => {
+    // TODO: Implement status update logic
+    console.log('Status change to:', newStatus);
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
-        {/* Header */}
+        
+        {/* NEW: Enhanced Series Information Header */}
+        <div className="bg-white border-b border-slate-200 flex-shrink-0">
+          <div className="max-w-6xl mx-auto px-6 py-6">
+            
+            {/* Back Button */}
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={onBack}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to TV</span>
+              </button>
+            </div>
+
+            {/* Series Header Information */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              
+              {/* Series Poster */}
+              <div className="flex-shrink-0">
+                {series.poster_url ? (
+                  <img
+                    src={series.poster_url}
+                    alt={series.title}
+                    className="w-48 h-72 object-cover rounded-lg shadow-lg"
+                  />
+                ) : (
+                  <div className="w-48 h-72 bg-slate-200 rounded-lg shadow-lg flex items-center justify-center">
+                    <Tv className="h-16 w-16 text-slate-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* Series Information */}
+              <div className="flex-1 space-y-4">
+                
+                {/* Title and TV Series Badge */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-slate-900 mb-2">{series.title}</h1>
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <Tv className="h-4 w-4" />
+                        <span>TV Series</span>
+                      </div>
+                      
+                      {/* Year */}
+                      {series.year && (
+                        <div className="flex items-center space-x-1 text-slate-600">
+                          <Calendar className="h-4 w-4" />
+                          <span className="font-medium">{series.year}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Watch Status Dropdown */}
+                  <div className="flex flex-col items-end space-y-2">
+                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${getSeriesStatusColor(series.status)}`}>
+                      {series.status}
+                    </span>
+                    
+                    {/* Status Change Dropdown */}
+                    <select
+                      value={series.status}
+                      onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                      className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="To Watch">To Watch</option>
+                      <option value="Watching">Watching</option>
+                      <option value="Watched">Watched</option>
+                      <option value="To Watch Again">To Watch Again</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Rating and Metadata Row */}
+                <div className="flex flex-wrap items-center gap-6">
+                  
+                  {/* IMDb Rating with Stars */}
+                  {series.imdb_score && (
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
+                        {renderStars(series.imdb_score)}
+                      </div>
+                      <span className="font-bold text-lg">{series.imdb_score.toFixed(1)}</span>
+                      {series.imdb_votes && (
+                        <span className="text-slate-500 text-sm">({series.imdb_votes} votes)</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Metascore */}
+                  {series.metascore && (
+                    <div className="flex items-center space-x-2">
+                      <Award className="h-5 w-5 text-green-500" />
+                      <span className="font-medium">{series.metascore} Metascore</span>
+                    </div>
+                  )}
+
+                  {/* Runtime */}
+                  {series.runtime && (
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-5 w-5 text-slate-500" />
+                      <span>{series.runtime} min</span>
+                    </div>
+                  )}
+
+                  {/* Date Watched */}
+                  {series.status === 'Watched' && series.date_watched && (
+                    <div className="flex items-center space-x-2 text-green-700 bg-green-50 px-3 py-1 rounded-lg">
+                      <Eye className="h-4 w-4" />
+                      <span>Watched {formatDateWatched(series.date_watched)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Genres */}
+                {series.genre && series.genre !== 'N/A' && (
+                  <div className="flex flex-wrap gap-2">
+                    {series.genre.split(', ').map(genre => (
+                      <span key={genre} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
+                        {genre.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Additional Metadata */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  
+                  {/* Creators */}
+                  {series.director && series.director !== 'N/A' && (
+                    <div className="flex items-start space-x-2">
+                      <User className="h-4 w-4 text-slate-500 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-700">Creators: </span>
+                        <span className="text-slate-600">{series.director}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stars */}
+                  {series.actors && series.actors !== 'N/A' && (
+                    <div className="flex items-start space-x-2">
+                      <Users className="h-4 w-4 text-slate-500 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-700">Stars: </span>
+                        <span className="text-slate-600">{series.actors}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Country */}
+                  {series.country && series.country !== 'N/A' && (
+                    <div className="flex items-start space-x-2">
+                      <Globe className="h-4 w-4 text-slate-500 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-700">Country: </span>
+                        <span className="text-slate-600">{series.country}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Language */}
+                  {series.language && series.language !== 'N/A' && (
+                    <div className="flex items-start space-x-2">
+                      <MessageSquare className="h-4 w-4 text-slate-500 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-700">Language: </span>
+                        <span className="text-slate-600">{series.language}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Plot */}
+                {series.plot && series.plot !== 'N/A' && (
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <p className="text-slate-700 leading-relaxed">{series.plot}</p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3 pt-2">
+                  
+                  {/* IMDb Link */}
+                  {series.imdb_id && (
+                    <a
+                      href={`https://www.imdb.com/title/${series.imdb_id}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-medium rounded-lg transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>View on IMDb</span>
+                    </a>
+                  )}
+
+                  {/* Official Website */}
+                  {series.website && series.website !== 'N/A' && (
+                    <a
+                      href={series.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                    >
+                      <Globe className="h-4 w-4" />
+                      <span>Official Site</span>
+                    </a>
+                  )}
+
+                  {/* User Rating */}
+                  {series.user_rating && (
+                    <div className="flex items-center space-x-2 px-4 py-2 bg-purple-100 text-purple-800 rounded-lg">
+                      <ThumbsUp className="h-4 w-4" />
+                      <span className="font-medium">Your Rating: {series.user_rating}/10</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Episodes Section Header */}
         <div className="bg-white border-b border-slate-200 flex-shrink-0">
           <div className="max-w-6xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <button
-                  onClick={onBack}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span>Back to TV</span>
-                </button>
-
                 <div className="flex items-center space-x-3">
-                  <Tv className="h-6 w-6 text-purple-600" />
+                  <Play className="h-6 w-6 text-purple-600" />
                   <div>
-                    <h1 className="text-2xl font-bold text-slate-900">{series.title}</h1>
+                    <h2 className="text-xl font-bold text-slate-900">Episodes</h2>
                     <div className="flex items-center space-x-2 text-sm text-slate-600">
-                      <span>Browse episodes • Season {currentSeason}</span>
+                      <span>Season {currentSeason}</span>
                       {episodes.length > 0 && <span>• {episodes.length} episodes</span>}
                       {cacheStatus.cached && (
                         <div className="flex items-center space-x-1 text-green-600">
@@ -336,20 +552,20 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                 <button
                   onClick={handlePreviousSeason}
                   disabled={currentSeason <= 1 || loading}
-                  className="p-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
 
                 <select
                   value={currentSeason}
-                  onChange={(e) => handleSeasonSelect(Number(e.target.value))}
+                  onChange={(e) => handleSeasonSelect(parseInt(e.target.value))}
                   disabled={loading}
-                  className="px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
+                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50"
                 >
-                  {availableSeasons.map(seasonNum => (
-                    <option key={seasonNum} value={seasonNum}>
-                      Season {seasonNum}
+                  {availableSeasons.map(season => (
+                    <option key={season} value={season}>
+                      Season {season}
                     </option>
                   ))}
                 </select>
@@ -357,331 +573,172 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                 <button
                   onClick={handleNextSeason}
                   disabled={currentSeason >= totalSeasons || loading}
-                  className="p-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-5 w-5" />
                 </button>
 
                 <button
-                  onClick={handleRefresh}
+                  onClick={handleManualRefresh}
                   disabled={loading}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="ml-3 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Refresh episodes"
                 >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
+                  <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
-
-            {/* Cache Status Bar */}
-            {(cacheStatus.cached || cacheStatus.isBeingFetched || queueStatus.queueLength > 0) && (
-              <div className="mt-3 p-3 bg-slate-50 rounded-lg border">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4">
-                    {cacheStatus.cached && (
-                      <div className="flex items-center space-x-2 text-green-700">
-                        <Download className="h-4 w-4" />
-                        <span>{totalSeasons} seasons, {cacheStatus.totalEpisodes} episodes cached</span>
-                      </div>
-                    )}
-                    {cacheStatus.isBeingFetched && (
-                      <div className="flex items-center space-x-2 text-purple-600 animate-pulse">
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Background fetching in progress...</span>
-                      </div>
-                    )}
-                    {queueStatus.queueLength > 0 && (
-                      <div className="flex items-center space-x-2 text-slate-600">
-                        <Clock className="h-4 w-4" />
-                        <span>{queueStatus.queueLength} series in fetch queue</span>
-                      </div>
-                    )}
-                  </div>
-                  {cacheStatus.lastUpdated && (
-                    <span className="text-slate-500 text-xs">
-                      Updated {cacheStatus.lastUpdated.toLocaleTimeString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Loading State */}
-          {loading && episodes.length === 0 && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <RefreshCw className="h-8 w-8 text-purple-600 animate-spin mx-auto mb-4" />
-                <p className="text-slate-600">Loading episodes from background cache...</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Using cached data from background fetching service
-                </p>
+        {/* Episodes Content */}
+        <div className="flex-1 overflow-auto">
+          <div className="max-w-6xl mx-auto px-6 py-8">
+            
+            {/* Loading State */}
+            {loading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="flex items-center space-x-3">
+                  <RefreshCw className="h-6 w-6 animate-spin text-purple-600" />
+                  <span className="text-lg text-slate-600">Loading episodes...</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Error State */}
-          {error && !loading && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-6 w-6 text-amber-500 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="text-lg font-medium text-amber-800">Episodes not ready</h3>
-                  <p className="text-amber-600 mt-1 text-sm">{error}</p>
-                  <div className="flex space-x-3 mt-4">
-                    <button
-                      onClick={handleRefresh}
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      <span>Force Refresh</span>
-                    </button>
-                    {currentSeason > 1 && (
-                      <button
-                        onClick={() => setCurrentSeason(1)}
-                        className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        <span>Try Season 1</span>
-                      </button>
-                    )}
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-red-800 font-medium mb-1">Error Loading Episodes</h3>
+                    <p className="text-red-700">{error}</p>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Episodes Grid */}
-          {episodes.length > 0 && (
-            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-              {episodes.map((episode) => (
-                <div
-                  key={`s${episode.season}e${episode.episode}`}
-                  className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 overflow-hidden"
-                >
-                  {/* Episode Poster Section */}
-                  {episode.poster && episode.poster !== 'N/A' && (
-                    <div className="h-48 overflow-hidden">
-                      <img 
-                        src={episode.poster} 
-                        alt={episode.title || `Season ${episode.season}, Episode ${episode.episode}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Episode Card Content */}
-                  <div className="p-6">
-                    {/* Episode Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-purple-100 p-2 rounded-lg">
-                          <Play className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-900 leading-tight">
-                            Episode {episode.episode}
-                          </h3>
-                          <p className="text-sm text-slate-500">Season {episode.season}</p>
-                        </div>
-                      </div>
-                      
-                      {episode.imdbRating && episode.imdbRating !== 'N/A' && (
-                        <div className="flex items-center space-x-1 text-sm">
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="font-medium">{episode.imdbRating}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Episode Title */}
-                    {episode.title && (
-                      <h4 className="text-lg font-medium text-slate-800 mb-3 leading-tight">
-                        {episode.title}
-                      </h4>
-                    )}
-
-                    {/* User Status Badge */}
-                    <div className="mb-3">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(episode.status)}`}>
-                        {episode.status}
-                      </span>
-                    </div>
-
-                    {/* Episode Info */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 mb-4">
-                      {episode.released && (
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>{episode.released}</span>
-                        </div>
-                      )}
-                      {episode.runtime && (
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{episode.runtime}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Plot Summary */}
-                    {episode.plot && episode.plot !== 'N/A' && (
-                      <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-3">
-                        {episode.plot}
-                      </p>
-                    )}
-
-                    {/* Stars */}
-                    {episode.actors && episode.actors !== 'N/A' && (
-                      <div className="mb-4 text-xs text-slate-500">
-                        <div className="flex items-start space-x-1">
-                          <Users className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          <span><span className="font-medium">Stars:</span> {episode.actors}</span>
-                        </div>
+            {/* Episodes Grid */}
+            {!loading && !error && episodes.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {episodes.map((episode, index) => (
+                  <div
+                    key={episode.imdbID || `episode-${episode.season}-${episode.episode}`}
+                    className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 overflow-hidden"
+                  >
+                    {/* Episode Poster Section */}
+                    {episode.poster && episode.poster !== 'N/A' && (
+                      <div className="h-48 overflow-hidden">
+                        <img 
+                          src={episode.poster} 
+                          alt={episode.title || `Season ${episode.season}, Episode ${episode.episode}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
                       </div>
                     )}
 
-                    {/* Credits */}
-                    {(episode.director || episode.writer) && (
-                      <div className="space-y-1 mb-4 text-xs text-slate-500">
-                        {episode.director && episode.director !== 'N/A' && (
-                          <div className="flex items-start space-x-1">
-                            <User className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            <span><span className="font-medium">Director:</span> {episode.director}</span>
+                    {/* Episode Card Content */}
+                    <div className="p-6">
+                      {/* Episode Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-purple-100 p-2 rounded-lg">
+                            <Play className="h-5 w-5 text-purple-600" />
                           </div>
-                        )}
-                        {episode.writer && episode.writer !== 'N/A' && (
-                          <div className="flex items-start space-x-1">
-                            <MessageSquare className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                            <span><span className="font-medium">Writer:</span> {episode.writer}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* User Review Display */}
-                    {episode.user_review && (
-                      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-start space-x-2">
-                          <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5" />
                           <div>
-                            <p className="text-sm font-medium text-blue-800">My Review</p>
-                            <p className="text-sm text-blue-700 mt-1">{episode.user_review}</p>
+                            <h3 className="font-semibold text-slate-900 leading-tight">
+                              Episode {episode.episode}
+                            </h3>
+                            <p className="text-sm text-slate-500">Season {episode.season}</p>
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* User Actions */}
-                    <div className="space-y-3 pt-4 border-t border-slate-100">
-                      {/* Status Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {(['To Watch', 'Watching', 'Watched', 'To Watch Again'] as const).map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => handleStatusChange(episode, status)}
-                            className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
-                              episode.status === status
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Rating */}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-slate-600">Your rating:</span>
-                        <div className="flex space-x-1">
-                          {[1, 2, 3, 4, 5].map((rating) => (
-                            <button
-                              key={rating}
-                              onClick={() => handleRatingChange(episode, rating)}
-                              className="group"
-                            >
-                              <StarIcon 
-                                className={`h-4 w-4 transition-colors ${
-                                  episode.user_rating && rating <= episode.user_rating
-                                    ? 'text-yellow-400 fill-current'
-                                    : 'text-slate-300 group-hover:text-yellow-400'
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                        {episode.user_rating && (
-                          <span className="text-xs text-slate-600">({episode.user_rating}/5)</span>
+                        
+                        {episode.imdbRating && episode.imdbRating !== 'N/A' && (
+                          <div className="flex items-center space-x-1 text-sm">
+                            <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                            <span className="font-medium">{episode.imdbRating}</span>
+                          </div>
                         )}
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleReviewClick(episode)}
-                          className="flex-1 px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          <span>
-                            {episode.user_review ? 'Edit Review' : 'Add Review'}
-                          </span>
-                        </button>
+                      {/* Episode Title */}
+                      {episode.title && (
+                        <h4 className="text-lg font-medium text-slate-800 mb-3 leading-tight">
+                          {episode.title}
+                        </h4>
+                      )}
 
-                        {/* IMDb Button */}
-                        <a
-                          href={getEpisodeIMDbUrl(episode)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-2 text-sm bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          <span>IMDb</span>
-                        </a>
+                      {/* Episode Plot */}
+                      {episode.plot && episode.plot !== 'N/A' && (
+                        <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-4">
+                          {episode.plot}
+                        </p>
+                      )}
+
+                      {/* Episode Footer */}
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                        <div className="flex items-center space-x-3">
+                          {episode.released && (
+                            <div className="flex items-center space-x-1 text-xs text-slate-500">
+                              <Calendar className="h-3 w-3" />
+                              <span>{episode.released}</span>
+                            </div>
+                          )}
+                          
+                          {episode.runtime && (
+                            <div className="flex items-center space-x-1 text-xs text-slate-500">
+                              <Clock className="h-3 w-3" />
+                              <span>{episode.runtime}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <a
+                            href={getEpisodeIMDbUrl(episode)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-3 py-1 rounded transition-colors"
+                          >
+                            IMDb
+                          </a>
+                          
+                          <button
+                            onClick={() => {
+                              setSelectedEpisode(episode);
+                              setShowReviewModal(true);
+                            }}
+                            className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-medium px-3 py-1 rounded transition-colors"
+                          >
+                            Review
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer Info */}
-        <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-slate-600">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Info className="h-4 w-4 text-slate-400" />
-                <span>Powered by Background Episode Service • Instant Loading</span>
+                ))}
               </div>
-              {episodes.length > 0 && (
-                <span className="text-xs bg-slate-100 px-2 py-1 rounded">
-                  {episodes.length} episodes loaded from cache
-                </span>
-              )}
-              {queueStatus.isProcessing && queueStatus.currentlyProcessing && (
-                <span className="text-xs text-purple-600 animate-pulse">
-                  Fetching: {queueStatus.currentlyProcessing}
-                </span>
-              )}
-            </div>
-            {series.imdb_id && (
-              <a
-                href={`https://www.imdb.com/title/${series.imdb_id}/episodes/`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-1 text-purple-600 hover:text-purple-700 transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>View all episodes on IMDb</span>
-              </a>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && episodes.length === 0 && (
+              <div className="text-center py-12">
+                <Tv className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">No Episodes Found</h3>
+                <p className="text-slate-600 mb-6">
+                  Season {currentSeason} episodes haven't been loaded yet.
+                </p>
+                <button
+                  onClick={handleManualRefresh}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Try Loading Episodes</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -690,14 +747,26 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
       {/* Review Modal */}
       {showReviewModal && selectedEpisode && (
         <ReviewModal
-          isOpen={showReviewModal}
+          movie={{
+            id: selectedEpisode.imdbID || `episode-${selectedEpisode.season}-${selectedEpisode.episode}`,
+            title: selectedEpisode.title || `Season ${selectedEpisode.season}, Episode ${selectedEpisode.episode}`,
+            user_review: selectedEpisode.user_review,
+            user_rating: selectedEpisode.user_rating
+          } as any}
           onClose={() => {
             setShowReviewModal(false);
             setSelectedEpisode(null);
           }}
-          movieTitle={`${series.title} - S${selectedEpisode.season}E${selectedEpisode.episode}${selectedEpisode.title ? ': ' + selectedEpisode.title : ''}`}
-          initialReview={selectedEpisode.user_review || ''}
-          onSave={handleSaveReview}
+          onUpdate={(updatedMovie) => {
+            // Update episode with new review data
+            setEpisodes(episodes.map(ep => 
+              ep.imdbID === selectedEpisode.imdbID 
+                ? { ...ep, user_review: updatedMovie.user_review, user_rating: updatedMovie.user_rating }
+                : ep
+            ));
+            setShowReviewModal(false);
+            setSelectedEpisode(null);
+          }}
         />
       )}
     </>
