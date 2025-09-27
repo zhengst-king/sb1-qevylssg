@@ -25,7 +25,7 @@ import {
   Zap
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
-import { backgroundEpisodeService } from '../services/backgroundEpisodeService';
+import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 import { OMDBEpisodeDetails } from '../lib/omdb';
 import { ReviewModal } from './ReviewModal';
 
@@ -66,37 +66,54 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     loadEpisodesFromCache(currentSeason);
   }, [currentSeason, series.imdb_id]);
 
-  // Monitor cache status and update available seasons
-  useEffect(() => {
-    if (!series.imdb_id) return;
+ // Monitor cache status and update available seasons with async service
+ useEffect(() => {
+   if (!series.imdb_id) return;
+  
+   let isMounted = true; // Prevent state updates if component unmounts
 
-    const updateStatus = () => {
-      const status = backgroundEpisodeService.getSeriesStatus(series.imdb_id!);
-      setCacheStatus(status);
-      setTotalSeasons(status.totalSeasons);
+   const updateStatus = async () => {
+     try {
+       const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
       
-      // Update available seasons based on cached data
-      const seasons = [];
-      for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
-        seasons.push(i);
-      }
-      setAvailableSeasons(seasons);
+       if (!isMounted) return; // Component unmounted
       
-      // If current season is beyond available seasons, reset to season 1
-      if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
-        setCurrentSeason(1);
-      }
-    };
+       setCacheStatus(status);
+       setTotalSeasons(status.totalSeasons);
+      
+       // Update available seasons based on cached data
+       const seasons = [];
+       for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
+         seasons.push(i);
+       }
+       setAvailableSeasons(seasons);
+      
+       // If current season is beyond available seasons, reset to season 1
+       if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
+         setCurrentSeason(1);
+       }
+     } catch (error) {
+       console.error('[Episodes] Error updating cache status:', error);
+     }
+   };
 
-    // Initial update
-    updateStatus();
+   // Initial update
+   updateStatus();
 
-    // Set up interval to monitor changes
-    const interval = setInterval(updateStatus, 2000);
-    return () => clearInterval(interval);
-  }, [series.imdb_id, currentSeason]);
+   // Set up interval to monitor changes
+   const interval = setInterval(() => {
+     if (isMounted) {
+       updateStatus();
+     }
+   }, 3000); // Check every 3 seconds
 
-  const loadEpisodesFromCache = (seasonNumber: number) => {
+  return () => {
+    isMounted = false;
+    clearInterval(interval);
+  };
+}, [series.imdb_id, currentSeason]);
+
+  const loadEpisodesFromCache = async (seasonNumber: number) => {
     if (!series.imdb_id) {
       setError('No IMDb ID available for this series');
       return;
@@ -107,33 +124,40 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
 
     console.log(`[Episodes] Loading Season ${seasonNumber} from cache for ${series.title}`);
 
-    // Try to get episodes from background cache
-    const cachedEpisodes = backgroundEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNumber);
+    try {
+      // Try to get episodes from server-side cache
+      const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNumber);
     
-    if (cachedEpisodes) {
-      // Convert to our Episode interface with default user tracking
-      const episodesWithUserData: Episode[] = cachedEpisodes.map(ep => ({
-        ...ep,
-        status: 'To Watch',
-        user_rating: undefined,
-        user_review: undefined,
-        date_watched: undefined,
-        date_added: new Date().toISOString().split('T')[0]
-      }));
+      if (cachedEpisodes) {
+        // Convert to our Episode interface with default user tracking
+        const episodesWithUserData: Episode[] = cachedEpisodes.map(ep => ({
+          ...ep,
+          status: 'To Watch',
+          user_rating: undefined,
+          user_review: undefined,
+          date_watched: undefined,
+          date_added: new Date().toISOString().split('T')[0]
+        }));
 
-      setEpisodes(episodesWithUserData);
-      setLoading(false);
-      console.log(`[Episodes] ✓ Loaded ${episodesWithUserData.length} episodes from cache`);
-    } else {
-      // No cached data available
-      setEpisodes([]);
-      const status = backgroundEpisodeService.getSeriesStatus(series.imdb_id);
-      
-      if (status.isBeingFetched) {
-        setError(`Episodes are being fetched in the background. This may take a few moments...`);
+        setEpisodes(episodesWithUserData);
+        setLoading(false);
+        console.log(`[Episodes] ✓ Loaded ${episodesWithUserData.length} episodes from cache`);
       } else {
-        setError(`No episodes found for Season ${seasonNumber}. The episodes may not be available or the season might not exist.`);
+        // No cached data available
+        setEpisodes([]);
+        const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id);
+      
+        if (status.isBeingFetched) {
+          setError(`Episodes are being fetched in the background. This may take a few moments...`);
+        } else {
+          setError(`No episodes found for Season ${seasonNumber}. The episodes may not be available or the season might not exist.`);
+        }
+        setLoading(false);
       }
+    } catch (error) {
+      console.error('[Episodes] Error loading episodes from cache:', error);
+      setEpisodes([]);
+      setError('Error loading episodes. Please try again.');
       setLoading(false);
     }
   };
@@ -179,19 +203,24 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     setSelectedEpisode(null);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (series.imdb_id) {
-      // Force refresh the series in background service
-      backgroundEpisodeService.forceRefreshSeries(series.imdb_id, series.title);
+      try {
+        // Force refresh the series in server-side service
+        await serverSideEpisodeService.forceRefreshSeries(series.imdb_id, series.title);
       
-      // Show loading state
-      setLoading(true);
-      setError('Refreshing episodes...');
+        // Show loading state
+        setLoading(true);
+        setError('Refreshing episodes...');
       
-      // Check for updates after a delay
-      setTimeout(() => {
-        loadEpisodesFromCache(currentSeason);
-      }, 2000);
+        // Check for updates after a delay
+        setTimeout(() => {
+          loadEpisodesFromCache(currentSeason);
+        }, 2000);
+      } catch (error) {
+        console.error('[Episodes] Error refreshing series:', error);
+        setError('Error refreshing episodes. Please try again.');
+      }
     }
   };
 
