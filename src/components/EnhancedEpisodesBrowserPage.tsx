@@ -105,7 +105,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
      if (isMounted) {
        updateStatus();
      }
-   }, 3000); // Check every 3 seconds
+   }, 30000); // Check every 30 seconds
 
   return () => {
     isMounted = false;
