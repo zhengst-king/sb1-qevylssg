@@ -1,6 +1,5 @@
-// Step 2 Verification Script
-// Add this to a new file: src/utils/verifyServerSideService.ts
-// Run this to test the server-side episode service
+// src/utils/verifyServerSideService.ts
+// FIXED VERSION - Replace your existing file with this
 
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 
@@ -12,14 +11,15 @@ export class ServerSideServiceVerification {
   static async runAllTests(): Promise<void> {
     console.log('🚀 Starting Server-Side Episode Service Verification...\n');
 
+    // Fixed: Use proper static method references
     const tests = [
-      this.testServiceInitialization,
-      this.testDatabaseConnectivity,
-      this.testQueueManagement,
-      this.testSeriesStatusChecking,
-      this.testCacheOperations,
-      this.testSmartTTLCalculation,
-      this.testErrorHandling
+      ServerSideServiceVerification.testServiceInitialization,
+      ServerSideServiceVerification.testDatabaseConnectivity,
+      ServerSideServiceVerification.testQueueManagement,
+      ServerSideServiceVerification.testSeriesStatusChecking,
+      ServerSideServiceVerification.testCacheOperations,
+      ServerSideServiceVerification.testSmartTTLCalculation,
+      ServerSideServiceVerification.testErrorHandling
     ];
 
     let passedTests = 0;
@@ -70,7 +70,7 @@ export class ServerSideServiceVerification {
     ];
 
     for (const method of expectedMethods) {
-      if (typeof serverSideEpisodeService[method] !== 'function') {
+      if (typeof (serverSideEpisodeService as any)[method] !== 'function') {
         throw new Error(`Missing method: ${method}`);
       }
     }
@@ -114,14 +114,10 @@ export class ServerSideServiceVerification {
 
       // Test queue status
       const queueStatus = await serverSideEpisodeService.getQueueStatus();
-      if (queueStatus.queueLength === 0) {
-        console.log('Warning: Queue length is 0, but series was just added. This might be expected if processing is very fast.');
-      } else {
-        console.log(`Queue status: ${queueStatus.queueLength} items, processing: ${queueStatus.isProcessing}`);
-      }
+      console.log(`Queue status: ${queueStatus.queueLength} items, processing: ${queueStatus.isProcessing}`);
 
       // Clean up test data
-      await this.cleanupTestData(testSeriesId);
+      await ServerSideServiceVerification.cleanupTestData(testSeriesId);
 
     } catch (error) {
       throw new Error(`Queue management test failed: ${error instanceof Error ? error.message : error}`);
