@@ -331,16 +331,11 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                   disabled={loading}
                   className="px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
                 >
-                  {availableSeasons.map(seasonNum => {
-                    const seasonEpisodes = series.imdb_id ? backgroundEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNum) : null;
-                    const episodeCount = seasonEpisodes ? seasonEpisodes.length : 0;
-                    
-                    return (
-                      <option key={seasonNum} value={seasonNum}>
-                        Season {seasonNum} {episodeCount > 0 && `(${episodeCount} episodes)`}
-                      </option>
-                    );
-                  })}
+                  {availableSeasons.map(seasonNum => (
+                    <option key={seasonNum} value={seasonNum}>
+                      Season {seasonNum}
+                    </option>
+                  ))}
                 </select>
 
                 <button
