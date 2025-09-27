@@ -485,6 +485,14 @@ export function EnhancedTVSeriesCard({
                 </div>
               )}
 
+              {/* Loading Episode Status */}
+              {isLoadingEpisodeStatus && (
+                <div className="flex items-center space-x-2 text-sm text-blue-700 bg-blue-50 px-2 py-1 rounded">
+                  <div className="animate-spin h-3 w-3 border-2 border-blue-700 border-t-transparent rounded-full"></div>
+                  <span>Checking episode cache...</span>
+                </div>
+              )}
+              
               {/* Episode Cache Status */}
               {episodeStatus.cached && (
                 <div className="flex items-center space-x-2 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
