@@ -34,6 +34,30 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { isAuthenticated, loading } = useAuth();
 
+  // FIX: Initialize episode discovery system on app startup
+  useEffect(() => {
+    const initializeEpisodeSystem = async () => {
+      console.log('🚀 Initializing episode discovery system...');
+      
+      try {
+        const { integrationService } = await import('./services/integrationService');
+        const result = await integrationService.initialize();
+        
+        if (result.success) {
+          console.log('✅ Episode discovery system initialized successfully!');
+          console.log('🔄 Background job processor is now running');
+        } else {
+          console.error('❌ Episode discovery system failed to initialize:', result.message);
+          console.error('🚨 Episode discovery will not work until this is fixed');
+        }
+      } catch (error) {
+        console.error('💥 Critical error initializing episode system:', error);
+      }
+    };
+
+    initializeEpisodeSystem();
+  }, []);
+
   const handlePageChange = (page: PageType) => {
     // Redirect to sign in for protected pages
     const protectedPages: PageType[] = [
