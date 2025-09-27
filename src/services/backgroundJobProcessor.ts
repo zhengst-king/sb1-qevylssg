@@ -396,7 +396,10 @@ class BackgroundJobProcessor {
    */
   private async discoverSingleEpisode(seriesImdbId: string, seasonNumber: number, episodeNumber: number): Promise<any | null> {
     try {
-      const response = await omdbApi.getEpisodeDetails(seriesImdbId, seasonNumber, episodeNumber);
+      const response = await omdbApi.getMovieDetails(seriesImdbId, {
+        Season: seasonNumber.toString(),
+        Episode: episodeNumber.toString()
+      });
       
       if (response && response.Response === 'True') {
         return {
