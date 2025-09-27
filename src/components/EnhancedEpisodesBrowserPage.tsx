@@ -30,6 +30,9 @@ import { ReviewModal } from './ReviewModal';
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
   onBack: () => void;
+  onUpdateStatus?: (id: string, status: Movie['status']) => void;
+  onUpdateRating?: (id: string, rating: number | null) => void;
+  onUpdateMovie?: (id: string, updates: Partial<Movie>) => void;
 }
 
 interface Episode extends OMDBEpisodeDetails {
@@ -41,13 +44,21 @@ interface Episode extends OMDBEpisodeDetails {
   date_added?: string;
 }
 
-export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodesBrowserPageProps) {
+export function EnhancedEpisodesBrowserPage({ 
+  series, 
+  onBack, 
+  onUpdateStatus, 
+  onUpdateRating, 
+  onUpdateMovie 
+}: EnhancedEpisodesBrowserPageProps) {
   const [currentSeason, setCurrentSeason] = useState(1);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showSeriesReviewModal, setShowSeriesReviewModal] = useState(false);
   
   // Dynamic season management
   const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
@@ -250,10 +261,90 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
     });
   };
 
-  // Handle watch status changes (mockup for now)
-  const handleStatusChange = (newStatus: Movie['status']) => {
-    // TODO: Implement status update logic
-    console.log('Status change to:', newStatus);
+  // Enhanced genre parsing with comprehensive sub-genres (from TV card)
+  const parseEnhancedGenres = (basicGenres: string | null, plot: string | null, title: string): string[] => {
+    const genres = new Set<string>();
+    
+    // Start with basic genres
+    if (basicGenres && basicGenres !== 'N/A') {
+      basicGenres.split(',').forEach(genre => {
+        const trimmedGenre = genre.trim();
+        if (trimmedGenre) genres.add(trimmedGenre);
+      });
+    }
+    
+    const fullText = `${title} ${plot || ''}`.toLowerCase();
+    
+    // Enhanced genre detection logic
+    if (fullText.includes('superhero') || fullText.includes('comic') || fullText.includes('marvel') || fullText.includes('dc comics')) {
+      genres.add('Superhero');
+    }
+    
+    if (fullText.includes('romantic comedy') || (fullText.includes('romance') && fullText.includes('comedy'))) {
+      genres.add('Romantic Comedy');
+    }
+    
+    if (fullText.includes('psychological') && fullText.includes('thriller')) {
+      genres.add('Psychological Thriller');
+    }
+    
+    if (fullText.includes('true story') || fullText.includes('based on') || fullText.includes('real events')) {
+      genres.add('Based on True Story');
+    }
+    
+    if (fullText.includes('family') && !fullText.includes('family drama')) {
+      genres.add('Family Friendly');
+    }
+    
+    return Array.from(genres).slice(0, 8); // Limit to 8 genres for UI
+  };
+
+  // Parse creators for TV series (try to get creator info instead of director)
+  const parseCreators = (director: string | null): string[] => {
+    if (!director || director === 'N/A') return [];
+    return director.split(',').map(name => name.trim()).slice(0, 3);
+  };
+
+  // Handle series rating changes
+  const handleSeriesRatingChange = async (rating: number | null) => {
+    if (!onUpdateRating) return;
+    
+    setIsUpdating(true);
+    try {
+      await onUpdateRating(series.id!, rating);
+    } catch (error) {
+      console.error('Error updating series rating:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Handle series status changes
+  const handleStatusChange = async (newStatus: Movie['status']) => {
+    if (!onUpdateStatus) return;
+    
+    setIsUpdating(true);
+    try {
+      await onUpdateStatus(series.id!, newStatus);
+    } catch (error) {
+      console.error('Error updating series status:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Handle series review save
+  const handleSaveSeriesReview = async (review: string) => {
+    if (!onUpdateMovie) return;
+    
+    setIsUpdating(true);
+    try {
+      await onUpdateMovie(series.id!, { user_review: review });
+    } catch (error) {
+      console.error('Error updating series review:', error);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -369,30 +460,36 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                 )}
               </div>
 
-              {/* Genres */}
-              {series.genre && series.genre !== 'N/A' && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {series.genre.split(', ').map(genre => (
-                    <span key={genre} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
-                      {genre.trim()}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* Genres - Enhanced parsing */}
+              {(() => {
+                const enhancedGenres = parseEnhancedGenres(series.genre, series.plot, series.title);
+                return enhancedGenres.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {enhancedGenres.map(genre => (
+                      <span key={genre} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Additional Metadata */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
                 
-                {/* Creators */}
-                {series.director && series.director !== 'N/A' && (
-                  <div className="flex items-start space-x-2">
-                    <User className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <div>
-                      <span className="font-medium text-slate-700">Creators: </span>
-                      <span className="text-slate-600">{series.director}</span>
+                {/* Creators - Enhanced for TV series */}
+                {(() => {
+                  const creators = parseCreators(series.director);
+                  return creators.length > 0 && (
+                    <div className="flex items-start space-x-2">
+                      <User className="h-4 w-4 text-slate-500 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-700">Creators: </span>
+                        <span className="text-slate-600">{creators.join(', ')}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Awards */}
                 {series.awards && series.awards !== 'N/A' && (
@@ -452,26 +549,29 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                   
                   {/* Left side: My Rating and Review */}
                   <div className="flex items-center space-x-4">
-                    {/* User Rating */}
+                    {/* User Rating - Matching TV card style */}
                     <div className="flex items-center space-x-2">
-                      <Star className="h-5 w-5 text-purple-600" />
-                      <span className="font-medium text-slate-700">My Rating:</span>
-                      {series.user_rating ? (
-                        <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
-                          {series.user_rating}/10
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 text-sm">Not rated</span>
-                      )}
+                      <span className="text-sm text-slate-600">My Rating:</span>
+                      <select
+                        value={series.user_rating || ''}
+                        onChange={(e) => handleSeriesRatingChange(e.target.value ? parseInt(e.target.value) : null)}
+                        disabled={isUpdating}
+                        className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      >
+                        <option value="">No rating</option>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
+                          <option key={rating} value={rating}>
+                            {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    {/* Add Review Button */}
+                    {/* Add Review Button - Matching TV card style */}
                     <button
-                      onClick={() => {
-                        // TODO: Implement review functionality for series
-                        console.log('Add review for series');
-                      }}
-                      className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm"
+                      onClick={() => setShowSeriesReviewModal(true)}
+                      disabled={isUpdating}
+                      className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
                       <MessageSquare className="h-4 w-4" />
                       <span>{series.user_review ? 'Edit Review' : 'Add Review'}</span>
@@ -486,6 +586,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                       <select
                         value={series.status}
                         onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                        disabled={isUpdating}
                         className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                       >
                         <option value="To Watch">To Watch</option>
@@ -509,6 +610,19 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
                     )}
                   </div>
                 </div>
+
+                {/* User Review Display - Like TV card */}
+                {series.user_review && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-start space-x-2">
+                      <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">My Review</p>
+                        <p className="text-sm text-blue-700 mt-1">{series.user_review}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -661,7 +775,7 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
         </div>
       </div>
 
-      {/* Review Modal */}
+      {/* Episode Review Modal */}
       {showReviewModal && selectedEpisode && (
         <ReviewModal
           movie={{
@@ -684,6 +798,15 @@ export function EnhancedEpisodesBrowserPage({ series, onBack }: EnhancedEpisodes
             setShowReviewModal(false);
             setSelectedEpisode(null);
           }}
+        />
+      )}
+
+      {/* Series Review Modal */}
+      {showSeriesReviewModal && (
+        <ReviewModal
+          movie={series}
+          onClose={() => setShowSeriesReviewModal(false)}
+          onUpdate={handleSaveSeriesReview}
         />
       )}
     </>
