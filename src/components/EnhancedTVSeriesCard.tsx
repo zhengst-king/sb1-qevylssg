@@ -52,6 +52,7 @@ export function EnhancedTVSeriesCard({
     isBeingFetched: false
   });
   const [isLoadingEpisodeStatus, setIsLoadingEpisodeStatus] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(0);
 
   // Check episode cache status with async server-side service
   useEffect(() => {
@@ -98,16 +99,21 @@ export function EnhancedTVSeriesCard({
     // Set up interval to check status updates
     const interval = setInterval(async () => {
       if (!movie.imdb_id || !isMounted) return;
-
+  
+      // Debounce - prevent too frequent updates
+      const now = Date.now();
+      if (now - lastUpdateTime < 10000) return; // Wait at least 10 seconds between updates
+  
       try {
         const updatedStatus = await serverSideEpisodeService.getSeriesStatus(movie.imdb_id);
         if (isMounted) {
           setEpisodeStatus(updatedStatus);
+          setLastUpdateTime(now);
         }
       } catch (error) {
         console.error('[EnhancedTVSeriesCard] Error updating episode status:', error);
       }
-    }, 3000); // Check every 30 seconds
+    }, 30000); // Check every 30 seconds
 
     // Cleanup function
     return () => {
