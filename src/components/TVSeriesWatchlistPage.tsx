@@ -44,6 +44,32 @@ export function TVSeriesWatchlistPage() {
     status: 'All'
   });
 
+  // Add keyboard and click-outside handlers for sort dropdown
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showSortDropdown) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.sort-dropdown-container')) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    if (showSortDropdown) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSortDropdown]);
+
   const filteredMovies = useMovieFilters(movies, filters);
 
   // Calculate counts based on all movies EXCEPT status filter (so counts don't become 0)
@@ -256,25 +282,10 @@ export function TVSeriesWatchlistPage() {
           </div>
           
           <div className="flex items-center space-x-3">
-            {/* Filter Toggle */}
-            {movies.length > 0 && (
-              <button
-                onClick={() => document.getElementById('filter-panel')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filters</span>
-                {filteredMovies.length !== movies.length && (
-                  <span className="bg-purple-600 text-white px-2 py-1 rounded-full ml-1 text-xs">
-                    {filteredMovies.length}
-                  </span>
-                )}
-              </button>
-            )}
 
             {/* Sort Dropdown */}
             {movies.length > 0 && (
-              <div className="relative">
+              <div className="relative sort-dropdown-container">
                 <button
                   onClick={() => setShowSortDropdown(!showSortDropdown)}
                   className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
