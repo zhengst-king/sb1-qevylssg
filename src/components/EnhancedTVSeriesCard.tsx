@@ -71,7 +71,14 @@ export function EnhancedTVSeriesCard({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all duration-200">
       {/* Portrait Poster Container - 2/3 Aspect Ratio like My Discs */}
-      <div className="aspect-[2/3] relative bg-slate-100">
+      <div 
+        className="aspect-[2/3] relative bg-slate-100 cursor-pointer"
+        onClick={() => onViewEpisodes(movie)}
+        title={episodeStatus.cached ? 
+          `View ${episodeStatus.totalEpisodes} episodes across ${episodeStatus.totalSeasons} seasons` : 
+          'View episodes (will fetch if needed)'
+        }
+      >
         {movie.poster_url ? (
           <img
             src={movie.poster_url}
@@ -100,26 +107,49 @@ export function EnhancedTVSeriesCard({
               href={`https://www.imdb.com/title/${movie.imdb_id}/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium p-1 rounded text-xs transition-colors duration-200 shadow-sm"
+              className="flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 text-black font-medium p-1.5 rounded text-xs transition-colors duration-200 shadow-sm"
               onClick={(e) => e.stopPropagation()}
             >
-              <ExternalLink className="h-2.5 w-2.5" />
+              <ExternalLink className="h-3 w-3" />
             </a>
           </div>
         )}
 
-        {/* Bottom Overlay: Status Badge */}
+        {/* Bottom Left: Status Badge */}
         <div className="absolute bottom-1.5 left-1.5">
           <span className={`px-1.5 py-0.5 rounded text-xs font-medium shadow-sm ${getStatusColor(movie.status)}`}>
             {movie.status}
           </span>
         </div>
 
+        {/* Bottom Right: Delete Button (Movies page style) */}
+        <div className="absolute bottom-1.5 right-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+            title="Remove from watchlist"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+
         {/* Episode Loading Indicator */}
         {episodeStatus.isBeingFetched && (
-          <div className="absolute bottom-1.5 right-1.5">
+          <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2">
             <div className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded animate-pulse shadow-sm">
               •••
+            </div>
+          </div>
+        )}
+
+        {/* Episode Count Badge (when cached) */}
+        {episodeStatus.cached && episodeStatus.totalEpisodes > 0 && (
+          <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2">
+            <div className="bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded shadow-sm">
+              {episodeStatus.totalEpisodes} eps
             </div>
           </div>
         )}
@@ -151,36 +181,6 @@ export function EnhancedTVSeriesCard({
               <span className="font-medium">{movie.imdb_score.toFixed(1)}</span>
             </div>
           )}
-        </div>
-
-        {/* Action Buttons - Compact */}
-        <div className="flex space-x-1 pt-1">
-          {/* Episodes Button */}
-          <button
-            onClick={() => onViewEpisodes(movie)}
-            className="flex-1 flex items-center justify-center space-x-1 px-2 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-all duration-200"
-            title={episodeStatus.cached ? 
-              `View ${episodeStatus.totalEpisodes} episodes across ${episodeStatus.totalSeasons} seasons` : 
-              'View episodes (will fetch if needed)'
-            }
-          >
-            <Play className="h-3 w-3" />
-            <span>Episodes</span>
-            {episodeStatus.cached && episodeStatus.totalEpisodes > 0 && (
-              <span className="bg-purple-500 text-white text-xs px-1 py-0.5 rounded-full leading-none">
-                {episodeStatus.totalEpisodes}
-              </span>
-            )}
-          </button>
-
-          {/* Delete Button */}
-          <button
-            onClick={handleDelete}
-            className="flex items-center justify-center px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-all duration-200"
-            title="Remove from watchlist"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
         </div>
       </div>
     </div>
