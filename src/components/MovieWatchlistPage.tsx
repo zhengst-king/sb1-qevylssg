@@ -4,6 +4,7 @@ import { WatchlistCard } from './WatchlistCard';
 import { FilterPanel } from './FilterPanel';
 import { ImportListsModal } from './ImportListsModal';
 import { MovieSearchModal } from './MovieSearchModal';
+import { MovieDetailsPage } from './MovieDetailsPage';
 import { useMovies } from '../hooks/useMovies';
 import { useMovieFilters } from '../hooks/useMovieFilters';
 import { Movie } from '../lib/supabase';
@@ -27,32 +28,40 @@ export function MovieWatchlistPage() {
   const { movies, loading, error, updateMovie, deleteMovie, refetch } = useMovies('movie');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  
+  // Movie Details Modal State
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() + 5 },
+    yearRange: { min: 1900, max: new Date().getFullYear() },
     imdbRating: { min: 0, max: 10 },
     genres: [],
     directors: [],
     actors: '',
     countries: [],
-    myRating: { min: 1, max: 10 },
+    myRating: { min: 0, max: 10 },
     status: 'All'
   });
 
-  const filteredMovies = useMovieFilters(movies, filters);
-
-  // FIXED: Calculate counts based on filtered results (ignoring status filter for accurate counts)
-  const movieCounts = useMemo(() => {
-    // Apply all filters except status to get base filtered set
-    const baseFiltered = movies.filter(movie => {
+  // Custom filtering logic (more comprehensive than useMovieFilters)
+  const filteredMovies = useMemo(() => {
+    return movies.filter(movie => {
+      // Status filter
+      if (filters.status !== 'All' && movie.status !== filters.status) {
+        return false;
+      }
+      
       // Year filter
       if (movie.year) {
         if (movie.year < filters.yearRange.min || movie.year > filters.yearRange.max) {
           return false;
         }
       }
+      
       // IMDb rating filter
       if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
         const score = Number(movie.imdb_score);
@@ -60,22 +69,28 @@ export function MovieWatchlistPage() {
           return false;
         }
       }
-      // My rating filter
+      
+      // User rating filter
       if (movie.user_rating !== null && movie.user_rating !== undefined) {
         if (movie.user_rating < filters.myRating.min || movie.user_rating > filters.myRating.max) {
           return false;
         }
       }
+      
       // Genre filter
-      if (filters.genres.length > 0 && movie.genre) {
+      if (filters.genres.length > 0) {
+        if (!movie.genre) return false;
         const movieGenres = movie.genre.split(', ').map(g => g.trim());
         const hasMatchingGenre = filters.genres.some(filterGenre =>
-          movieGenres.includes(filterGenre)
+          movieGenres.some(movieGenre => 
+            movieGenre.toLowerCase().includes(filterGenre.toLowerCase())
+          )
         );
         if (!hasMatchingGenre) {
           return false;
         }
       }
+      
       // Director filter
       if (filters.directors.length > 0) {
         if (!movie.director) return false;
@@ -85,6 +100,7 @@ export function MovieWatchlistPage() {
         );
         if (!hasMatchingDirector) return false;
       }
+      
       // Country filter
       if (filters.countries.length > 0) {
         if (!movie.country) return false;
@@ -106,6 +122,7 @@ export function MovieWatchlistPage() {
         );
         if (!hasMatchingCountry) return false;
       }
+      
       // Actor filter
       if (filters.actors.trim()) {
         if (!movie.actors || movie.actors.trim() === '' || movie.actors === 'N/A') {
@@ -117,9 +134,80 @@ export function MovieWatchlistPage() {
           return false;
         }
       }
+      
       return true;
     });
+  }, [movies, filters]);
+
+  // Calculate counts based on all movies EXCEPT status filter (so counts don't become 0)
+  const movieCounts = useMemo(() => {
+    // Apply all filters except status to get base filtered set
+    const baseFiltered = movies.filter(movie => {
+      // Year filter
+      if (movie.year) {
+        if (movie.year < filters.yearRange.min || movie.year > filters.yearRange.max) {
+          return false;
+        }
+      }
     
+      // IMDb rating filter
+      if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
+        const score = Number(movie.imdb_score);
+        if (score < filters.imdbRating.min || score > filters.imdbRating.max) {
+          return false;
+        }
+      }
+    
+      // User rating filter
+      if (movie.user_rating !== null && movie.user_rating !== undefined) {
+        if (movie.user_rating < filters.myRating.min || movie.user_rating > filters.myRating.max) {
+          return false;
+        }
+      }
+    
+      // Genre filter
+      if (filters.genres.length > 0 && movie.genre) {
+        const movieGenres = movie.genre.split(', ').map(g => g.trim());
+        const hasMatchingGenre = filters.genres.some(filterGenre =>
+          movieGenres.includes(filterGenre)
+        );
+        if (!hasMatchingGenre) {
+          return false;
+        }
+      }
+    
+      // Director filter
+      if (filters.directors.length > 0 && movie.director) {
+        const hasMatchingDirector = filters.directors.some(filterDirector =>
+          movie.director.toLowerCase().includes(filterDirector.toLowerCase())
+        );
+        if (!hasMatchingDirector) {
+          return false;
+        }
+      }
+    
+      // Countries filter
+      if (filters.countries.length > 0 && movie.country) {
+        const hasMatchingCountry = filters.countries.some(filterCountry =>
+          movie.country.toLowerCase().includes(filterCountry.toLowerCase())
+        );
+        if (!hasMatchingCountry) {
+          return false;
+        }
+      }
+    
+      // Actors filter
+      if (filters.actors.trim() !== '' && movie.actors) {
+        const searchTerm = filters.actors.toLowerCase().trim();
+        const movieActors = movie.actors.toLowerCase();
+        if (!movieActors.includes(searchTerm)) {
+          return false;
+        }
+      }
+    
+      return true;
+    });
+  
     return {
       total: baseFiltered.length,
       toWatch: baseFiltered.filter(m => m.status === 'To Watch').length,
@@ -129,11 +217,9 @@ export function MovieWatchlistPage() {
     };
   }, [movies, filters]);
 
-  // Apply sorting to filtered movies
   const sortedMovies = useMemo(() => {
     const sorted = [...filteredMovies].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: any, bValue: any;
 
       switch (sortBy) {
         case 'title':
@@ -141,21 +227,21 @@ export function MovieWatchlistPage() {
           bValue = b.title?.toLowerCase() || '';
           break;
         case 'year':
-          aValue = a.year || 0;
-          bValue = b.year || 0;
+          aValue = a.year ?? 0;
+          bValue = b.year ?? 0;
           break;
         case 'imdb_rating':
-          aValue = a.imdb_score || 0;
-          bValue = b.imdb_score || 0;
+          aValue = a.imdb_score ?? 0;
+          bValue = b.imdb_score ?? 0;
           break;
         case 'user_rating':
-          aValue = a.user_rating || 0;
-          bValue = b.user_rating || 0;
+          aValue = a.user_rating ?? 0;
+          bValue = b.user_rating ?? 0;
           break;
         case 'date_added':
         default:
-          aValue = new Date(a.created_at || 0);
-          bValue = new Date(b.created_at || 0);
+          aValue = new Date(a.created_at || 0).getTime();
+          bValue = new Date(b.created_at || 0).getTime();
           break;
       }
 
@@ -230,16 +316,57 @@ export function MovieWatchlistPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Movie Details Modal Handlers
+  const handleViewDetails = (movie: Movie) => {
+    setSelectedMovie(movie);
+    setShowDetailsModal(true);
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetailsModal(false);
+    setSelectedMovie(null);
+  };
+
+  const handleModalBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleCloseDetails();
+    }
+  };
+
   const handleUpdateStatus = async (id: string, status: Movie['status']) => {
     await updateMovie(id, { status });
+    
+    // Update selected movie if it's the one being updated
+    if (selectedMovie && selectedMovie.id === id) {
+      setSelectedMovie({ ...selectedMovie, status });
+    }
   };
 
   const handleUpdateRating = async (id: string, user_rating: number | null) => {
     await updateMovie(id, { user_rating });
+    
+    // Update selected movie if it's the one being updated
+    if (selectedMovie && selectedMovie.id === id) {
+      setSelectedMovie({ ...selectedMovie, user_rating });
+    }
   };
 
   const handleUpdateMovie = async (id: string, updates: Partial<Movie>) => {
     await updateMovie(id, updates);
+    
+    // Update selected movie if it's the one being updated
+    if (selectedMovie && selectedMovie.id === id) {
+      setSelectedMovie({ ...selectedMovie, ...updates });
+    }
+  };
+
+  const handleDelete = async (movieId: string) => {
+    await deleteMovie(movieId);
+    
+    // Close modal if the deleted movie was being viewed
+    if (selectedMovie && selectedMovie.id === movieId) {
+      handleCloseDetails();
+    }
   };
 
   const handleMovieAdded = () => {
@@ -265,30 +392,13 @@ export function MovieWatchlistPage() {
     setShowSortDropdown(false);
   };
 
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.sort-dropdown')) {
-        setShowSortDropdown(false);
-      }
-    };
-
-    if (showSortDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showSortDropdown]);
-
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Sign in to view your movies</h2>
-          <p className="text-slate-600">You need to be signed in to manage your movie watchlist.</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl p-8 border border-slate-200 text-center">
+          <Film className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold text-slate-900 mb-2">Sign in to access your movies</h2>
+          <p className="text-slate-600">Please sign in to view and manage your movie watchlist.</p>
         </div>
       </div>
     );
@@ -296,8 +406,8 @@ export function MovieWatchlistPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl p-8 border border-slate-200 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-slate-600">Loading your movies...</p>
         </div>
@@ -307,9 +417,9 @@ export function MovieWatchlistPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-xl p-8 border border-slate-200 text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-slate-900 mb-2">Error loading movies</h2>
           <p className="text-slate-600">{error}</p>
         </div>
@@ -407,12 +517,12 @@ export function MovieWatchlistPage() {
                 onClick={() => handleStatusFilter('Watching')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
                   filters.status === 'Watching'
-                    ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-500'
-                    : 'bg-amber-50 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                    ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-500'
+                    : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100 hover:border-yellow-300'
                 }`}
               >
-                <div className="text-2xl font-bold text-amber-700">{movieCounts.watching}</div>
-                <div className="text-sm text-amber-600">Currently Watching</div>
+                <div className="text-2xl font-bold text-yellow-700">{movieCounts.watching}</div>
+                <div className="text-sm text-yellow-600">Watching</div>
               </button>
 
               <button
@@ -478,8 +588,9 @@ export function MovieWatchlistPage() {
                               : 'hover:bg-slate-50 text-slate-700'
                           }`}
                         >
-                          Date Added {sortBy === 'date_added' && (sortOrder === 'desc' ? '↓' : '↑')}
+                          Date Added {sortBy === 'date_added' && (sortOrder === 'desc' ? '(Newest first)' : '(Oldest first)')}
                         </button>
+                        
                         <button
                           onClick={() => handleSortChange('title')}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -488,8 +599,9 @@ export function MovieWatchlistPage() {
                               : 'hover:bg-slate-50 text-slate-700'
                           }`}
                         >
-                          Title {sortBy === 'title' && (sortOrder === 'asc' ? 'A-Z' : 'Z-A')}
+                          Title {sortBy === 'title' && (sortOrder === 'asc' ? '(A-Z)' : '(Z-A)')}
                         </button>
+                        
                         <button
                           onClick={() => handleSortChange('year')}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -498,8 +610,9 @@ export function MovieWatchlistPage() {
                               : 'hover:bg-slate-50 text-slate-700'
                           }`}
                         >
-                          Year {sortBy === 'year' && (sortOrder === 'desc' ? '↓' : '↑')}
+                          Year {sortBy === 'year' && (sortOrder === 'desc' ? '(Newest first)' : '(Oldest first)')}
                         </button>
+                        
                         <button
                           onClick={() => handleSortChange('imdb_rating')}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -508,8 +621,9 @@ export function MovieWatchlistPage() {
                               : 'hover:bg-slate-50 text-slate-700'
                           }`}
                         >
-                          IMDb Rating {sortBy === 'imdb_rating' && (sortOrder === 'desc' ? '↓' : '↑')}
+                          IMDb Rating {sortBy === 'imdb_rating' && (sortOrder === 'desc' ? '(Highest first)' : '(Lowest first)')}
                         </button>
+                        
                         <button
                           onClick={() => handleSortChange('user_rating')}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -518,7 +632,7 @@ export function MovieWatchlistPage() {
                               : 'hover:bg-slate-50 text-slate-700'
                           }`}
                         >
-                          My Rating {sortBy === 'user_rating' && (sortOrder === 'desc' ? '↓' : '↑')}
+                          My Rating {sortBy === 'user_rating' && (sortOrder === 'desc' ? '(Highest first)' : '(Lowest first)')}
                         </button>
                       </div>
                     </div>
@@ -529,46 +643,77 @@ export function MovieWatchlistPage() {
           </>
         )}
 
-        {movies.length === 0 && !loading && (
-          <div className="text-center py-16">
-            <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-600 mb-2">Your movie watchlist is empty</h3>
-            <p className="text-slate-500">Start by searching for movies and adding them to your watchlist.</p>
-          </div>
-        )}
-
+        {/* Movies List */}
         <div className="space-y-6">
-          {sortedMovies.map((movie) => (
-            <WatchlistCard
-              key={movie.id}
-              movie={movie}
-              onUpdateStatus={handleUpdateStatus}
-              onUpdateRating={handleUpdateRating}
-              onUpdateMovie={handleUpdateMovie}
-              onDelete={deleteMovie}
-            />
-          ))}
+          {sortedMovies.length === 0 ? (
+            <div className="bg-white rounded-xl p-8 border border-slate-200 text-center">
+              <Film className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">No movies found</h3>
+              <p className="text-slate-600 mb-4">
+                {movies.length === 0 
+                  ? "You haven't added any movies to your watchlist yet."
+                  : "No movies match your current filters."
+                }
+              </p>
+              <button
+                onClick={handleAddItem}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Add Your First Movie
+              </button>
+            </div>
+          ) : (
+            sortedMovies.map((movie) => (
+              <WatchlistCard
+                key={movie.id}
+                movie={movie}
+                onUpdateStatus={handleUpdateStatus}
+                onUpdateRating={handleUpdateRating}
+                onUpdateMovie={handleUpdateMovie}
+                onDelete={handleDelete}
+                onViewDetails={handleViewDetails}
+              />
+            ))
+          )}
         </div>
 
-        {movies.length > 0 && sortedMovies.length === 0 && (
-          <div className="text-center py-12">
-            <Filter className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-600 mb-2">No movies match your filters</h3>
-            <p className="text-slate-500">Try adjusting your filter criteria to see more results.</p>
-          </div>
+        {/* Import Modal */}
+        {showImportModal && (
+          <ImportListsModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            onMoviesImported={handleMovieAdded}
+          />
         )}
 
-        <ImportListsModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          pageType="movies"
-        />
+        {/* Search Modal */}
+        {showSearchModal && (
+          <MovieSearchModal
+            isOpen={showSearchModal}
+            onClose={() => setShowSearchModal(false)}
+            onMovieAdded={handleMovieAdded}
+          />
+        )}
 
-        <MovieSearchModal
-          isOpen={showSearchModal}
-          onClose={() => setShowSearchModal(false)}
-          onMovieAdded={handleMovieAdded}
-        />
+        {/* Movie Details Modal */}
+        {showDetailsModal && selectedMovie && (
+          <div className="fixed inset-0 z-50 overflow-hidden">
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50" 
+              onClick={handleModalBackgroundClick}
+            />
+            <div className="fixed inset-4 md:inset-8 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+              <MovieDetailsPage 
+                movie={selectedMovie} 
+                onBack={handleCloseDetails}
+                onUpdateStatus={handleUpdateStatus}
+                onUpdateRating={handleUpdateRating}
+                onUpdateMovie={handleUpdateMovie}
+                onDelete={handleDelete}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
