@@ -631,7 +631,8 @@ export function EnhancedEpisodesBrowserPage({
                             {formatRelativeTime(series.status_updated_at)}
                           </span>
                         </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
 
