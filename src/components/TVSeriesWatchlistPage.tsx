@@ -46,23 +46,75 @@ export function TVSeriesWatchlistPage() {
 
   const filteredMovies = useMovieFilters(movies, filters);
 
-  // Calculate counts based on filtered results
+  // Calculate counts based on all movies EXCEPT status filter (so counts don't become 0)
   const movieCounts = useMemo(() => {
+    // Apply all filters except status to get base filtered set
     const baseFiltered = movies.filter(movie => {
-      return (
-        movie.year >= filters.yearRange.min &&
-        movie.year <= filters.yearRange.max &&
-        (movie.imdb_score ?? 0) >= filters.imdbRating.min &&
-        (movie.imdb_score ?? 10) <= filters.imdbRating.max &&
-        (filters.genres.length === 0 || filters.genres.some(genre => movie.genres?.includes(genre))) &&
-        (filters.directors.length === 0 || filters.directors.some(director => movie.director?.includes(director))) &&
-        (filters.actors === '' || movie.actors?.toLowerCase().includes(filters.actors.toLowerCase())) &&
-        (filters.countries.length === 0 || filters.countries.some(country => movie.country?.includes(country))) &&
-        (movie.user_rating === null || movie.user_rating === undefined || 
-         (movie.user_rating >= filters.myRating.min && movie.user_rating <= filters.myRating.max))
-      );
+      // Year filter
+      if (movie.year) {
+        if (movie.year < filters.yearRange.min || movie.year > filters.yearRange.max) {
+          return false;
+        }
+      }
+    
+      // IMDb rating filter
+      if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
+        const score = Number(movie.imdb_score);
+        if (score < filters.imdbRating.min || score > filters.imdbRating.max) {
+          return false;
+        }
+      }
+    
+      // User rating filter
+      if (movie.user_rating !== null && movie.user_rating !== undefined) {
+        if (movie.user_rating < filters.myRating.min || movie.user_rating > filters.myRating.max) {
+          return false;
+        }
+      }
+    
+      // Genre filter
+      if (filters.genres.length > 0 && movie.genre) {
+        const movieGenres = movie.genre.split(', ').map(g => g.trim());
+        const hasMatchingGenre = filters.genres.some(filterGenre =>
+          movieGenres.includes(filterGenre)
+        );
+        if (!hasMatchingGenre) {
+          return false;
+        }
+      }
+    
+      // Director filter
+      if (filters.directors.length > 0 && movie.director) {
+        const hasMatchingDirector = filters.directors.some(filterDirector =>
+          movie.director.toLowerCase().includes(filterDirector.toLowerCase())
+        );
+        if (!hasMatchingDirector) {
+          return false;
+        }
+      }
+    
+      // Countries filter
+      if (filters.countries.length > 0 && movie.country) {
+        const hasMatchingCountry = filters.countries.some(filterCountry =>
+          movie.country.toLowerCase().includes(filterCountry.toLowerCase())
+        );
+        if (!hasMatchingCountry) {
+          return false;
+        }
+      }
+    
+      // Actors filter
+      if (filters.actors.trim() !== '' && movie.actors) {
+        const searchTerm = filters.actors.toLowerCase().trim();
+        const movieActors = movie.actors.toLowerCase();
+        if (!movieActors.includes(searchTerm)) {
+          return false;
+        }
+      }
+    
+      return true;
     });
-
+  
     return {
       total: baseFiltered.length,
       toWatch: baseFiltered.filter(m => m.status === 'To Watch').length,
