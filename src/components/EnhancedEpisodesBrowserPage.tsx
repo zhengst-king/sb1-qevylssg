@@ -765,24 +765,21 @@ export function EnhancedEpisodesBrowserPage({
         </div>
       </div>
 
-      {/* Episode Review Modal */}
+      {/* Episode Review Modal - FIXED INTERFACE */}
       {showReviewModal && selectedEpisode && (
         <ReviewModal
-          movie={{
-            id: selectedEpisode.imdbID || `episode-${selectedEpisode.season}-${selectedEpisode.episode}`,
-            title: selectedEpisode.title || `Season ${selectedEpisode.season}, Episode ${selectedEpisode.episode}`,
-            user_review: selectedEpisode.user_review,
-            user_rating: selectedEpisode.user_rating
-          } as any}
+          isOpen={showReviewModal}
           onClose={() => {
             setShowReviewModal(false);
             setSelectedEpisode(null);
           }}
-          onUpdate={(updatedMovie) => {
+          movieTitle={`${series.title} - S${selectedEpisode.season}E${selectedEpisode.episode}${selectedEpisode.title ? ': ' + selectedEpisode.title : ''}`}
+          initialReview={selectedEpisode.user_review || ''}
+          onSave={(review: string) => {
             // Update episode with new review data
             setEpisodes(episodes.map(ep => 
               ep.imdbID === selectedEpisode.imdbID 
-                ? { ...ep, user_review: updatedMovie.user_review, user_rating: updatedMovie.user_rating }
+                ? { ...ep, user_review: review }
                 : ep
             ));
             setShowReviewModal(false);
@@ -791,16 +788,14 @@ export function EnhancedEpisodesBrowserPage({
         />
       )}
 
-      {/* Series Review Modal - Fixed to match TV card exactly */}
+      {/* Series Review Modal - FIXED INTERFACE */}
       {showSeriesReviewModal && (
         <ReviewModal
-          movie={{
-            ...series,
-            user_review: localReview,
-            user_rating: localRating
-          }}
+          isOpen={showSeriesReviewModal}
           onClose={() => setShowSeriesReviewModal(false)}
-          onUpdate={async (review: string) => {
+          movieTitle={series.title}
+          initialReview={localReview || ''}
+          onSave={async (review: string) => {
             await handleSaveSeriesReview(review);
             setShowSeriesReviewModal(false);
           }}
