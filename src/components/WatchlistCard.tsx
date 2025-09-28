@@ -1,3 +1,4 @@
+// src/components/WatchlistCard.tsx
 import React, { useState } from 'react';
 import { Star, Trash2, Calendar, MapPin, User, Users, Clock, Eye, MessageSquare, Award, DollarSign, Globe, Film, Tv } from 'lucide-react';
 import { Movie } from '../lib/supabase';
@@ -10,9 +11,17 @@ interface WatchlistCardProps {
   onUpdateRating: (id: string, rating: number | null) => void;
   onUpdateMovie: (id: string, updates: Partial<Movie>) => void;
   onDelete: (id: string) => void;
+  onViewDetails?: (movie: Movie) => void; // NEW: Add click handler for poster
 }
 
-export function WatchlistCard({ movie, onUpdateStatus, onUpdateRating, onUpdateMovie, onDelete }: WatchlistCardProps) {
+export function WatchlistCard({ 
+  movie, 
+  onUpdateStatus, 
+  onUpdateRating, 
+  onUpdateMovie, 
+  onDelete,
+  onViewDetails // NEW: Accept the click handler
+}: WatchlistCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -68,6 +77,13 @@ export function WatchlistCard({ movie, onUpdateStatus, onUpdateRating, onUpdateM
     }
   };
 
+  // NEW: Handle poster click
+  const handlePosterClick = () => {
+    if (onViewDetails) {
+      onViewDetails(movie);
+    }
+  };
+
   const getStatusColor = (status: Movie['status']) => {
     switch (status) {
       case 'To Watch': return 'bg-blue-100 text-blue-800';
@@ -82,18 +98,28 @@ export function WatchlistCard({ movie, onUpdateStatus, onUpdateRating, onUpdateM
     <>
     <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-slate-200">
       <div className="md:flex">
-        <div className="md:w-32 md:flex-shrink-0">
+        {/* NEW: Make poster clickable with cursor pointer and hover effects */}
+        <div 
+          className="md:w-32 md:flex-shrink-0 cursor-pointer group relative" 
+          onClick={handlePosterClick}
+          title="Click to view movie details"
+        >
           {movie.poster_url ? (
             <img
               src={movie.poster_url}
               alt={movie.title}
-              className="w-full h-48 md:h-full object-cover"
+              className="w-full h-48 md:h-full object-cover group-hover:opacity-90 transition-opacity"
             />
           ) : (
-            <div className="w-full h-48 md:h-full bg-slate-200 flex items-center justify-center">
+            <div className="w-full h-48 md:h-full bg-slate-200 flex items-center justify-center group-hover:bg-slate-300 transition-colors">
               <span className="text-slate-400 text-sm">No poster</span>
             </div>
           )}
+          
+          {/* NEW: Hover overlay to indicate clickability */}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+            <Eye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+          </div>
         </div>
         
         <div className="p-6 flex-1">
@@ -254,135 +280,62 @@ export function WatchlistCard({ movie, onUpdateStatus, onUpdateRating, onUpdateM
                 <MessageSquare className="h-4 w-4" />
                 <span>{movie.user_review ? 'Edit Review' : 'Add Review'}</span>
               </button>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-slate-700">Status:</label>
+              
               <select
                 value={movie.status}
                 onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
                 disabled={isUpdating}
-                className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
               >
                 <option value="To Watch">To Watch</option>
                 <option value="Watching">Watching</option>
                 <option value="Watched">Watched</option>
                 <option value="To Watch Again">To Watch Again</option>
               </select>
-              {movie.status_updated_at && (
-                <div className="flex items-center space-x-1">
-                  <Clock className="h-3 w-3 text-slate-400" />
-                  <span 
-                    className="text-xs text-slate-500 cursor-help"
-                    title={`Status updated: ${formatExactTimestamp(movie.status_updated_at)}`}
-                  >
-                    {formatRelativeTime(movie.status_updated_at)}
-                  </span>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-slate-700">My Rating:</label>
+              
               <select
                 value={movie.user_rating || ''}
                 onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
                 disabled={isUpdating}
-                className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
               >
                 <option value="">No rating</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
-                  <option key={rating} value={rating}>
-                    {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
-                  </option>
+                {[...Array(10)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}/10</option>
                 ))}
               </select>
-              {movie.rating_updated_at && (
-                <div className="flex items-center space-x-1">
-                  <Clock className="h-3 w-3 text-slate-400" />
-                  <span 
-                    className="text-xs text-slate-500 cursor-help"
-                    title={`Rating updated: ${formatExactTimestamp(movie.rating_updated_at)}`}
-                  >
-                    {formatRelativeTime(movie.rating_updated_at)}
-                  </span>
-                </div>
-              )}
             </div>
             
-            {movie.imdb_url && (
-              <a
-                href={movie.imdb_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-3 py-1 rounded transition-colors duration-200"
-              >
-                IMDb
-              </a>
-            )}
-            
-            {movie.website && (
-              <a
-                href={movie.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1 rounded transition-colors duration-200 inline-flex items-center space-x-1"
-              >
-                <Globe className="h-3 w-3" />
-                <span>Official Site</span>
-              </a>
-            )}
-            
-            {movie.last_modified_at && (
-              <div className="flex items-center space-x-1 text-xs text-slate-400">
-                <Clock className="h-3 w-3" />
-                <span 
-                  className="cursor-help"
-                  title={`Last modified: ${formatExactTimestamp(movie.last_modified_at)}`}
-                >
-                  Updated {formatRelativeTime(movie.last_modified_at)}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-slate-600">Date watched:</label>
+              <input
+                type="date"
+                value={movie.date_watched || ''}
+                onChange={(e) => handleDateWatchedChange(e.target.value)}
+                disabled={isUpdating}
+                max={getTodayDateString()}
+                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+              />
             </div>
             
-            {/* Conditional Date Watched Field */}
-            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
-              (movie.status === 'Watched' || movie.status === 'To Watch Again') ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
-            }`}>
-              {(movie.status === 'Watched' || movie.status === 'To Watch Again') && (
-                <div className="pt-2 border-t border-slate-200">
-                  <div className="flex items-center space-x-2">
-                    <label className="text-sm font-medium text-slate-700">Date Watched:</label>
-                    <input
-                      type="date"
-                      value={movie.date_watched || ''}
-                      onChange={(e) => handleDateWatchedChange(e.target.value)}
-                      disabled={isUpdating}
-                      max={getTodayDateString()}
-                      className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Select date (optional)"
-                    />
-                    {dateWatchedError && (
-                      <span className="text-xs text-red-500">{dateWatchedError}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">Leave empty if you don't remember the exact date</p>
-                </div>
-              )}
+            {dateWatchedError && (
+              <p className="text-red-600 text-sm">{dateWatchedError}</p>
+            )}
             </div>
           </div>
         </div>
       </div>
     </div>
-    
-    <ReviewModal
-      isOpen={showReviewModal}
-      onClose={() => setShowReviewModal(false)}
-      movieTitle={movie.title}
-      initialReview={movie.user_review || ''}
-      onSave={handleSaveReview}
-    />
+
+    {showReviewModal && (
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onSave={handleSaveReview}
+        initialReview={movie.user_review || ''}
+        movieTitle={movie.title}
+      />
+    )}
     </>
   );
 }
