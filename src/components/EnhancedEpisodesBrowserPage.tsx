@@ -26,6 +26,7 @@ import { Movie } from '../lib/supabase';
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 import { OMDBEpisodeDetails } from '../lib/omdb';
 import { ReviewModal } from './ReviewModal';
+import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -59,6 +60,7 @@ export function EnhancedEpisodesBrowserPage({
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [showSeriesReviewModal, setShowSeriesReviewModal] = useState(false);
+  const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
   
   // Local state for immediate UI updates
   const [localRating, setLocalRating] = useState<number | null>(series.user_rating || null);
@@ -336,6 +338,28 @@ export function EnhancedEpisodesBrowserPage({
     }
   };
 
+  // Handle date watched changes - matching Movies page pattern
+  const handleDateWatchedChange = async (dateString: string) => {
+    if (dateString && !isValidWatchDate(dateString)) {
+      setDateWatchedError('Date cannot be in the future');
+      return;
+    }
+    
+    setDateWatchedError(null);
+    
+    if (!onUpdateMovie) return;
+    
+    setIsUpdating(true);
+    try {
+      await onUpdateMovie(series.id!, { date_watched: dateString || null });
+    } catch (err) {
+      setDateWatchedError('Failed to update watch date');
+      console.error('Failed to update watch date:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
@@ -555,6 +579,18 @@ export function EnhancedEpisodesBrowserPage({
                           </option>
                         ))}
                       </select>
+                      {/* ADD TIMESTAMP */}
+                      {series.rating_updated_at && (
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-3 w-3 text-slate-400" />
+                          <span 
+                            className="text-xs text-slate-500 cursor-help"
+                            title={`Rating updated: ${formatExactTimestamp(series.rating_updated_at)}`}
+                          >
+                            {formatRelativeTime(series.rating_updated_at)}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Add Review Button - Matching TV card style */}
@@ -584,21 +620,47 @@ export function EnhancedEpisodesBrowserPage({
                         <option value="Watched">Watched</option>
                         <option value="To Watch Again">To Watch Again</option>
                       </select>
-                    </div>
-
-                    {/* Official Website */}
-                    {series.website && series.website !== 'N/A' && (
-                      <a
-                        href={series.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
-                      >
-                        <Globe className="h-4 w-4" />
-                        <span>Official Site</span>
-                      </a>
+                      {/* ADD TIMESTAMP */}
+                      {series.status_updated_at && (
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-3 w-3 text-slate-400" />
+                          <span 
+                            className="text-xs text-slate-500 cursor-help"
+                            title={`Status updated: ${formatExactTimestamp(series.status_updated_at)}`}
+                          >
+                            {formatRelativeTime(series.status_updated_at)}
+                          </span>
+                        </div>
                     )}
                   </div>
+                </div>
+
+                {/* Conditional Date Watched Field - Matching Movies page */}
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  (localStatus === 'Watched' || localStatus === 'To Watch Again') ?
+                    'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+                }`}>
+                  {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
+                    <div className="pt-4 border-t border-slate-200">
+                      <div className="flex items-center space-x-2">
+                        <Eye className="h-4 w-4 text-green-600" />
+                        <label className="text-sm font-medium text-slate-700">Date Watched:</label>
+                        <input
+                          type="date"
+                          value={series.date_watched || ''}
+                          onChange={(e) => handleDateWatchedChange(e.target.value)}
+                          disabled={isUpdating}
+                          max={getTodayDateString()}
+                          className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                          placeholder="Select date (optional)"
+                        />
+                        {dateWatchedError && (
+                          <span className="text-xs text-red-500">{dateWatchedError}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Leave empty if you don't remember the exact date</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* User Review Display - Like TV card */}
