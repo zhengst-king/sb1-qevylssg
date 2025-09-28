@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Film, 
-  Star, 
   Calendar, 
   Clock, 
   MapPin,
@@ -14,8 +13,7 @@ import {
   Globe,
   ExternalLink,
   MessageSquare,
-  Eye,
-  Trash2
+  Eye
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
@@ -27,7 +25,6 @@ interface MovieDetailsPageProps {
   onUpdateStatus?: (id: string, status: Movie['status']) => void;
   onUpdateRating?: (id: string, rating: number | null) => void;
   onUpdateMovie?: (id: string, updates: Partial<Movie>) => void;
-  onDelete?: (id: string) => void;
 }
 
 export function MovieDetailsPage({ 
@@ -35,8 +32,7 @@ export function MovieDetailsPage({
   onBack, 
   onUpdateStatus, 
   onUpdateRating, 
-  onUpdateMovie,
-  onDelete 
+  onUpdateMovie
 }: MovieDetailsPageProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
@@ -125,15 +121,6 @@ export function MovieDetailsPage({
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to remove this movie from your watchlist?')) {
-      if (onDelete) {
-        await onDelete(movie.id!);
-        onBack(); // Close the modal after deletion
-      }
-    }
-  };
-
   const getStatusColor = (status: Movie['status']) => {
     switch (status) {
       case 'To Watch': return 'bg-blue-100 text-blue-800';
@@ -156,14 +143,40 @@ export function MovieDetailsPage({
             <ArrowLeft className="h-5 w-5" />
             <span>Back to Movies</span>
           </button>
+          
+          {/* Movie Title and Info */}
+          <div className="flex items-center space-x-3">
+            <h1 className="text-2xl font-bold text-slate-900">{movie.title}</h1>
+            
+            {movie.year && (
+              <div className="flex items-center space-x-1 text-sm text-slate-600">
+                <Calendar className="h-4 w-4" />
+                <span>{movie.year}</span>
+              </div>
+            )}
+            
+            {movie.rated && (
+              <div className="flex items-center space-x-1 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                <span>Rated {movie.rated}</span>
+              </div>
+            )}
+            
+            {movie.genre && (
+              <div className="flex flex-wrap gap-1">
+                {movie.genre.split(', ').slice(0, 3).map((genre, index) => (
+                  <span
+                    key={index}
+                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
+                  >
+                    {genre}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-            <Film className="h-4 w-4" />
-            <span>Movie Details</span>
-          </div>
-          
           {movie.updated_at && (
             <span className="text-sm text-slate-500" title={formatExactTimestamp(movie.updated_at)}>
               Updated {formatRelativeTime(movie.updated_at)}
@@ -175,186 +188,50 @@ export function MovieDetailsPage({
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-6xl mx-auto p-6">
-          {/* Movie Header Section */}
+          {/* Movie Summary Section */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <div className="md:flex md:space-x-6">
-              {/* Poster */}
-              <div className="md:w-64 md:flex-shrink-0 mb-6 md:mb-0">
-                {movie.poster_url ? (
-                  <img
-                    src={movie.poster_url}
-                    alt={movie.title}
-                    className="w-full md:w-64 h-auto object-cover rounded-lg shadow-md"
-                  />
-                ) : (
-                  <div className="w-full md:w-64 h-96 bg-slate-200 flex items-center justify-center rounded-lg">
-                    <span className="text-slate-400 text-sm">No poster</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {movie.metascore && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Award className="h-4 w-4 text-green-500" />
+                    <span className="font-semibold text-green-800">Metascore</span>
                   </div>
-                )}
-              </div>
-
-              {/* Movie Info */}
-              <div className="flex-1">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">{movie.title}</h1>
-                    <div className="flex items-center space-x-3 mb-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(localStatus)}`}>
-                        {localStatus}
-                      </span>
-                      
-                      {movie.year && (
-                        <div className="flex items-center space-x-1 text-sm text-slate-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>{movie.year}</span>
-                        </div>
-                      )}
-                      
-                      {movie.rated && (
-                        <div className="flex items-center space-x-1 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
-                          <span>Rated {movie.rated}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Delete Button */}
-                  {onDelete && (
-                    <button
-                      onClick={handleDelete}
-                      className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
-                      title="Remove from watchlist"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Ratings and Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  {movie.imdb_score && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
-                        <span className="font-semibold text-yellow-800">IMDb Rating</span>
-                      </div>
-                      <div className="text-2xl font-bold text-yellow-900">{movie.imdb_score.toFixed(1)}</div>
-                      {movie.imdb_votes && (
-                        <div className="text-sm text-yellow-700">({movie.imdb_votes} votes)</div>
-                      )}
-                    </div>
-                  )}
-
-                  {movie.metascore && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Award className="h-4 w-4 text-green-500" />
-                        <span className="font-semibold text-green-800">Metascore</span>
-                      </div>
-                      <div className="text-2xl font-bold text-green-900">{movie.metascore}</div>
-                    </div>
-                  )}
-
-                  {movie.runtime && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Clock className="h-4 w-4 text-slate-500" />
-                        <span className="font-semibold text-slate-800">Runtime</span>
-                      </div>
-                      <div className="text-2xl font-bold text-slate-900">{movie.runtime} min</div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Plot */}
-                {movie.plot && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
-                    <h3 className="font-semibold text-slate-900 mb-2">Plot</h3>
-                    <p className="text-slate-700 leading-relaxed">{movie.plot}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* User Controls Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">My Tracking</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Status Control */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                <select
-                  value={localStatus}
-                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                  disabled={isUpdating}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-                >
-                  <option value="To Watch">To Watch</option>
-                  <option value="Watching">Watching</option>
-                  <option value="Watched">Watched</option>
-                  <option value="To Watch Again">To Watch Again</option>
-                </select>
-              </div>
-
-              {/* Rating Control */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">My Rating</label>
-                <select
-                  value={localRating || ''}
-                  onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
-                  disabled={isUpdating}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">No rating</option>
-                  {[...Array(10)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}/10</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Watched Control */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Date Watched</label>
-                <input
-                  type="date"
-                  value={localDateWatched || ''}
-                  onChange={(e) => handleDateWatchedChange(e.target.value)}
-                  disabled={isUpdating}
-                  max={getTodayDateString()}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-                />
-                {dateWatchedError && (
-                  <p className="text-red-600 text-sm mt-1">{dateWatchedError}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Review Section */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-slate-700">My Review</label>
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  disabled={isUpdating}
-                  className="flex items-center space-x-2 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
-                </button>
-              </div>
-              
-              {localReview && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-blue-900 leading-relaxed">{localReview}</p>
+                  <div className="text-2xl font-bold text-green-900">{movie.metascore}</div>
                 </div>
               )}
+
+              {movie.runtime && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Clock className="h-4 w-4 text-slate-500" />
+                    <span className="font-semibold text-slate-800">Runtime</span>
+                  </div>
+                  <div className="text-2xl font-bold text-slate-900">{movie.runtime} min</div>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="font-semibold text-blue-800">Status</span>
+                </div>
+                <div className={`text-lg font-bold px-3 py-1 rounded-full text-sm ${getStatusColor(localStatus)}`}>
+                  {localStatus}
+                </div>
+              </div>
             </div>
+
+            {/* Plot */}
+            {movie.plot && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <h3 className="font-semibold text-slate-900 mb-2">Plot</h3>
+                <p className="text-slate-700 leading-relaxed">{movie.plot}</p>
+              </div>
+            )}
           </div>
 
-          {/* Movie Details Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          {/* Movie Information Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">Movie Information</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -476,6 +353,82 @@ export function MovieDetailsPage({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* My Tracking Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">My Tracking</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Status Control */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                <select
+                  value={localStatus}
+                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                  disabled={isUpdating}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+                >
+                  <option value="To Watch">To Watch</option>
+                  <option value="Watching">Watching</option>
+                  <option value="Watched">Watched</option>
+                  <option value="To Watch Again">To Watch Again</option>
+                </select>
+              </div>
+
+              {/* Rating Control */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">My Rating</label>
+                <select
+                  value={localRating || ''}
+                  onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
+                  disabled={isUpdating}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">No rating</option>
+                  {[...Array(10)].map((_, i) => (
+                    <option key={i + 1} value={i + 1}>{i + 1}/10</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Watched Control */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Date Watched</label>
+                <input
+                  type="date"
+                  value={localDateWatched || ''}
+                  onChange={(e) => handleDateWatchedChange(e.target.value)}
+                  disabled={isUpdating}
+                  max={getTodayDateString()}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+                />
+                {dateWatchedError && (
+                  <p className="text-red-600 text-sm mt-1">{dateWatchedError}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Review Section */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-slate-700">My Review</label>
+                <button
+                  onClick={() => setShowReviewModal(true)}
+                  disabled={isUpdating}
+                  className="flex items-center space-x-2 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
+                </button>
+              </div>
+              
+              {localReview && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-900 leading-relaxed">{localReview}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
