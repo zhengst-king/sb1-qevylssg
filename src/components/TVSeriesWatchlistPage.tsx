@@ -467,6 +467,9 @@ export function TVSeriesWatchlistPage() {
               <EnhancedEpisodesBrowserPage 
                 series={selectedSeries} 
                 onBack={handleCloseEpisodes}
+                onUpdateStatus={handleUpdateStatus}
+                onUpdateRating={handleUpdateRating}
+                onUpdateMovie={handleUpdateMovie}
               />
             </div>
           </div>
