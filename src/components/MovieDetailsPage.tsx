@@ -187,161 +187,105 @@ export function MovieDetailsPage({
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="max-w-6xl mx-auto p-6">
-          {/* Top Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* Flat Metadata Grid - TV Episode Style */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             {movie.runtime && (
-              <div className="bg-slate-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 text-slate-600 mb-1">
-                  <Clock className="h-4 w-4" />
-                  <span className="text-sm font-medium">Runtime</span>
+              <div className="flex items-center space-x-2 text-slate-600">
+                <Clock className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Runtime:</span> {movie.runtime} min
                 </div>
-                <div className="text-2xl font-bold text-slate-900">{movie.runtime} min</div>
               </div>
             )}
 
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="text-sm font-medium text-blue-600 mb-1">Status</div>
-              <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(localStatus)}`}>
-                {localStatus}
-              </div>
-            </div>
-
-            {movie.metascore && (
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2 text-green-600 mb-1">
-                  <Award className="h-4 w-4" />
-                  <span className="text-sm font-medium">Metascore</span>
+            {movie.actors && (
+              <div className="flex items-start space-x-2 text-slate-600">
+                <Users className="h-4 w-4 mt-0.5" />
+                <div>
+                  <span className="font-medium">Stars:</span> {movie.actors}
                 </div>
-                <div className="text-2xl font-bold text-green-900">{movie.metascore}</div>
+              </div>
+            )}
+
+            {movie.country && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <MapPin className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Country:</span> {movie.country}
+                </div>
+              </div>
+            )}
+
+            {movie.language && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <MessageSquare className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Language:</span> {movie.language}
+                </div>
+              </div>
+            )}
+
+            {movie.awards && (
+              <div className="flex items-start space-x-2 text-slate-600">
+                <Award className="h-4 w-4 mt-0.5" />
+                <div>
+                  <span className="font-medium">Awards:</span> {movie.awards}
+                </div>
+              </div>
+            )}
+
+            {movie.director && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <User className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Director:</span> {movie.director}
+                </div>
+              </div>
+            )}
+
+            {movie.writer && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <User className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Writer:</span> {movie.writer}
+                </div>
+              </div>
+            )}
+
+            {movie.released && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <Calendar className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Release Date:</span> {movie.released}
+                </div>
+              </div>
+            )}
+
+            {movie.box_office && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <DollarSign className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Box Office:</span> ${movie.box_office.toLocaleString()}
+                </div>
+              </div>
+            )}
+
+            {movie.production && (
+              <div className="flex items-center space-x-2 text-slate-600">
+                <Globe className="h-4 w-4" />
+                <div>
+                  <span className="font-medium">Production:</span> {movie.production}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Additional Metadata Row */}
-          {(movie.awards || movie.country || movie.actors || movie.language) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              {movie.awards && (
-                <div className="flex items-start space-x-2 text-slate-600">
-                  <Award className="h-4 w-4 mt-0.5" />
-                  <div>
-                    <span className="font-medium">Awards:</span> {movie.awards}
-                  </div>
-                </div>
-              )}
-
-              {movie.actors && (
-                <div className="flex items-start space-x-2 text-slate-600">
-                  <Users className="h-4 w-4 mt-0.5" />
-                  <div>
-                    <span className="font-medium">Stars:</span> {movie.actors}
-                  </div>
-                </div>
-              )}
-
-              {movie.country && (
-                <div className="flex items-center space-x-2 text-slate-600">
-                  <MapPin className="h-4 w-4" />
-                  <div>
-                    <span className="font-medium">Country:</span> {movie.country}
-                  </div>
-                </div>
-              )}
-
-              {movie.language && (
-                <div className="flex items-center space-x-2 text-slate-600">
-                  <MessageSquare className="h-4 w-4" />
-                  <div>
-                    <span className="font-medium">Language:</span> {movie.language}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Plot Section */}
+          {/* Plot Text */}
           {movie.plot && (
             <div className="mb-8">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Plot</h3>
               <p className="text-slate-700 leading-relaxed">{movie.plot}</p>
             </div>
           )}
-
-          {/* Movie Information Section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-6">Movie Information</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                {movie.genre && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">Genres</h3>
-                    <p className="text-slate-600">{movie.genre}</p>
-                  </div>
-                )}
-
-                {movie.director && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">Director</h3>
-                    <div className="flex items-center space-x-2 text-slate-600">
-                      <User className="h-4 w-4" />
-                      <span>{movie.director}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.writer && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">Writer</h3>
-                    <div className="flex items-center space-x-2 text-slate-600">
-                      <User className="h-4 w-4" />
-                      <span>{movie.writer}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-6">
-                {movie.released && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">Release Date</h3>
-                    <p className="text-slate-600">{movie.released}</p>
-                  </div>
-                )}
-
-                {movie.imdb_url && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">External Links</h3>
-                    <a
-                      href={movie.imdb_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 px-3 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span>View on IMDb</span>
-                    </a>
-                  </div>
-                )}
-
-                {movie.box_office && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">Box Office</h3>
-                    <div className="flex items-center space-x-2 text-slate-600">
-                      <DollarSign className="h-4 w-4" />
-                      <span>${movie.box_office.toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.production && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-2">Production</h3>
-                    <p className="text-slate-600">{movie.production}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* My Tracking Section */}
           <div className="mb-8">
