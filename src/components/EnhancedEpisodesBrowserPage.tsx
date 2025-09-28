@@ -346,17 +346,22 @@ export function EnhancedEpisodesBrowserPage({
       setDateWatchedError('Date cannot be in the future');
       return;
     }
-    
+  
     setDateWatchedError(null);
-    
+  
+    // Update local state immediately for UI responsiveness
+    setLocalDateWatched(dateString || null);
+  
     if (!onUpdateMovie) return;
-    
+  
     setIsUpdating(true);
     try {
       await onUpdateMovie(series.id!, { date_watched: dateString || null });
     } catch (err) {
       setDateWatchedError('Failed to update watch date');
       console.error('Failed to update watch date:', err);
+      // Revert local state on error
+      setLocalDateWatched(series.date_watched || null);
     } finally {
       setIsUpdating(false);
     }
