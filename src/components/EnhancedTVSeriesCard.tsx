@@ -69,7 +69,7 @@ export function EnhancedTVSeriesCard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all duration-300">
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all duration-200">
       {/* Portrait Poster Container - 2/3 Aspect Ratio like My Discs */}
       <div className="aspect-[2/3] relative bg-slate-100">
         {movie.poster_url ? (
@@ -81,61 +81,61 @@ export function EnhancedTVSeriesCard({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-400">
-            <Tv className="h-12 w-12" />
+            <Tv className="h-8 w-8" />
           </div>
         )}
 
         {/* Top Row: TV Series Badge */}
-        <div className="absolute top-2 left-2">
-          <div className="flex items-center space-x-1 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-medium shadow-sm">
-            <Tv className="h-3 w-3" />
-            <span>TV Series</span>
+        <div className="absolute top-1.5 left-1.5">
+          <div className="flex items-center space-x-1 bg-purple-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium shadow-sm">
+            <Tv className="h-2.5 w-2.5" />
+            <span>TV</span>
           </div>
         </div>
 
         {/* Top Right: IMDb Link */}
         {movie.imdb_id && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-1.5 right-1.5">
             <a
               href={`https://www.imdb.com/title/${movie.imdb_id}/`}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-2 py-1 rounded text-xs transition-colors duration-200 shadow-sm"
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-medium p-1 rounded text-xs transition-colors duration-200 shadow-sm"
               onClick={(e) => e.stopPropagation()}
             >
-              <ExternalLink className="h-3 w-3" />
+              <ExternalLink className="h-2.5 w-2.5" />
             </a>
           </div>
         )}
 
         {/* Bottom Overlay: Status Badge */}
-        <div className="absolute bottom-2 left-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusColor(movie.status)}`}>
+        <div className="absolute bottom-1.5 left-1.5">
+          <span className={`px-1.5 py-0.5 rounded text-xs font-medium shadow-sm ${getStatusColor(movie.status)}`}>
             {movie.status}
           </span>
         </div>
 
         {/* Episode Loading Indicator */}
         {episodeStatus.isBeingFetched && (
-          <div className="absolute bottom-2 right-2">
-            <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse shadow-sm">
-              Loading...
+          <div className="absolute bottom-1.5 right-1.5">
+            <div className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded animate-pulse shadow-sm">
+              •••
             </div>
           </div>
         )}
       </div>
 
-      {/* Content Below Poster */}
-      <div className="p-4 space-y-3">
-        {/* Title */}
+      {/* Content Below Poster - Compact */}
+      <div className="p-3 space-y-2">
+        {/* Title - Smaller */}
         <div>
-          <h3 className="font-bold text-slate-900 text-lg leading-tight line-clamp-2">
+          <h3 className="font-semibold text-slate-900 text-sm leading-tight line-clamp-2">
             {movie.title}
           </h3>
         </div>
 
-        {/* Year and Rating Row */}
-        <div className="flex items-center justify-between text-sm">
+        {/* Year and Rating Row - Compact */}
+        <div className="flex items-center justify-between text-xs">
           {/* Year */}
           {movie.year && (
             <div className="flex items-center space-x-1 text-slate-600">
@@ -149,28 +149,25 @@ export function EnhancedTVSeriesCard({
             <div className="flex items-center space-x-1 text-slate-600">
               <Star className="h-3 w-3 text-yellow-500 fill-current" />
               <span className="font-medium">{movie.imdb_score.toFixed(1)}</span>
-              {movie.imdb_votes && (
-                <span className="text-slate-400 text-xs">({movie.imdb_votes})</span>
-              )}
             </div>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex space-x-2 pt-2">
+        {/* Action Buttons - Compact */}
+        <div className="flex space-x-1 pt-1">
           {/* Episodes Button */}
           <button
             onClick={() => onViewEpisodes(movie)}
-            className="flex-1 flex items-center justify-center space-x-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-all duration-200"
+            className="flex-1 flex items-center justify-center space-x-1 px-2 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded transition-all duration-200"
             title={episodeStatus.cached ? 
               `View ${episodeStatus.totalEpisodes} episodes across ${episodeStatus.totalSeasons} seasons` : 
               'View episodes (will fetch if needed)'
             }
           >
-            <Play className="h-4 w-4" />
+            <Play className="h-3 w-3" />
             <span>Episodes</span>
             {episodeStatus.cached && episodeStatus.totalEpisodes > 0 && (
-              <span className="bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+              <span className="bg-purple-500 text-white text-xs px-1 py-0.5 rounded-full leading-none">
                 {episodeStatus.totalEpisodes}
               </span>
             )}
@@ -179,10 +176,10 @@ export function EnhancedTVSeriesCard({
           {/* Delete Button */}
           <button
             onClick={handleDelete}
-            className="flex items-center justify-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all duration-200"
+            className="flex items-center justify-center px-2 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded transition-all duration-200"
             title="Remove from watchlist"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3" />
           </button>
         </div>
       </div>
