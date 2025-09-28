@@ -66,6 +66,7 @@ export function EnhancedEpisodesBrowserPage({
   const [localRating, setLocalRating] = useState<number | null>(series.user_rating || null);
   const [localStatus, setLocalStatus] = useState<Movie['status']>(series.status);
   const [localReview, setLocalReview] = useState<string | null>(series.user_review || null);
+  const [localDateWatched, setLocalDateWatched] = useState<string | null>(series.date_watched || null);
   
   // Dynamic season management
   const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
@@ -87,6 +88,7 @@ export function EnhancedEpisodesBrowserPage({
     setLocalRating(series.user_rating || null);
     setLocalStatus(series.status);
     setLocalReview(series.user_review || null);
+    setLocalDateWatched(series.date_watched || null);
   }, [series.user_rating, series.status, series.user_review]);
 
   // Load episodes for current season from background cache
@@ -648,7 +650,7 @@ export function EnhancedEpisodesBrowserPage({
                         <label className="text-sm font-medium text-slate-700">Date Watched:</label>
                         <input
                           type="date"
-                          value={series.date_watched || ''}
+                          value={localDateWatched || ''}
                           onChange={(e) => handleDateWatchedChange(e.target.value)}
                           disabled={isUpdating}
                           max={getTodayDateString()}
