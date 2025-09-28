@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
-  Film, 
   Calendar, 
   Clock, 
   MapPin,
@@ -186,76 +185,104 @@ export function MovieDetailsPage({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="max-w-6xl mx-auto p-6">
-          {/* Movie Summary Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              {movie.metascore && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Award className="h-4 w-4 text-green-500" />
-                    <span className="font-semibold text-green-800">Metascore</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-900">{movie.metascore}</div>
+          {/* Top Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {movie.runtime && (
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="flex items-center space-x-2 text-slate-600 mb-1">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-sm font-medium">Runtime</span>
                 </div>
-              )}
+                <div className="text-2xl font-bold text-slate-900">{movie.runtime} min</div>
+              </div>
+            )}
 
-              {movie.runtime && (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Clock className="h-4 w-4 text-slate-500" />
-                    <span className="font-semibold text-slate-800">Runtime</span>
-                  </div>
-                  <div className="text-2xl font-bold text-slate-900">{movie.runtime} min</div>
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="font-semibold text-blue-800">Status</span>
-                </div>
-                <div className={`text-lg font-bold px-3 py-1 rounded-full text-sm ${getStatusColor(localStatus)}`}>
-                  {localStatus}
-                </div>
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="text-sm font-medium text-blue-600 mb-1">Status</div>
+              <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(localStatus)}`}>
+                {localStatus}
               </div>
             </div>
 
-            {/* Plot */}
-            {movie.plot && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <h3 className="font-semibold text-slate-900 mb-2">Plot</h3>
-                <p className="text-slate-700 leading-relaxed">{movie.plot}</p>
+            {movie.metascore && (
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="flex items-center space-x-2 text-green-600 mb-1">
+                  <Award className="h-4 w-4" />
+                  <span className="text-sm font-medium">Metascore</span>
+                </div>
+                <div className="text-2xl font-bold text-green-900">{movie.metascore}</div>
               </div>
             )}
           </div>
 
+          {/* Additional Metadata Row */}
+          {(movie.awards || movie.country || movie.actors || movie.language) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {movie.awards && (
+                <div className="flex items-start space-x-2 text-slate-600">
+                  <Award className="h-4 w-4 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Awards:</span> {movie.awards}
+                  </div>
+                </div>
+              )}
+
+              {movie.actors && (
+                <div className="flex items-start space-x-2 text-slate-600">
+                  <Users className="h-4 w-4 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Stars:</span> {movie.actors}
+                  </div>
+                </div>
+              )}
+
+              {movie.country && (
+                <div className="flex items-center space-x-2 text-slate-600">
+                  <MapPin className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Country:</span> {movie.country}
+                  </div>
+                </div>
+              )}
+
+              {movie.language && (
+                <div className="flex items-center space-x-2 text-slate-600">
+                  <MessageSquare className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Language:</span> {movie.language}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Plot Section */}
+          {movie.plot && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Plot</h3>
+              <p className="text-slate-700 leading-relaxed">{movie.plot}</p>
+            </div>
+          )}
+
           {/* Movie Information Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">Movie Information</h2>
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-slate-900 mb-6">Movie Information</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
                 {movie.genre && (
                   <div>
                     <h3 className="font-medium text-slate-900 mb-2">Genres</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {movie.genre.split(', ').map((genre, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm"
-                        >
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
+                    <p className="text-slate-600">{movie.genre}</p>
                   </div>
                 )}
 
                 {movie.director && (
                   <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Director</h3>
-                    <div className="flex items-center space-x-2 text-slate-700">
+                    <h3 className="font-medium text-slate-900 mb-2">Director</h3>
+                    <div className="flex items-center space-x-2 text-slate-600">
                       <User className="h-4 w-4" />
                       <span>{movie.director}</span>
                     </div>
@@ -264,83 +291,26 @@ export function MovieDetailsPage({
 
                 {movie.writer && (
                   <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Writer</h3>
-                    <div className="flex items-center space-x-2 text-slate-700">
+                    <h3 className="font-medium text-slate-900 mb-2">Writer</h3>
+                    <div className="flex items-center space-x-2 text-slate-600">
                       <User className="h-4 w-4" />
                       <span>{movie.writer}</span>
                     </div>
                   </div>
                 )}
-
-                {movie.country && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Country</h3>
-                    <div className="flex items-center space-x-2 text-slate-700">
-                      <MapPin className="h-4 w-4" />
-                      <span>{movie.country}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.language && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Language</h3>
-                    <div className="flex items-center space-x-2 text-slate-700">
-                      <Globe className="h-4 w-4" />
-                      <span>{movie.language}</span>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              <div className="space-y-4">
-                {movie.actors && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Cast</h3>
-                    <div className="flex items-start space-x-2 text-slate-700">
-                      <Users className="h-4 w-4 mt-0.5" />
-                      <span>{movie.actors}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.box_office && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Box Office</h3>
-                    <div className="flex items-center space-x-2 text-slate-700">
-                      <DollarSign className="h-4 w-4" />
-                      <span>${movie.box_office.toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.awards && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Awards</h3>
-                    <div className="flex items-start space-x-2 text-slate-700">
-                      <Award className="h-4 w-4 mt-0.5" />
-                      <span>{movie.awards}</span>
-                    </div>
-                  </div>
-                )}
-
-                {movie.production && (
-                  <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Production</h3>
-                    <p className="text-slate-700">{movie.production}</p>
-                  </div>
-                )}
-
+              <div className="space-y-6">
                 {movie.released && (
                   <div>
-                    <h3 className="font-medium text-slate-900 mb-1">Release Date</h3>
-                    <p className="text-slate-700">{movie.released}</p>
+                    <h3 className="font-medium text-slate-900 mb-2">Release Date</h3>
+                    <p className="text-slate-600">{movie.released}</p>
                   </div>
                 )}
 
                 {movie.imdb_url && (
                   <div>
-                    <h3 className="font-medium text-slate-900 mb-1">External Links</h3>
+                    <h3 className="font-medium text-slate-900 mb-2">External Links</h3>
                     <a
                       href={movie.imdb_url}
                       target="_blank"
@@ -352,15 +322,32 @@ export function MovieDetailsPage({
                     </a>
                   </div>
                 )}
+
+                {movie.box_office && (
+                  <div>
+                    <h3 className="font-medium text-slate-900 mb-2">Box Office</h3>
+                    <div className="flex items-center space-x-2 text-slate-600">
+                      <DollarSign className="h-4 w-4" />
+                      <span>${movie.box_office.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {movie.production && (
+                  <div>
+                    <h3 className="font-medium text-slate-900 mb-2">Production</h3>
+                    <p className="text-slate-600">{movie.production}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* My Tracking Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">My Tracking</h2>
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-slate-900 mb-6">My Tracking</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               {/* Status Control */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
@@ -411,7 +398,7 @@ export function MovieDetailsPage({
             </div>
 
             {/* Review Section */}
-            <div className="mt-6">
+            <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-slate-700">My Review</label>
                 <button
