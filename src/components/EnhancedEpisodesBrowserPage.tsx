@@ -175,17 +175,10 @@ export function EnhancedEpisodesBrowserPage({
       } else {
         setEpisodes([]);
         
-        if (!cacheStatus.isBeingFetched) {
-          try {
-            const episodeIntegrationService = await import('../services/episodeIntegrationService');
-            const queueResult = await episodeIntegrationService.queueSeriesForDiscovery(series.imdb_id);
-            
-            if (queueResult.success) {
-              setError(`Season ${seasonNumber} is being loaded in the background. Please check back in a moment.`);
-            }
-          } catch (error) {
-            setError('Failed to load episodes. Please try again.');
-          }
+        if (cacheStatus.isBeingFetched) {
+          setError(`Season ${seasonNumber} is being loaded in the background. Please check back in a moment.`);
+        } else {
+          setError(`No episodes found for Season ${seasonNumber}. This season might not be available yet.`);
         }
       }
     } catch (error) {
