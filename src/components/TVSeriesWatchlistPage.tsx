@@ -33,16 +33,48 @@ export function TVSeriesWatchlistPage() {
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() + 5 },
-    imdbRating: { min: 0, max: 10 },
-    genres: [],
-    directors: [],
-    actors: '',
-    countries: [],
-    myRating: { min: 1, max: 10 },
-    status: 'All'
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [filters, setFilters] = useState<FilterState>(() => {
+    // Load filters from localStorage on initial mount
+    try {
+      const savedFilters = localStorage.getItem('watchlist-filters-tv');
+      if (savedFilters) {
+        const parsed = JSON.parse(savedFilters);
+        // Update year range max to current value
+        parsed.yearRange.max = Math.max(parsed.yearRange.max, new Date().getFullYear() + 5);
+        return parsed;
+      }
+    } catch (error) {
+      console.error('Failed to parse saved filters:', error);
+    }
+  
+    // Return default filters if no saved filters or error
+    return {
+      yearRange: { min: 1900, max: new Date().getFullYear() + 5 },
+      imdbRating: { min: 0, max: 10 },
+      genres: [],
+      directors: [],
+      actors: '',
+      countries: [],
+      myRating: { min: 1, max: 10 },
+      status: 'All'
+    };
   });
+
+  // Calculate active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    const currentYear = new Date().getFullYear() + 5;
+    if (filters.yearRange.min !== 1900 || filters.yearRange.max !== currentYear) count++;
+    if (filters.imdbRating.min !== 0 || filters.imdbRating.max !== 10) count++;
+    if (filters.genres.length > 0) count++;
+    if (filters.directors.length > 0) count++;
+    if (filters.actors.trim() !== '') count++;
+    if (filters.countries.length > 0) count++;
+    if (filters.myRating.min !== 1 || filters.myRating.max !== 10) count++;
+    if (filters.status !== 'All') count++;
+    return count;
+  }, [filters]);
 
   // Add keyboard and click-outside handlers for sort dropdown
   useEffect(() => {
