@@ -343,7 +343,7 @@ export function MovieDetailsPage({
             </div>
 
             {/* Date Watched */}
-            {localStatus === 'Watched' && (
+            {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
               <div className="flex items-center space-x-2 text-sm">
                 <span className="text-slate-600">Date Watched:</span>
                 <input
