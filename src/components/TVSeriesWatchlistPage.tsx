@@ -570,6 +570,7 @@ export function TVSeriesWatchlistPage() {
 
               {/* Export Button */}
               <button
+                onClick={() => downloadTVSeriesCSV(movies)}
                 className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
               >
                 <Download className="h-4 w-4" />
