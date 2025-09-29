@@ -102,6 +102,33 @@ export function TVSeriesWatchlistPage() {
     };
   }, [showSortDropdown]);
 
+  // Close dropdowns on Escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowSortDropdown(false);
+        setShowFilterPanel(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.sort-dropdown') && !target.closest('.filter-dropdown')) {
+        setShowSortDropdown(false);
+        setShowFilterPanel(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const filteredMovies = useMovieFilters(movies, filters);
 
   // Calculate counts based on all movies EXCEPT status filter (so counts don't become 0)
