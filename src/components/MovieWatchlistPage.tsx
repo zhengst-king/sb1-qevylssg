@@ -36,7 +36,7 @@ export function MovieWatchlistPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<FilterState>(() => {
     // Load filters from localStorage on initial mount
     const savedFilters = localStorage.getItem('watchlist-filters');
     if (savedFilters) {
