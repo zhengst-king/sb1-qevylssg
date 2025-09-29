@@ -76,6 +76,16 @@ export function TVSeriesWatchlistPage() {
     return count;
   }, [filters]);
 
+  // Wrapper function to save filters to localStorage when they change
+  const handleFiltersChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    try {
+      localStorage.setItem('watchlist-filters-tv', JSON.stringify(newFilters));
+    } catch (error) {
+      console.error('Failed to save TV filters to localStorage:', error);
+    }
+  };
+
   // Add keyboard and click-outside handlers for sort dropdown
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -246,7 +256,8 @@ export function TVSeriesWatchlistPage() {
   }, [filteredMovies, sortBy, sortOrder]);
 
   const handleStatusFilter = (status: FilterState['status']) => {
-    setFilters(prev => ({ ...prev, status }));
+    const newFilters = { ...filters, status };
+    handleFiltersChange(newFilters);
   };
 
   const handleSortChange = (newSortBy: typeof sortBy) => {
@@ -360,7 +371,7 @@ export function TVSeriesWatchlistPage() {
 
                 {showFilterPanel && (
                   <div className="absolute top-full left-0 mt-2 w-[600px] z-20">
-                    <FilterPanel movies={movies} onFiltersChange={setFilters} />
+                    <FilterPanel movies={movies} onFiltersChange={handleFiltersChange} />
                   </div>
                 )}
               </div>
