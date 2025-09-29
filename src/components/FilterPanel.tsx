@@ -35,7 +35,7 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [directorSearch, setDirectorSearch] = useState(''); // NEW: Director search instead of checkboxes
   const filterRef = useRef<HTMLDivElement>(null); // NEW: For outside click detection
