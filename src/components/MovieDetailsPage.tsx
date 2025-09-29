@@ -12,7 +12,8 @@ import {
   Globe,
   ExternalLink,
   MessageSquare,
-  Eye
+  Eye,
+  Film
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
@@ -188,9 +189,9 @@ export function MovieDetailsPage({
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="max-w-6xl mx-auto p-6">
           {/* Flat Metadata Grid - TV Episode Style */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {movie.runtime && (
-              <div className="flex items-center space-x-2 text-slate-600">
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
                 <Clock className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Runtime:</span> {movie.runtime} min
@@ -199,7 +200,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.actors && (
-              <div className="flex items-start space-x-2 text-slate-600">
+              <div className="flex items-start space-x-2 text-slate-600 text-sm">
                 <Users className="h-4 w-4 mt-0.5" />
                 <div>
                   <span className="font-medium">Stars:</span> {movie.actors}
@@ -208,7 +209,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.country && (
-              <div className="flex items-center space-x-2 text-slate-600">
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
                 <MapPin className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Country:</span> {movie.country}
@@ -217,8 +218,8 @@ export function MovieDetailsPage({
             )}
 
             {movie.language && (
-              <div className="flex items-center space-x-2 text-slate-600">
-                <MessageSquare className="h-4 w-4" />
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                <Globe className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Language:</span> {movie.language}
                 </div>
@@ -226,7 +227,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.awards && (
-              <div className="flex items-start space-x-2 text-slate-600">
+              <div className="flex items-start space-x-2 text-slate-600 text-sm">
                 <Award className="h-4 w-4 mt-0.5" />
                 <div>
                   <span className="font-medium">Awards:</span> {movie.awards}
@@ -235,7 +236,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.director && (
-              <div className="flex items-center space-x-2 text-slate-600">
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
                 <User className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Director:</span> {movie.director}
@@ -244,7 +245,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.writer && (
-              <div className="flex items-center space-x-2 text-slate-600">
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
                 <User className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Writer:</span> {movie.writer}
@@ -253,7 +254,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.released && (
-              <div className="flex items-center space-x-2 text-slate-600">
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
                 <Calendar className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Release Date:</span> {movie.released}
@@ -262,7 +263,7 @@ export function MovieDetailsPage({
             )}
 
             {movie.box_office && (
-              <div className="flex items-center space-x-2 text-slate-600">
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
                 <DollarSign className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Box Office:</span> ${movie.box_office.toLocaleString()}
@@ -271,8 +272,8 @@ export function MovieDetailsPage({
             )}
 
             {movie.production && (
-              <div className="flex items-center space-x-2 text-slate-600">
-                <Globe className="h-4 w-4" />
+              <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                <Film className="h-4 w-4" />
                 <div>
                   <span className="font-medium">Production:</span> {movie.production}
                 </div>
@@ -282,86 +283,90 @@ export function MovieDetailsPage({
 
           {/* Plot Text */}
           {movie.plot && (
-            <div className="mb-8">
-              <p className="text-slate-700 leading-relaxed">{movie.plot}</p>
+            <div className="mb-6">
+              <p className="text-slate-700 leading-relaxed text-sm">{movie.plot}</p>
             </div>
           )}
 
-          {/* My Tracking Section */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-6">My Tracking</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              {/* Status Control */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                <select
-                  value={localStatus}
-                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                  disabled={isUpdating}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-                >
-                  <option value="To Watch">To Watch</option>
-                  <option value="Watching">Watching</option>
-                  <option value="Watched">Watched</option>
-                  <option value="To Watch Again">To Watch Again</option>
-                </select>
-              </div>
+          {/* Tracking Controls - TV Episode Style */}
+          <div className="flex flex-wrap items-center gap-6 mb-6">
+            {/* My Rating */}
+            <div className="flex items-center space-x-2 text-sm">
+              <span className="text-slate-600">My Rating:</span>
+              <select
+                value={localRating || ''}
+                onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
+                disabled={isUpdating}
+                className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+              >
+                <option value="">No rating</option>
+                {[...Array(10)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}/10</option>
+                ))}
+              </select>
+              {movie.rating_updated_at && (
+                <span className="text-xs text-slate-400">
+                  {formatRelativeTime(movie.rating_updated_at)}
+                </span>
+              )}
+            </div>
 
-              {/* Rating Control */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">My Rating</label>
-                <select
-                  value={localRating || ''}
-                  onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
-                  disabled={isUpdating}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">No rating</option>
-                  {[...Array(10)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}/10</option>
-                  ))}
-                </select>
-              </div>
+            {/* Add Review Button */}
+            <button
+              onClick={() => setShowReviewModal(true)}
+              disabled={isUpdating}
+              className="flex items-center space-x-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 hover:border-blue-400 rounded transition-colors disabled:cursor-not-allowed"
+            >
+              <MessageSquare className="h-3 w-3" />
+              <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
+            </button>
 
-              {/* Date Watched Control */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Date Watched</label>
+            {/* Status */}
+            <div className="flex items-center space-x-2 text-sm">
+              <span className="text-slate-600">Status:</span>
+              <select
+                value={localStatus}
+                onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                disabled={isUpdating}
+                className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+              >
+                <option value="To Watch">To Watch</option>
+                <option value="Watching">Watching</option>
+                <option value="Watched">Watched</option>
+                <option value="To Watch Again">To Watch Again</option>
+              </select>
+              {movie.status_updated_at && (
+                <span className="text-xs text-slate-400">
+                  {formatRelativeTime(movie.status_updated_at)}
+                </span>
+              )}
+            </div>
+
+            {/* Date Watched */}
+            {localStatus === 'Watched' && (
+              <div className="flex items-center space-x-2 text-sm">
+                <span className="text-slate-600">Date Watched:</span>
                 <input
                   type="date"
                   value={localDateWatched || ''}
                   onChange={(e) => handleDateWatchedChange(e.target.value)}
                   disabled={isUpdating}
                   max={getTodayDateString()}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
                 />
                 {dateWatchedError && (
-                  <p className="text-red-600 text-sm mt-1">{dateWatchedError}</p>
+                  <span className="text-xs text-red-600">{dateWatchedError}</span>
                 )}
               </div>
-            </div>
-
-            {/* Review Section */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="block text-sm font-medium text-slate-700">My Review</label>
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  disabled={isUpdating}
-                  className="flex items-center space-x-2 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
-                </button>
-              </div>
-              
-              {localReview && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-blue-900 leading-relaxed">{localReview}</p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
+
+          {/* Review Display */}
+          {localReview && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+              <p className="text-blue-900 text-sm leading-relaxed">{localReview}</p>
+            </div>
+          )}
         </div>
       </div>
 
