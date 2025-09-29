@@ -267,11 +267,11 @@ const sortedMovies = useMemo(() => {
         break;
     }
 
-    // ✅ COMPLETE SORTING LOGIC - Make sure both return statements are complete!
+    // Complete sorting logic with BOTH return statements fully formed
     if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
     } else {
-      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;  // ← THIS LINE WAS INCOMPLETE!
+      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;  // ← THIS LINE MUST BE COMPLETE!
     }
   });
 }, [filteredMovies, sortBy, sortOrder]);
