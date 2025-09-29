@@ -360,7 +360,7 @@ export function MovieWatchlistPage() {
     }
   };
 
-  const handleDelete = async (movieId: string) => {
+  const handleDeleteMovie = async (movieId: string) => {
     await deleteMovie(movieId);
     
     // Close modal if the deleted movie was being viewed
@@ -643,7 +643,7 @@ export function MovieWatchlistPage() {
           </>
         )}
 
-        {/* Movies List */}
+        {/* Movies Grid */}
         <div className="space-y-6">
           {sortedMovies.length === 0 ? (
             <div className="bg-white rounded-xl p-8 border border-slate-200 text-center">
@@ -663,17 +663,19 @@ export function MovieWatchlistPage() {
               </button>
             </div>
           ) : (
-            sortedMovies.map((movie) => (
-              <WatchlistCard
-                key={movie.id}
-                movie={movie}
-                onUpdateStatus={handleUpdateStatus}
-                onUpdateRating={handleUpdateRating}
-                onUpdateMovie={handleUpdateMovie}
-                onDelete={handleDelete}
-                onViewDetails={handleViewDetails}
-              />
-            ))
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {sortedMovies.map((movie) => (
+                <WatchlistCard
+                  key={movie.id}
+                  movie={movie}
+                  onUpdateStatus={handleUpdateStatus}
+                  onUpdateRating={handleUpdateRating}
+                  onUpdateMovie={handleUpdateMovie}
+                  onDelete={handleDeleteMovie}
+                  onViewDetails={handleViewDetails}
+                />
+              ))}
+            </div>
           )}
         </div>
 
