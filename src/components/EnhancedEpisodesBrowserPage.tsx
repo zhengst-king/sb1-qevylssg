@@ -733,81 +733,99 @@ export function EnhancedEpisodesBrowserPage({
 
                     {/* Episode Card Content */}
                     <div className="p-6">
-                      {/* Episode Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-purple-100 p-2 rounded-lg">
-                            <Play className="h-5 w-5 text-purple-600" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-slate-900 leading-tight">
-                              Episode {episode.episode}
-                            </h3>
-                            <p className="text-sm text-slate-500">Season {episode.season}</p>
-                          </div>
+                      {/* Episode Number */}
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="bg-purple-100 p-2 rounded-lg">
+                          <Play className="h-5 w-5 text-purple-600" />
                         </div>
-                        
-                        {episode.imdbRating && episode.imdbRating !== 'N/A' && (
-                          <div className="flex items-center space-x-1 text-sm">
-                            <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                            <span className="font-medium">{episode.imdbRating}</span>
-                          </div>
-                        )}
+                        <div>
+                          <h3 className="font-semibold text-slate-900 leading-tight">
+                            Episode {episode.episode}
+                          </h3>
+                          <p className="text-sm text-slate-500">Season {episode.season}</p>
+                        </div>
                       </div>
 
-                      {/* Episode Title */}
-                      {episode.title && (
-                        <h4 className="text-lg font-medium text-slate-800 mb-3 leading-tight">
-                          {episode.title}
-                        </h4>
-                      )}
-
-                      {/* Episode Plot */}
-                      {episode.plot && episode.plot !== 'N/A' && (
-                        <p className="text-sm text-slate-600 leading-relaxed mb-4 line-clamp-4">
-                          {episode.plot}
-                        </p>
-                      )}
-
-                      {/* Episode Footer */}
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                        <div className="flex items-center space-x-3">
+                      {/* Episode Title with Air Date, Runtime, and IMDb Link */}
+                      <div className="mb-3">
+                        {episode.title && (
+                          <h4 className="text-lg font-medium text-slate-800 leading-tight mb-2">
+                            {episode.title}
+                          </h4>
+                        )}
+                        <div className="flex items-center flex-wrap gap-3 text-xs text-slate-500">
                           {episode.released && (
-                            <div className="flex items-center space-x-1 text-xs text-slate-500">
+                            <div className="flex items-center space-x-1">
                               <Calendar className="h-3 w-3" />
-                              <span>{episode.released}</span>
+                              <span>{new Date(episode.released).toLocaleDateString()}</span>
                             </div>
                           )}
-                          
-                          {episode.runtime && (
-                            <div className="flex items-center space-x-1 text-xs text-slate-500">
+                          {episode.runtime && episode.runtime !== 'N/A' && (
+                            <div className="flex items-center space-x-1">
                               <Clock className="h-3 w-3" />
                               <span>{episode.runtime}</span>
                             </div>
                           )}
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <a
-                            href={getEpisodeIMDbUrl(episode)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-3 py-1 rounded transition-colors"
-                          >
-                            IMDb
-                          </a>
-                          
-                          <button
-                            onClick={() => {
-                              setSelectedEpisode(episode);
-                              setShowReviewModal(true);
-                            }}
-                            className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-medium px-3 py-1 rounded transition-colors"
-                          >
-                            Review
-                          </button>
+                          {episode.imdbID && (
+                            
+                              href={`https://www.imdb.com/title/${episode.imdbID}/`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-2 py-1 rounded text-xs transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              <span>IMDb</span>
+                            </a>
+                          )}
+                          {episode.imdbRating && episode.imdbRating !== 'N/A' && (
+                            <div className="flex items-center space-x-1">
+                              <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                              <span className="font-medium">{episode.imdbRating}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
+
+                      {/* Episode Status and Rating */}
+                      <div className="flex items-center gap-3 mb-3">
+                        {/* Status Selector */}
+                        <select
+                          value={episode.status || 'To Watch'}
+                          onChange={(e) => {
+                            // Handle episode status change
+                            console.log('Episode status changed:', e.target.value);
+                          }}
+                          className="flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="To Watch">To Watch</option>
+                          <option value="Watching">Watching</option>
+                          <option value="Watched">Watched</option>
+                          <option value="To Watch Again">To Watch Again</option>
+                        </select>
+
+                        {/* My Rating Selector */}
+                        <select
+                          value={episode.user_rating || ''}
+                          onChange={(e) => {
+                            // Handle episode rating change
+                            console.log('Episode rating changed:', e.target.value);
+                          }}
+                          className="flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">My Rating</option>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
+                            <option key={rating} value={rating}>★ {rating}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Episode Plot */}
+                      {episode.plot && episode.plot !== 'N/A' && (
+                        <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
+                          {episode.plot}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
