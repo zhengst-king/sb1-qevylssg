@@ -767,7 +767,7 @@ export function EnhancedEpisodesBrowserPage({
                             </div>
                           )}
                           {episode.imdbID && (
-                            
+                            <a
                               href={`https://www.imdb.com/title/${episode.imdbID}/`}
                               target="_blank"
                               rel="noopener noreferrer"
