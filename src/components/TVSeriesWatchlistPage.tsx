@@ -272,6 +272,105 @@ export function TVSeriesWatchlistPage() {
     });
   }, [filteredMovies, sortBy, sortOrder]);
 
+  // Export TV Series to CSV
+  const downloadTVSeriesCSV = (series: Movie[]) => {
+    // Sort by rating
+    const sortedSeries = [...series].sort((a, b) => {
+      const aRating = a.user_rating || a.imdb_score || 0;
+      const bRating = b.user_rating || b.imdb_score || 0;
+      return bRating - aRating;
+    });
+
+    // Helper function to escape CSV values
+    const escapeCSV = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      let str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // CSV Headers
+    const headers = [
+      'Title',
+      'Year',
+      'Genre',
+      'Country',
+      'Language',
+      'Runtime',
+      'Rated',
+      'Released',
+      'Director/Creator',
+      'Writer',
+      'Actors',
+      'My Rating',
+      'IMDb Rating',
+      'Metascore',
+      'IMDb Votes',
+      'Status',
+      'Date Watched',
+      'User Review',
+      'Total Seasons',
+      'Plot',
+      'Awards',
+      'IMDb ID',
+      'IMDb URL',
+      'Poster URL',
+      'Date Added'
+    ];
+
+    // Generate CSV rows
+    const rows = sortedSeries.map(show => [
+      escapeCSV(show.title),
+      escapeCSV(show.year),
+      escapeCSV(show.genre),
+      escapeCSV(show.country),
+      escapeCSV(show.language),
+      escapeCSV(show.runtime),
+      escapeCSV(show.rated),
+      escapeCSV(show.released),
+      escapeCSV(show.director),
+      escapeCSV(show.writer),
+      escapeCSV(show.actors),
+      escapeCSV(show.user_rating),
+      escapeCSV(show.imdb_score),
+      escapeCSV(show.metascore),
+      escapeCSV(show.imdb_votes),
+      escapeCSV(show.status),
+      escapeCSV(show.date_watched),
+      escapeCSV(show.user_review),
+      escapeCSV(show.total_seasons),
+      escapeCSV(show.plot),
+      escapeCSV(show.awards),
+      escapeCSV(show.imdb_id),
+      escapeCSV(show.imdb_url),
+      escapeCSV(show.poster_url),
+      escapeCSV(show.created_at ? new Date(show.created_at).toISOString().split('T')[0] : '')
+    ].join(','));
+
+    // Combine headers and rows
+    const csvContent = [headers.join(','), ...rows].join('\n');
+
+    // Add BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `my_tv_series_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleStatusFilter = (status: FilterState['status']) => {
+    const newFilters = { ...filters, status };
+    handleFiltersChange(newFilters);
+  };
+
   const handleStatusFilter = (status: FilterState['status']) => {
     const newFilters = { ...filters, status };
     handleFiltersChange(newFilters);
