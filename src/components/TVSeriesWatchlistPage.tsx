@@ -240,7 +240,7 @@ export function TVSeriesWatchlistPage() {
 // Around line 115-145, replace the entire sortedMovies useMemo with this:
 
 const sortedMovies = useMemo(() => {
-  return [...filteredMovies].sort((a, b) => {
+  const sorted = [...filteredMovies].sort((a, b) => {
     let aValue: any, bValue: any;
 
     switch (sortBy) {
@@ -267,13 +267,14 @@ const sortedMovies = useMemo(() => {
         break;
     }
 
-    // Complete sorting logic with BOTH return statements fully formed
     if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
     } else {
-      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;  // ← THIS LINE MUST BE COMPLETE!
+      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
     }
   });
+
+  return sorted;
 }, [filteredMovies, sortBy, sortOrder]);
 
   // Export TV Series to CSV
