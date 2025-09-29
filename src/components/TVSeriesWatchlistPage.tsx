@@ -366,6 +366,61 @@ const sortedMovies = useMemo(() => {
   return sorted;
 }, [filteredMovies, sortBy, sortOrder]);
 
+  const sortedMovies = useMemo(() => {
+    const sorted = [...filteredMovies].sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (sortBy) {
+        case 'title':
+          aValue = a.title?.toLowerCase() || '';
+          bValue = b.title?.toLowerCase() || '';
+          break;
+        case 'year':
+          aValue = a.year ?? 0;
+          bValue = b.year ?? 0;
+          break;
+        case 'imdb_rating':
+          aValue = a.imdb_score ?? 0;
+          bValue = b.imdb_score ?? 0;
+          break;
+        case 'user_rating':
+          aValue = a.user_rating ?? 0;
+          bValue = b.user_rating ?? 0;
+          break;
+        case 'date_added':
+        default:
+          aValue = new Date(a.created_at || 0).getTime();
+          bValue = new Date(b.created_at || 0).getTime();
+          break;
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    return sorted;
+  }, [filteredMovies, sortBy, sortOrder]);
+
+  // 🔍 DEBUG LOGGING - Add these console logs right after sortedMovies
+  useEffect(() => {
+    console.log('🎬 TV SERIES SORT DEBUG:', {
+      sortBy,
+      sortOrder,
+      filteredCount: filteredMovies.length,
+      sortedCount: sortedMovies.length,
+      firstThreeTitles: sortedMovies.slice(0, 3).map(m => ({
+        title: m.title,
+        year: m.year,
+        imdb: m.imdb_score,
+        user: m.user_rating,
+        created: m.created_at
+      }))
+    });
+  }, [sortBy, sortOrder, filteredMovies, sortedMovies]);
+
   // Export TV Series to CSV
   const downloadTVSeriesCSV = (series: Movie[]) => {
     // Sort by rating
