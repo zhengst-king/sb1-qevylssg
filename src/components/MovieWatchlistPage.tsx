@@ -430,51 +430,50 @@ export function MovieWatchlistPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8">
-          <div className="p-6 border-b border-slate-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
-                  <Film className="h-8 w-8 text-blue-600" />
-                  My Movies
-                </h1>
-                <p className="text-slate-600 mt-2">
-                  Manage your personal collection of movies
-                </p>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                {movies.length > 0 && (
-                  <button
-                    onClick={() => downloadMovieWatchlist(movies)}
-                    className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Export Lists</span>
-                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
-                      {movies.length}
-                    </span>
-                  </button>
-                )}
-
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-2">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-3">
+                <Film className="h-8 w-8 text-blue-600" />
+                My Movies
+              </h1>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {movies.length > 0 && (
                 <button
-                  onClick={() => setShowImportModal(true)}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  onClick={() => downloadMovieWatchlist(movies)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm rounded-lg transition-colors"
                 >
-                  <Upload className="h-4 w-4" />
-                  <span>Import Lists</span>
+                  <Download className="h-4 w-4" />
+                  <span>Export Lists</span>
+                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
+                    {movies.length}
+                  </span>
                 </button>
+              )}
 
-                <button
-                  onClick={handleAddItem}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Item</span>
-                </button>
-              </div>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Import Lists</span>
+              </button>
+
+              <button
+                onClick={handleAddItem}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Item</span>
+              </button>
             </div>
           </div>
+          
+          <p className="text-slate-600">
+            Manage your personal collection of movies
+          </p>
         </div>
 
         {/* Statistics Cards / Filter Buttons */}
