@@ -35,6 +35,7 @@ export function MovieWatchlistPage() {
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     yearRange: { min: 1900, max: new Date().getFullYear() },
     imdbRating: { min: 0, max: 10 },
@@ -45,6 +46,33 @@ export function MovieWatchlistPage() {
     myRating: { min: 0, max: 10 },
     status: 'All'
   });
+
+  // Close dropdowns on Escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowSortDropdown(false);
+        setShowFilterPanel(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.sort-dropdown') && !target.closest('.filter-dropdown')) {
+        setShowSortDropdown(false);
+        setShowFilterPanel(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Custom filtering logic (more comprehensive than useMovieFilters)
   const filteredMovies = useMemo(() => {
@@ -440,6 +468,103 @@ export function MovieWatchlistPage() {
             </div>
             
             <div className="flex items-center space-x-3">
+              {/* Filter Button */}
+              <div className="relative filter-dropdown">
+                <button
+                  onClick={() => {
+                    setShowFilterPanel(!showFilterPanel);
+                    setShowSortDropdown(false);
+                  }}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Filter</span>
+                  {showFilterPanel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+
+                {showFilterPanel && (
+                  <div className="absolute top-full left-0 mt-2 w-[600px] bg-white border border-slate-200 rounded-lg shadow-xl z-20">
+                    <FilterPanel movies={movies} onFiltersChange={setFilters} />
+                  </div>
+                )}
+              </div>
+
+              {/* Sort Button */}
+              <div className="relative sort-dropdown">
+                <button
+                  onClick={() => {
+                    setShowSortDropdown(!showSortDropdown);
+                    setShowFilterPanel(false);
+                  }}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Sort</span>
+                  {showSortDropdown ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+
+                {showSortDropdown && (
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-lg shadow-xl z-20">
+                    <div className="p-4 space-y-2">
+                      <button
+                        onClick={() => handleSortChange('date_added')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'date_added'
+                            ? 'bg-blue-100 text-blue-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        Date Added {sortBy === 'date_added' && (sortOrder === 'desc' ? '(Newest first)' : '(Oldest first)')}
+                      </button>
+                      
+                      <button
+                        onClick={() => handleSortChange('title')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'title'
+                            ? 'bg-blue-100 text-blue-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        Title {sortBy === 'title' && (sortOrder === 'asc' ? '(A-Z)' : '(Z-A)')}
+                      </button>
+                      
+                      <button
+                        onClick={() => handleSortChange('year')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'year'
+                            ? 'bg-blue-100 text-blue-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        Year {sortBy === 'year' && (sortOrder === 'desc' ? '(Newest first)' : '(Oldest first)')}
+                      </button>
+                      
+                      <button
+                        onClick={() => handleSortChange('imdb_rating')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'imdb_rating'
+                            ? 'bg-blue-100 text-blue-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        IMDb Rating {sortBy === 'imdb_rating' && (sortOrder === 'desc' ? '(Highest first)' : '(Lowest first)')}
+                      </button>
+                      
+                      <button
+                        onClick={() => handleSortChange('user_rating')}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                          sortBy === 'user_rating'
+                            ? 'bg-blue-100 text-blue-800 font-medium'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        My Rating {sortBy === 'user_rating' && (sortOrder === 'desc' ? '(Highest first)' : '(Lowest first)')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {movies.length > 0 && (
                 <button
                   onClick={() => downloadMovieWatchlist(movies)}
@@ -478,8 +603,7 @@ export function MovieWatchlistPage() {
 
         {/* Statistics Cards / Filter Buttons */}
         {movies.length > 0 && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
               <button
                 onClick={() => handleStatusFilter('All')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -540,98 +664,6 @@ export function MovieWatchlistPage() {
                 <div className="text-sm text-purple-600">To Watch Again</div>
               </button>
             </div>
-
-            {/* Advanced Filters and Sorting */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <FilterPanel movies={movies} onFiltersChange={setFilters} />
-              </div>
-              
-              <div className="lg:w-80 sort-dropdown">
-                <div className="bg-white rounded-xl shadow-lg border border-slate-200">
-                  <button
-                    onClick={() => setShowSortDropdown(!showSortDropdown)}
-                    className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors rounded-xl"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Filter className="h-5 w-5 text-slate-600" />
-                      <span className="font-medium text-slate-900">Sort By</span>
-                      <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
-                        {sortBy === 'date_added' && 'Date Added'}
-                        {sortBy === 'title' && 'Title'}
-                        {sortBy === 'year' && 'Year'}
-                        {sortBy === 'imdb_rating' && 'IMDb Rating'}
-                        {sortBy === 'user_rating' && 'My Rating'}
-                        {sortBy === 'title' ? (sortOrder === 'asc' ? ' A-Z' : ' Z-A') : (sortOrder === 'desc' ? ' ↓' : ' ↑')}
-                      </span>
-                    </div>
-                    {showSortDropdown ? <ChevronUp className="h-5 w-5 text-slate-600" /> : <ChevronDown className="h-5 w-5 text-slate-600" />}
-                  </button>
-
-                  {showSortDropdown && (
-                    <div className="px-6 pb-6 space-y-2 border-t border-slate-200">
-                      <div className="pt-4 space-y-1">
-                        <button
-                          onClick={() => handleSortChange('date_added')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'date_added'
-                              ? 'bg-blue-100 text-blue-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          Date Added {sortBy === 'date_added' && (sortOrder === 'desc' ? '(Newest first)' : '(Oldest first)')}
-                        </button>
-                        
-                        <button
-                          onClick={() => handleSortChange('title')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'title'
-                              ? 'bg-blue-100 text-blue-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          Title {sortBy === 'title' && (sortOrder === 'asc' ? '(A-Z)' : '(Z-A)')}
-                        </button>
-                        
-                        <button
-                          onClick={() => handleSortChange('year')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'year'
-                              ? 'bg-blue-100 text-blue-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          Year {sortBy === 'year' && (sortOrder === 'desc' ? '(Newest first)' : '(Oldest first)')}
-                        </button>
-                        
-                        <button
-                          onClick={() => handleSortChange('imdb_rating')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'imdb_rating'
-                              ? 'bg-blue-100 text-blue-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          IMDb Rating {sortBy === 'imdb_rating' && (sortOrder === 'desc' ? '(Highest first)' : '(Lowest first)')}
-                        </button>
-                        
-                        <button
-                          onClick={() => handleSortChange('user_rating')}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                            sortBy === 'user_rating'
-                              ? 'bg-blue-100 text-blue-800 font-medium'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          My Rating {sortBy === 'user_rating' && (sortOrder === 'desc' ? '(Highest first)' : '(Lowest first)')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
         )}
 
         {/* Movies Grid */}
