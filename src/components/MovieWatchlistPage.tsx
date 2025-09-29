@@ -37,15 +37,44 @@ export function MovieWatchlistPage() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    yearRange: { min: 1900, max: new Date().getFullYear() },
-    imdbRating: { min: 0, max: 10 },
-    genres: [],
-    directors: [],
-    actors: '',
-    countries: [],
-    myRating: { min: 0, max: 10 },
-    status: 'All'
+    // Load filters from localStorage on initial mount
+    const savedFilters = localStorage.getItem('watchlist-filters');
+    if (savedFilters) {
+      try {
+        const parsed = JSON.parse(savedFilters);
+        // Update year range max to current value
+        parsed.yearRange.max = Math.max(parsed.yearRange.max, new Date().getFullYear() + 5);
+        return parsed;
+      } catch (error) {
+        console.error('Failed to parse saved filters:', error);
+      }
+    }
+    return {
+      yearRange: { min: 1900, max: new Date().getFullYear() + 5 },
+      imdbRating: { min: 0, max: 10 },
+      genres: [],
+      directors: [],
+      actors: '',
+      countries: [],
+      myRating: { min: 0, max: 10 },
+      status: 'All'
+    };
   });
+
+  // Calculate active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    const currentYear = new Date().getFullYear() + 5;
+    if (filters.yearRange.min !== 1900 || filters.yearRange.max !== currentYear) count++;
+    if (filters.imdbRating.min !== 0 || filters.imdbRating.max !== 10) count++;
+    if (filters.genres.length > 0) count++;
+    if (filters.directors.length > 0) count++;
+    if (filters.actors.trim() !== '') count++;
+    if (filters.countries.length > 0) count++;
+    if (filters.myRating.min !== 0 || filters.myRating.max !== 10) count++;
+    if (filters.status !== 'All') count++;
+    return count;
+  }, [filters]);
 
   // Close dropdowns on Escape key
   React.useEffect(() => {
@@ -479,6 +508,11 @@ export function MovieWatchlistPage() {
                 >
                   <Filter className="h-4 w-4" />
                   <span>Filter</span>
+                  {activeFilterCount > 0 && (
+                    <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
+                      {activeFilterCount}
+                    </span>
+                  )}
                   {showFilterPanel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
 
