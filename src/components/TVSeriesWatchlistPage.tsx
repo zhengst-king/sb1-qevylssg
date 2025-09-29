@@ -378,7 +378,7 @@ const sortedMovies = useMemo(() => {
 
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (newSortBy === sortBy) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');  // ← USE CALLBACK!
     } else {
       setSortBy(newSortBy);
       setSortOrder(newSortBy === 'title' ? 'asc' : 'desc');
