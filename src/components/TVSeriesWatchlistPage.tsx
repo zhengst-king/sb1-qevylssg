@@ -242,8 +242,8 @@ export function TVSeriesWatchlistPage() {
 
       switch (sortBy) {
         case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
+          aValue = a.title?.toLowerCase() || '';
+          bValue = b.title?.toLowerCase() || '';
           break;
         case 'year':
           aValue = a.year ?? 0;
@@ -264,10 +264,11 @@ export function TVSeriesWatchlistPage() {
           break;
       }
 
+      // ✅ FIXED: Proper comparison logic
       if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
       } else {
-        return aValue < bValue ? 1 : -1;
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
       }
     });
   }, [filteredMovies, sortBy, sortOrder]);
