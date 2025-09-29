@@ -494,15 +494,6 @@ export function TVSeriesWatchlistPage() {
                 <div className="text-sm text-purple-600">To Watch Again</div>
               </button>
             </div>
-
-            {/* Filter Panel */}
-            <div id="filter-panel">
-              <FilterPanel
-                movies={movies}
-                filters={filters}
-                onFiltersChange={setFilters}
-              />
-            </div>
           </>
         )}
 
