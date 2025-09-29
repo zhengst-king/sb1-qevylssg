@@ -371,11 +371,6 @@ export function TVSeriesWatchlistPage() {
     handleFiltersChange(newFilters);
   };
 
-  const handleStatusFilter = (status: FilterState['status']) => {
-    const newFilters = { ...filters, status };
-    handleFiltersChange(newFilters);
-  };
-
   const handleSortChange = (newSortBy: typeof sortBy) => {
     if (newSortBy === sortBy) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
