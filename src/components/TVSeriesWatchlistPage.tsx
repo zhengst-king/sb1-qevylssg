@@ -139,6 +139,23 @@ export function TVSeriesWatchlistPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close episodes modal on Escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showEpisodesModal) {
+        handleCloseEpisodes();
+      }
+    };
+
+    if (showEpisodesModal) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+  return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showEpisodesModal]);
+
   const filteredMovies = useMovieFilters(movies, filters);
 
   // Calculate counts based on all movies EXCEPT status filter (so counts don't become 0)
