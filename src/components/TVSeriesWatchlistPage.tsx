@@ -156,7 +156,96 @@ export function TVSeriesWatchlistPage() {
     };
   }, [showEpisodesModal]);
 
-  const filteredMovies = useMovieFilters(movies, filters);
+  const filteredMovies = useMemo(() => {
+    return movies.filter(movie => {
+      // Status filter
+      if (filters.status !== 'All' && movie.status !== filters.status) {
+        return false;
+      }
+      
+      // Year filter
+      if (movie.year) {
+        if (movie.year < filters.yearRange.min || movie.year > filters.yearRange.max) {
+          return false;
+        }
+      }
+      
+      // IMDb rating filter
+      if (movie.imdb_score !== null && movie.imdb_score !== undefined) {
+        const score = Number(movie.imdb_score);
+        if (score < filters.imdbRating.min || score > filters.imdbRating.max) {
+          return false;
+        }
+      }
+      
+      // User rating filter
+      if (movie.user_rating !== null && movie.user_rating !== undefined) {
+        if (movie.user_rating < filters.myRating.min || movie.user_rating > filters.myRating.max) {
+          return false;
+        }
+      }
+      
+      // Genre filter
+      if (filters.genres.length > 0) {
+        if (!movie.genre) return false;
+        const movieGenres = movie.genre.split(', ').map(g => g.trim());
+        const hasMatchingGenre = filters.genres.some(filterGenre =>
+          movieGenres.some(movieGenre => 
+            movieGenre.toLowerCase().includes(filterGenre.toLowerCase())
+          )
+        );
+        if (!hasMatchingGenre) {
+          return false;
+        }
+      }
+      
+      // Director filter
+      if (filters.directors.length > 0) {
+        if (!movie.director) return false;
+        const movieDirector = movie.director.trim().toLowerCase();
+        const hasMatchingDirector = filters.directors.some(filterDirector =>
+          movieDirector.includes(filterDirector.toLowerCase())
+        );
+        if (!hasMatchingDirector) return false;
+      }
+      
+      // Country filter
+      if (filters.countries.length > 0) {
+        if (!movie.country) return false;
+        const countrySeparators = [', ', ',', ' / ', '/', ' | ', '|'];
+        let movieCountries = [movie.country.trim()];
+        countrySeparators.forEach(separator => {
+          const newList: string[] = [];
+          movieCountries.forEach(country => {
+            if (country.includes(separator)) {
+              newList.push(...country.split(separator).map(c => c.trim()));
+            } else {
+              newList.push(country);
+            }
+          });
+          movieCountries = newList;
+        });
+        const hasMatchingCountry = filters.countries.some(filterCountry =>
+          movieCountries.includes(filterCountry)
+        );
+        if (!hasMatchingCountry) return false;
+      }
+      
+      // Actor filter
+      if (filters.actors.trim()) {
+        if (!movie.actors || movie.actors.trim() === '' || movie.actors === 'N/A') {
+          return false;
+        }
+        const searchTerm = filters.actors.toLowerCase().trim();
+        const movieActors = movie.actors.toLowerCase();
+        if (!movieActors.includes(searchTerm)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [movies, filters]);
 
   // Calculate counts based on all movies EXCEPT status filter (so counts don't become 0)
   const movieCounts = useMemo(() => {
