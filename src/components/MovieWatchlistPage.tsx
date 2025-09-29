@@ -71,7 +71,7 @@ export function MovieWatchlistPage() {
     if (filters.directors.length > 0) count++;
     if (filters.actors.trim() !== '') count++;
     if (filters.countries.length > 0) count++;
-    if (filters.myRating.min !== 0 || filters.myRating.max !== 10) count++;
+    if (filters.myRating.min !== 1 || filters.myRating.max !== 10) count++;
     if (filters.status !== 'All') count++;
     return count;
   }, [filters]);
