@@ -1,6 +1,6 @@
 // src/components/WatchlistCard.tsx
 import React, { useState } from 'react';
-import { Star, Trash2, Calendar, MapPin, User, Users, Clock, Eye, MessageSquare, Award, DollarSign, Globe, Film, Tv } from 'lucide-react';
+import { Star, Trash2, Calendar, Film, ExternalLink, MessageSquare } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 import { ReviewModal } from './ReviewModal';
@@ -11,7 +11,7 @@ interface WatchlistCardProps {
   onUpdateRating: (id: string, rating: number | null) => void;
   onUpdateMovie: (id: string, updates: Partial<Movie>) => void;
   onDelete: (id: string) => void;
-  onViewDetails?: (movie: Movie) => void; // NEW: Add click handler for poster
+  onViewDetails?: (movie: Movie) => void;
 }
 
 export function WatchlistCard({ 
@@ -20,7 +20,7 @@ export function WatchlistCard({
   onUpdateRating, 
   onUpdateMovie, 
   onDelete,
-  onViewDetails // NEW: Accept the click handler
+  onViewDetails
 }: WatchlistCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
@@ -77,7 +77,6 @@ export function WatchlistCard({
     }
   };
 
-  // NEW: Handle poster click
   const handlePosterClick = () => {
     if (onViewDetails) {
       onViewDetails(movie);
@@ -96,246 +95,117 @@ export function WatchlistCard({
 
   return (
     <>
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-slate-200">
-      <div className="md:flex">
-        {/* NEW: Make poster clickable with cursor pointer and hover effects */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden group hover:shadow-md transition-all duration-200">
+        {/* Portrait Poster Container - 2/3 Aspect Ratio like TV Cards */}
         <div 
-          className="md:w-32 md:flex-shrink-0 cursor-pointer group relative" 
+          className="aspect-[2/3] relative bg-slate-100 cursor-pointer"
           onClick={handlePosterClick}
           title="Click to view movie details"
         >
           {movie.poster_url ? (
             <img
               src={movie.poster_url}
-              alt={movie.title}
-              className="w-full h-48 md:h-full object-cover group-hover:opacity-90 transition-opacity"
+              alt={`${movie.title} poster`}
+              className="w-full h-full object-cover"
+              loading="lazy"
             />
           ) : (
-            <div className="w-full h-48 md:h-full bg-slate-200 flex items-center justify-center group-hover:bg-slate-300 transition-colors">
-              <span className="text-slate-400 text-sm">No poster</span>
+            <div className="w-full h-full flex items-center justify-center text-slate-400">
+              <Film className="h-8 w-8" />
             </div>
           )}
-          
-          {/* NEW: Hover overlay to indicate clickability */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-            <Eye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          </div>
-        </div>
-        
-        <div className="p-6 flex-1">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <h3 className="text-xl font-bold text-slate-900">{movie.title}</h3>
-                <div className="flex items-center space-x-1">
-                  {movie.media_type === 'series' ? (
-                    <div className="flex items-center space-x-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
-                      <Tv className="h-3 w-3" />
-                      <span>TV Series</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                      <Film className="h-3 w-3" />
-                      <span>Movie</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3 mb-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(movie.status)}`}>
-                  {movie.status}
-                </span>
-                
-                {movie.year && (
-                  <div className="flex items-center space-x-1 text-sm text-slate-600">
-                    <Calendar className="h-3 w-3" />
-                    <span>{movie.year}</span>
-                  </div>
-                )}
-                
-                {movie.imdb_score && (
-                  <div className="flex items-center space-x-1 text-sm text-slate-600">
-                    <Star className="h-3 w-3 text-yellow-500" />
-                    <span>{movie.imdb_score.toFixed(1)}</span>
-                    {movie.imdb_votes && (
-                      <span className="text-slate-400">({movie.imdb_votes} votes)</span>
-                    )}
-                  </div>
-                )}
-                
-                {movie.metascore && (
-                  <div className="flex items-center space-x-1 text-sm text-slate-600">
-                    <Award className="h-3 w-3 text-green-500" />
-                    <span>{movie.metascore} Metascore</span>
-                  </div>
-                )}
-                
-                {movie.status === 'Watched' && movie.date_watched && (
-                  <div className="flex items-center space-x-1 text-sm text-green-700 bg-green-50 px-2 py-1 rounded">
-                    <Eye className="h-3 w-3" />
-                    <span>Watched {formatDateWatched(movie.date_watched)}</span>
-                  </div>
-                )}
-              </div>
+
+          {/* Top Row: Movie Badge */}
+          <div className="absolute top-1.5 left-1.5">
+            <div className="flex items-center space-x-1 bg-blue-600 text-white px-1.5 py-0.5 rounded-full text-xs font-medium shadow-sm">
+              <Film className="h-2.5 w-2.5" />
+              <span>Movie</span>
             </div>
-            
+          </div>
+
+          {/* Top Right: IMDb Link */}
+          {movie.imdb_id && (
+            <div className="absolute top-1.5 right-1.5">
+              <a
+                href={`https://www.imdb.com/title/${movie.imdb_id}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center bg-yellow-400 hover:bg-yellow-500 text-black font-medium p-1.5 rounded text-xs transition-colors duration-200 shadow-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+
+          {/* Bottom Left: Status Badge */}
+          <div className="absolute bottom-1.5 left-1.5">
+            <span className={`px-1.5 py-0.5 rounded text-xs font-medium shadow-sm ${getStatusColor(movie.status)}`}>
+              {movie.status}
+            </span>
+          </div>
+
+          {/* Bottom Right: Delete Button */}
+          <div className="absolute bottom-1.5 right-1.5">
             <button
-              onClick={handleDelete}
-              className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
               title="Remove from watchlist"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3 w-3" />
             </button>
           </div>
-          
-          <div className="space-y-2 mb-4">
-            {movie.user_review && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-start space-x-2">
-                  <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-800 mb-1">My Review</p>
-                    <p className="text-sm text-blue-700">
-                      {movie.user_review.length > 100 
-                        ? `${movie.user_review.substring(0, 100)}...` 
-                        : movie.user_review
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {movie.genre && (
-              <div className="flex flex-wrap gap-1">
-                {movie.genre.split(', ').map((genre, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs"
-                  >
-                    {genre}
-                  </span>
-                ))}
-              </div>
-            )}
-            
-            {movie.runtime && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <Clock className="h-3 w-3" />
-                <span>{movie.runtime} minutes</span>
-              </div>
-            )}
-            
-            {movie.country && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <MapPin className="h-3 w-3" />
-                <span>{movie.country}</span>
-              </div>
-            )}
-            
-            {movie.director && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <User className="h-3 w-3" />
-                <span><strong>Director:</strong> {movie.director}</span>
-              </div>
-            )}
-            
-            {movie.actors && (
-              <div className="flex items-start space-x-1 text-sm text-slate-600">
-                <Users className="h-3 w-3 mt-0.5" />
-                <span><strong>Cast:</strong> {movie.actors}</span>
-              </div>
-            )}
-            
-            {movie.box_office && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <DollarSign className="h-3 w-3" />
-                <span><strong>Box Office:</strong> ${movie.box_office.toLocaleString()}</span>
-              </div>
-            )}
-            
-            {movie.awards && (
-              <div className="flex items-start space-x-1 text-sm text-slate-600">
-                <Award className="h-3 w-3 mt-0.5" />
-                <span><strong>Awards:</strong> {movie.awards}</span>
-              </div>
-            )}
-            
-            {movie.production && (
-              <div className="flex items-center space-x-1 text-sm text-slate-600">
-                <span><strong>Production:</strong> {movie.production}</span>
-              </div>
-            )}
+
+          {/* Hover Overlay */}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-white text-xs font-medium">
+              View Details
+            </div>
           </div>
-          
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setShowReviewModal(true)}
-                disabled={isUpdating}
-                className="flex items-center space-x-2 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>{movie.user_review ? 'Edit Review' : 'Add Review'}</span>
-              </button>
-              
-              <select
-                value={movie.status}
-                onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                disabled={isUpdating}
-                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-              >
-                <option value="To Watch">To Watch</option>
-                <option value="Watching">Watching</option>
-                <option value="Watched">Watched</option>
-                <option value="To Watch Again">To Watch Again</option>
-              </select>
-              
-              <select
-                value={movie.user_rating || ''}
-                onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
-                disabled={isUpdating}
-                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-              >
-                <option value="">No rating</option>
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>{i + 1}/10</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <label className="text-sm text-slate-600">Date watched:</label>
-              <input
-                type="date"
-                value={movie.date_watched || ''}
-                onChange={(e) => handleDateWatchedChange(e.target.value)}
-                disabled={isUpdating}
-                max={getTodayDateString()}
-                className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-              />
-            </div>
-            
-            {dateWatchedError && (
-              <p className="text-red-600 text-sm">{dateWatchedError}</p>
+        </div>
+
+        {/* Content Below Poster - Clean like TV Cards */}
+        <div className="p-3 space-y-2">
+          {/* Title */}
+          <div>
+            <h3 className="font-semibold text-slate-900 text-sm leading-tight line-clamp-2 min-h-[2.5rem]">
+              {movie.title}
+            </h3>
+          </div>
+
+          {/* Year and Rating Row */}
+          <div className="flex items-center justify-between text-xs text-slate-600">
+            {/* Year */}
+            {movie.year && (
+              <div className="flex items-center space-x-1">
+                <Calendar className="h-3 w-3" />
+                <span>{movie.year}</span>
+              </div>
             )}
-            </div>
+
+            {/* IMDb Rating */}
+            {movie.imdb_score && (
+              <div className="flex items-center space-x-1">
+                <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                <span className="font-medium">{movie.imdb_score.toFixed(1)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
 
-    {showReviewModal && (
-      <ReviewModal
-        isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
-        onSave={handleSaveReview}
-        initialReview={movie.user_review || ''}
-        movieTitle={movie.title}
-      />
-    )}
+      {showReviewModal && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          onSave={handleSaveReview}
+          initialReview={movie.user_review || ''}
+          movieTitle={movie.title}
+        />
+      )}
     </>
   );
 }
