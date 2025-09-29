@@ -768,7 +768,7 @@ export function MovieWatchlistPage() {
                 onUpdateStatus={handleUpdateStatus}
                 onUpdateRating={handleUpdateRating}
                 onUpdateMovie={handleUpdateMovie}
-                onDelete={handleDelete}
+                onDelete={handleDeleteMovie}
               />
             </div>
           </div>
