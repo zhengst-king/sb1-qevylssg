@@ -325,47 +325,6 @@ export function TVSeriesWatchlistPage() {
     };
   }, [movies, filters]);
 
-  // Find this section in src/components/TVSeriesWatchlistPage.tsx
-// Around line 115-145, replace the entire sortedMovies useMemo with this:
-
-const sortedMovies = useMemo(() => {
-  const sorted = [...filteredMovies].sort((a, b) => {
-    let aValue: any, bValue: any;
-
-    switch (sortBy) {
-      case 'title':
-        aValue = a.title?.toLowerCase() || '';
-        bValue = b.title?.toLowerCase() || '';
-        break;
-      case 'year':
-        aValue = a.year ?? 0;
-        bValue = b.year ?? 0;
-        break;
-      case 'imdb_rating':
-        aValue = a.imdb_score ?? 0;
-        bValue = b.imdb_score ?? 0;
-        break;
-      case 'user_rating':
-        aValue = a.user_rating ?? 0;
-        bValue = b.user_rating ?? 0;
-        break;
-      case 'date_added':
-      default:
-        aValue = new Date(a.created_at || 0).getTime();
-        bValue = new Date(b.created_at || 0).getTime();
-        break;
-    }
-
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-    } else {
-      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-    }
-  });
-
-  return sorted;
-}, [filteredMovies, sortBy, sortOrder]);
-
   const sortedMovies = useMemo(() => {
     const sorted = [...filteredMovies].sort((a, b) => {
       let aValue: any, bValue: any;
