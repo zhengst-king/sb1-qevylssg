@@ -61,6 +61,7 @@ export function EnhancedEpisodesBrowserPage({
   const [isUpdating, setIsUpdating] = useState(false);
   const [showSeriesReviewModal, setShowSeriesReviewModal] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
+  const [isPlotExpanded, setIsPlotExpanded] = useState(false);
   
   // Local state for immediate UI updates
   const [localRating, setLocalRating] = useState<number | null>(series.user_rating || null);
@@ -486,13 +487,6 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 )}
 
-                {/* Date Watched */}
-                {localStatus === 'Watched' && series.date_watched && (
-                  <div className="flex items-center space-x-2 text-green-700 bg-green-50 px-3 py-1 rounded-lg">
-                    <Eye className="h-4 w-4" />
-                    <span>Watched {formatDateWatched(series.date_watched)}</span>
-                  </div>
-                )}
               </div>
 
               {/* Additional Metadata */}
