@@ -20,7 +20,9 @@ import {
   Award,
   Download,
   Zap,
-  Globe
+  Globe,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
@@ -61,7 +63,7 @@ export function EnhancedEpisodesBrowserPage({
   const [isUpdating, setIsUpdating] = useState(false);
   const [showSeriesReviewModal, setShowSeriesReviewModal] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
-  const [isPlotExpanded, setIsPlotExpanded] = useState(false);
+  const [isPlotExpanded, setIsPlotExpanded] = useState(false); // ✅ NEW: For plot expansion
   
   // Local state for immediate UI updates
   const [localRating, setLocalRating] = useState<number | null>(series.user_rating || null);
@@ -90,7 +92,7 @@ export function EnhancedEpisodesBrowserPage({
     setLocalStatus(series.status);
     setLocalReview(series.user_review || null);
     setLocalDateWatched(series.date_watched || null);
-  }, [series.user_rating, series.status, series.user_review]);
+  }, [series.user_rating, series.status, series.user_review, series.date_watched]);
 
   // Load episodes for current season from background cache
   useEffect(() => {
@@ -111,52 +113,36 @@ export function EnhancedEpisodesBrowserPage({
     loadQueueStatus();
   }, []);
 
- // Monitor cache status and update available seasons with async service
- useEffect(() => {
-   if (!series.imdb_id) return;
+  // Monitor cache status and update available seasons
+  useEffect(() => {
+    if (!series.imdb_id) return;
   
-   let isMounted = true; // Prevent state updates if component unmounts
+    let isMounted = true;
 
-   const updateStatus = async () => {
-     try {
-       const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
-      
-       if (!isMounted) return; // Component unmounted
-      
-       setCacheStatus(status);
-       setTotalSeasons(status.totalSeasons);
-      
-       // Update available seasons based on cached data
-       const seasons = [];
-       for (let i = 1; i <= Math.max(status.totalSeasons, 1); i++) {
-         seasons.push(i);
-       }
-       setAvailableSeasons(seasons);
-      
-       // If current season is beyond available seasons, reset to season 1
-       if (currentSeason > status.totalSeasons && status.totalSeasons > 0) {
-         setCurrentSeason(1);
-       }
-     } catch (error) {
-       console.error('[Episodes] Error updating cache status:', error);
-     }
-   };
+    const updateStatus = async () => {
+      try {
+        const status = await serverSideEpisodeService.getSeriesStatus(series.imdb_id!);
+        
+        if (!isMounted) return;
 
-   // Initial update
-   updateStatus();
+        if (status) {
+          setCacheStatus(status);
+          setTotalSeasons(status.totalSeasons || 0);
+          setAvailableSeasons(status.availableSeasons || []);
+        }
+      } catch (error) {
+        console.error('[Episodes] Error checking series status:', error);
+      }
+    };
 
-   // Set up interval to monitor changes
-   const interval = setInterval(() => {
-     if (isMounted) {
-       updateStatus();
-     }
-   }, 30000); // Check every 30 seconds
+    updateStatus();
+    const interval = setInterval(updateStatus, 30000);
 
-  return () => {
-    isMounted = false;
-    clearInterval(interval);
-  };
-}, [series.imdb_id, currentSeason]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [series.imdb_id]);
 
   const loadEpisodesFromCache = async (seasonNumber: number) => {
     if (!series.imdb_id) {
@@ -167,14 +153,14 @@ export function EnhancedEpisodesBrowserPage({
     setLoading(true);
     setError(null);
 
-    console.log(`[Episodes] Loading Season ${seasonNumber} from cache for ${series.title}`);
-
     try {
-      // Try to get episodes from server-side cache
-      const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNumber);
-    
-      if (cachedEpisodes) {
-        // Convert to our Episode interface with default user tracking
+      console.log(`[Episodes] Loading Season ${seasonNumber} from cache`);
+      const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(
+        series.imdb_id,
+        seasonNumber
+      );
+
+      if (cachedEpisodes && cachedEpisodes.length > 0) {
         const episodesWithUserData: Episode[] = cachedEpisodes.map(ep => ({
           ...ep,
           status: 'To Watch',
@@ -185,36 +171,23 @@ export function EnhancedEpisodesBrowserPage({
         }));
 
         setEpisodes(episodesWithUserData);
-        setLoading(false);
-        console.log(`[Episodes] ✓ Loaded ${episodesWithUserData.length} episodes from cache`);
+        console.log(`[Episodes] Loaded ${episodesWithUserData.length} episodes from cache`);
       } else {
-        // FIX: NO CACHED DATA - AUTOMATICALLY TRIGGER DISCOVERY
-        console.log(`[Episodes] 🔍 No cache found for ${series.title} Season ${seasonNumber} - triggering discovery`);
-  
         setEpisodes([]);
-  
-        try {
-          // Import and use integrationService to queue for discovery
-          const { integrationService } = await import('../services/integrationService');
-          const queueResult = await integrationService.queueSeriesDiscovery(
-            series.imdb_id,
-            series.title,
-            'high' // High priority for user-requested episodes
-          );
-    
-          console.log('[Episodes] 📥 Queued for discovery:', queueResult);
-    
-          if (queueResult.success) {
-            setError(`🔄 Episodes are being discovered in the background. This may take 30-60 seconds.`);
-          } else {
-            setError(`Failed to queue series for discovery: ${queueResult.error}`);
+        
+        if (!cacheStatus.isBeingFetched) {
+          try {
+            const episodeIntegrationService = await import('../services/episodeIntegrationService');
+            const queueResult = await episodeIntegrationService.queueSeriesForDiscovery(series.imdb_id);
+            
+            if (queueResult.success) {
+              setError(`Season ${seasonNumber} is being loaded in the background. Please check back in a moment.`);
+            }
+          } catch (error) {
+            setError('Failed to load episodes. Please try again.');
           }
-        } catch (importError) {
-          console.error('[Episodes] Error importing integration service:', importError);
-          setError('Failed to initialize episode discovery. Please try again.');
         }
       }
-      
     } catch (error) {
       console.error('[Episodes] Error loading episodes:', error);
       setError('Failed to load episodes. Please try again.');
@@ -268,16 +241,6 @@ export function EnhancedEpisodesBrowserPage({
     return `https://www.imdb.com/title/${series.imdb_id}/episodes?season=${episode.season}`;
   };
 
-  // Helper functions for series information display
-  const formatDateWatched = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
-
   // Parse creators for TV series
   const parseCreators = (director: string | null): string[] => {
     if (!director || director === 'N/A') return [];
@@ -286,7 +249,6 @@ export function EnhancedEpisodesBrowserPage({
 
   // Handle series rating changes
   const handleSeriesRatingChange = async (rating: number | null) => {
-    // Update local state immediately for UI responsiveness
     setLocalRating(rating);
     
     if (!onUpdateRating) return;
@@ -296,7 +258,6 @@ export function EnhancedEpisodesBrowserPage({
       await onUpdateRating(series.id!, rating);
     } catch (error) {
       console.error('Error updating series rating:', error);
-      // Revert local state on error
       setLocalRating(series.user_rating || null);
     } finally {
       setIsUpdating(false);
@@ -305,7 +266,6 @@ export function EnhancedEpisodesBrowserPage({
 
   // Handle series status changes
   const handleStatusChange = async (newStatus: Movie['status']) => {
-    // Update local state immediately for UI responsiveness
     setLocalStatus(newStatus);
     
     if (!onUpdateStatus) return;
@@ -315,16 +275,14 @@ export function EnhancedEpisodesBrowserPage({
       await onUpdateStatus(series.id!, newStatus);
     } catch (error) {
       console.error('Error updating series status:', error);
-      // Revert local state on error
       setLocalStatus(series.status);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Handle series review save - Fixed to match TV card pattern
+  // Handle series review save
   const handleSaveSeriesReview = async (review: string) => {
-    // Update local state immediately for UI responsiveness
     setLocalReview(review);
     
     if (!onUpdateMovie) return;
@@ -334,14 +292,13 @@ export function EnhancedEpisodesBrowserPage({
       await onUpdateMovie(series.id!, { user_review: review });
     } catch (error) {
       console.error('Error updating series review:', error);
-      // Revert local state on error
       setLocalReview(series.user_review || null);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Handle date watched changes - matching Movies page pattern
+  // Handle date watched changes
   const handleDateWatchedChange = async (dateString: string) => {
     if (dateString && !isValidWatchDate(dateString)) {
       setDateWatchedError('Date cannot be in the future');
@@ -349,8 +306,6 @@ export function EnhancedEpisodesBrowserPage({
     }
   
     setDateWatchedError(null);
-  
-    // Update local state immediately for UI responsiveness
     setLocalDateWatched(dateString || null);
   
     if (!onUpdateMovie) return;
@@ -361,7 +316,6 @@ export function EnhancedEpisodesBrowserPage({
     } catch (err) {
       setDateWatchedError('Failed to update watch date');
       console.error('Failed to update watch date:', err);
-      // Revert local state on error
       setLocalDateWatched(series.date_watched || null);
     } finally {
       setIsUpdating(false);
@@ -390,7 +344,6 @@ export function EnhancedEpisodesBrowserPage({
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-1">
                       <h1 className="text-2xl font-bold text-slate-900">{series.title}</h1>
-                      {/* Genre labels moved here to save space */}
                       {series.genre && series.genre !== 'N/A' && (
                         <div className="flex flex-wrap gap-1">
                           {series.genre.split(',').map(genre => {
@@ -407,7 +360,6 @@ export function EnhancedEpisodesBrowserPage({
                     <div className="flex items-center space-x-2 text-sm text-slate-600">
                       <span>Season {currentSeason}</span>
                       {episodes.length > 0 && <span>• {episodes.length} episodes</span>}
-                      {/* Enhanced cache status like TV page */}
                       {totalSeasons > 0 && cacheStatus.totalEpisodes > 0 && (
                         <div className="flex items-center space-x-1 text-green-600 bg-green-50 px-2 py-1 rounded">
                           <Download className="h-3 w-3" />
@@ -415,9 +367,9 @@ export function EnhancedEpisodesBrowserPage({
                         </div>
                       )}
                       {cacheStatus.isBeingFetched && (
-                        <div className="flex items-center space-x-1 text-purple-600 animate-pulse">
+                        <div className="flex items-center space-x-1 text-blue-600 bg-blue-50 px-2 py-1 rounded animate-pulse">
                           <Zap className="h-3 w-3" />
-                          <span>updating</span>
+                          <span>Discovering episodes...</span>
                         </div>
                       )}
                     </div>
@@ -425,44 +377,43 @@ export function EnhancedEpisodesBrowserPage({
                 </div>
               </div>
 
-              {/* Dynamic Season Selector */}
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handlePreviousSeason}
-                  disabled={currentSeason <= 1 || loading}
-                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handlePreviousSeason}
+                    disabled={currentSeason <= 1}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  
+                  <select
+                    value={currentSeason}
+                    onChange={(e) => handleSeasonSelect(parseInt(e.target.value))}
+                    className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium"
+                  >
+                    {Array.from({ length: totalSeasons || 10 }, (_, i) => i + 1).map(seasonNum => (
+                      <option key={seasonNum} value={seasonNum}>
+                        Season {seasonNum}
+                      </option>
+                    ))}
+                  </select>
 
-                <select
-                  value={currentSeason}
-                  onChange={(e) => handleSeasonSelect(parseInt(e.target.value))}
-                  disabled={loading}
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50"
-                >
-                  {availableSeasons.map(season => (
-                    <option key={season} value={season}>
-                      Season {season}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={handleNextSeason}
-                  disabled={currentSeason >= totalSeasons || loading}
-                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                  <button
+                    onClick={handleNextSeason}
+                    disabled={currentSeason >= (totalSeasons || 10)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
 
                 <button
                   onClick={handleManualRefresh}
                   disabled={loading}
-                  className="ml-3 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Refresh episodes"
+                  className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors"
                 >
-                  <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
@@ -473,7 +424,7 @@ export function EnhancedEpisodesBrowserPage({
         <div className="flex-1 overflow-auto">
           <div className="max-w-6xl mx-auto px-6 py-8">
             
-            {/* Series Information Header - Now scrollable */}
+            {/* Series Information Header */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
               
               {/* Rating and Metadata Row */}
@@ -487,12 +438,13 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 )}
 
+                {/* ✅ REMOVED: Green "Watched + date" label */}
               </div>
 
               {/* Additional Metadata */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
                 
-                {/* Creators - Enhanced for TV series */}
+                {/* Creators */}
                 {(() => {
                   const creators = parseCreators(series.director);
                   return creators.length > 0 && (
@@ -551,121 +503,122 @@ export function EnhancedEpisodesBrowserPage({
                 )}
               </div>
 
-              {/* Plot */}
+              {/* ✅ UPDATED: Plot with expand/collapse */}
               {series.plot && series.plot !== 'N/A' && (
                 <div className="bg-slate-50 p-4 rounded-lg mb-6">
-                  <p className="text-slate-700 leading-relaxed">{series.plot}</p>
+                  <div className="relative">
+                    <p className={`text-slate-700 leading-relaxed ${!isPlotExpanded ? 'line-clamp-1' : ''}`}>
+                      {series.plot}
+                    </p>
+                    {series.plot.length > 100 && (
+                      <button
+                        onClick={() => setIsPlotExpanded(!isPlotExpanded)}
+                        className="inline-flex items-center space-x-1 text-purple-600 hover:text-purple-700 text-sm font-medium mt-2 transition-colors"
+                      >
+                        <span>{isPlotExpanded ? 'Show Less' : 'Show More'}</span>
+                        {!isPlotExpanded ? (
+                          <Plus className="h-4 w-4" />
+                        ) : (
+                          <Minus className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* User Actions Section */}
-              <div className="border-t border-slate-200 pt-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {/* ✅ UPDATED: User Actions Section - NO border-t above, fields reorganized */}
+              <div className="pt-6">
+                <div className="flex flex-wrap items-center gap-4">
                   
-                  {/* Left side: My Rating and Review */}
-                  <div className="flex items-center space-x-4">
-                    {/* User Rating - Matching TV card style */}
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-slate-600">My Rating:</span>
-                      <select
-                        value={localRating || ''}
-                        onChange={(e) => handleSeriesRatingChange(e.target.value ? parseInt(e.target.value) : null)}
-                        disabled={isUpdating}
-                        className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      >
-                        <option value="">No rating</option>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
-                          <option key={rating} value={rating}>
-                            {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
-                          </option>
-                        ))}
-                      </select>
-                      {/* ADD TIMESTAMP */}
-                      {series.rating_updated_at && (
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-3 w-3 text-slate-400" />
-                          <span 
-                            className="text-xs text-slate-500 cursor-help"
-                            title={`Rating updated: ${formatExactTimestamp(series.rating_updated_at)}`}
-                          >
-                            {formatRelativeTime(series.rating_updated_at)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Add Review Button - Matching TV card style */}
-                    <button
-                      onClick={() => setShowSeriesReviewModal(true)}
+                  {/* ✅ Status - MOVED TO LEFT */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-slate-700">Status:</span>
+                    <select
+                      value={localStatus}
+                      onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
                       disabled={isUpdating}
-                      className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                      className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     >
-                      <MessageSquare className="h-4 w-4" />
-                      <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
-                    </button>
-                  </div>
-
-                  {/* Right side: Status and Website */}
-                  <div className="flex items-center space-x-3">
-                    {/* Watch Status Dropdown */}
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-slate-700">Status:</span>
-                      <select
-                        value={localStatus}
-                        onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                        disabled={isUpdating}
-                        className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      >
-                        <option value="To Watch">To Watch</option>
-                        <option value="Watching">Watching</option>
-                        <option value="Watched">Watched</option>
-                        <option value="To Watch Again">To Watch Again</option>
-                      </select>
-                      {/* ADD TIMESTAMP */}
-                      {series.status_updated_at && (
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-3 w-3 text-slate-400" />
-                          <span 
-                            className="text-xs text-slate-500 cursor-help"
-                            title={`Status updated: ${formatExactTimestamp(series.status_updated_at)}`}
-                          >
-                            {formatRelativeTime(series.status_updated_at)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Conditional Date Watched Field - Matching Movies page */}
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                  (localStatus === 'Watched' || localStatus === 'To Watch Again') ?
-                    'max-h-20 opacity-100' : 'max-h-0 opacity-0'
-                }`}>
-                  {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
-                    <div className="pt-4 border-t border-slate-200">
-                      <div className="flex items-center space-x-2">
-                        <Eye className="h-4 w-4 text-green-600" />
-                        <label className="text-sm font-medium text-slate-700">Date Watched:</label>
-                        <input
-                          type="date"
-                          value={localDateWatched || ''}
-                          onChange={(e) => handleDateWatchedChange(e.target.value)}
-                          disabled={isUpdating}
-                          max={getTodayDateString()}
-                          className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                          placeholder="Select date (optional)"
-                        />
-                        {dateWatchedError && (
-                          <span className="text-xs text-red-500">{dateWatchedError}</span>
-                        )}
+                      <option value="To Watch">To Watch</option>
+                      <option value="Watching">Watching</option>
+                      <option value="Watched">Watched</option>
+                      <option value="To Watch Again">To Watch Again</option>
+                    </select>
+                    {series.status_updated_at && (
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-3 w-3 text-slate-400" />
+                        <span 
+                          className="text-xs text-slate-500 cursor-help"
+                          title={`Status updated: ${formatExactTimestamp(series.status_updated_at)}`}
+                        >
+                          {formatRelativeTime(series.status_updated_at)}
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-1">Leave empty if you don't remember the exact date</p>
+                    )}
+                  </div>
+
+                  {/* ✅ Date Watched - MOVED TO RIGHT OF STATUS, REMOVED border-t */}
+                  {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
+                    <div className="flex items-center space-x-2">
+                      <Eye className="h-4 w-4 text-green-600" />
+                      <label className="text-sm font-medium text-slate-700">Date Watched:</label>
+                      <input
+                        type="date"
+                        value={localDateWatched || ''}
+                        onChange={(e) => handleDateWatchedChange(e.target.value)}
+                        disabled={isUpdating}
+                        max={getTodayDateString()}
+                        className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="Select date (optional)"
+                      />
+                      {dateWatchedError && (
+                        <span className="text-xs text-red-500">{dateWatchedError}</span>
+                      )}
                     </div>
                   )}
+
+                  {/* My Rating */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-slate-600">My Rating:</span>
+                    <select
+                      value={localRating || ''}
+                      onChange={(e) => handleSeriesRatingChange(e.target.value ? parseInt(e.target.value) : null)}
+                      disabled={isUpdating}
+                      className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="">No rating</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
+                        <option key={rating} value={rating}>
+                          {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
+                        </option>
+                      ))}
+                    </select>
+                    {series.rating_updated_at && (
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-3 w-3 text-slate-400" />
+                        <span 
+                          className="text-xs text-slate-500 cursor-help"
+                          title={`Rating updated: ${formatExactTimestamp(series.rating_updated_at)}`}
+                        >
+                          {formatRelativeTime(series.rating_updated_at)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Review Button */}
+                  <button
+                    onClick={() => setShowSeriesReviewModal(true)}
+                    disabled={isUpdating}
+                    className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
+                  </button>
                 </div>
 
-                {/* User Review Display - Like TV card */}
+                {/* User Review Display */}
                 {localReview && (
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-start space-x-2">
@@ -679,25 +632,23 @@ export function EnhancedEpisodesBrowserPage({
                 )}
               </div>
             </div>
-            
+
             {/* Loading State */}
             {loading && (
-              <div className="flex justify-center items-center py-12">
-                <div className="flex items-center space-x-3">
-                  <RefreshCw className="h-6 w-6 animate-spin text-purple-600" />
-                  <span className="text-lg text-slate-600">Loading episodes...</span>
-                </div>
+              <div className="text-center py-12">
+                <RefreshCw className="h-12 w-12 text-purple-600 mx-auto mb-4 animate-spin" />
+                <p className="text-slate-600">Loading Season {currentSeason}...</p>
               </div>
             )}
 
             {/* Error State */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8">
                 <div className="flex items-start space-x-3">
-                  <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
                   <div>
-                    <h3 className="text-red-800 font-medium mb-1">Error Loading Episodes</h3>
-                    <p className="text-red-700">{error}</p>
+                    <h3 className="font-medium text-amber-900 mb-1">Notice</h3>
+                    <p className="text-amber-800 text-sm">{error}</p>
                   </div>
                 </div>
               </div>
@@ -705,18 +656,16 @@ export function EnhancedEpisodesBrowserPage({
 
             {/* Episodes Grid */}
             {!loading && !error && episodes.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {episodes.map((episode, index) => (
-                  <div
-                    key={episode.imdbID || `episode-${episode.season}-${episode.episode}`}
-                    className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 overflow-hidden"
-                  >
-                    {/* Episode Poster Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {episodes.map((episode) => (
+                  <div key={`${episode.season}-${episode.episode}`} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                    
+                    {/* Episode Poster */}
                     {episode.poster && episode.poster !== 'N/A' && (
-                      <div className="h-48 overflow-hidden">
+                      <div className="relative h-48 bg-slate-200">
                         <img 
                           src={episode.poster} 
-                          alt={episode.title || `Season ${episode.season}, Episode ${episode.episode}`}
+                          alt={episode.title}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
@@ -740,7 +689,7 @@ export function EnhancedEpisodesBrowserPage({
                         </div>
                       </div>
 
-                      {/* Episode Title with Air Date, Runtime, and IMDb Link */}
+                      {/* Episode Title with metadata */}
                       <div className="mb-3">
                         {episode.title && (
                           <h4 className="text-lg font-medium text-slate-800 leading-tight mb-2">
@@ -765,8 +714,7 @@ export function EnhancedEpisodesBrowserPage({
                               href={`https://www.imdb.com/title/${episode.imdbID}/`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center space-x-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-2 py-1 rounded text-xs transition-colors"
-                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center space-x-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-2 py-1 rounded transition-colors"
                             >
                               <ExternalLink className="h-3 w-3" />
                               <span>IMDb</span>
@@ -781,44 +729,35 @@ export function EnhancedEpisodesBrowserPage({
                         </div>
                       </div>
 
-                      {/* Episode Status and Rating */}
-                      <div className="flex items-center gap-3 mb-3">
-                        {/* Status Selector */}
-                        <select
-                          value={episode.status || 'To Watch'}
-                          onChange={(e) => {
-                            // Handle episode status change
-                            console.log('Episode status changed:', e.target.value);
-                          }}
-                          className="flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value="To Watch">To Watch</option>
-                          <option value="Watching">Watching</option>
-                          <option value="Watched">Watched</option>
-                          <option value="To Watch Again">To Watch Again</option>
-                        </select>
-
-                        {/* My Rating Selector */}
-                        <select
-                          value={episode.user_rating || ''}
-                          onChange={(e) => {
-                            // Handle episode rating change
-                            console.log('Episode rating changed:', e.target.value);
-                          }}
-                          className="flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value="">My Rating</option>
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
-                            <option key={rating} value={rating}>★ {rating}</option>
-                          ))}
-                        </select>
-                      </div>
-
                       {/* Episode Plot */}
                       {episode.plot && episode.plot !== 'N/A' && (
-                        <p className="text-sm text-slate-600 leading-relaxed line-clamp-4">
+                        <p className="text-sm text-slate-600 leading-relaxed line-clamp-4 mb-4">
                           {episode.plot}
                         </p>
+                      )}
+
+                      {/* Credits */}
+                      {(episode.director || episode.writer || episode.actors) && (
+                        <div className="space-y-1 text-xs text-slate-500">
+                          {episode.director && episode.director !== 'N/A' && (
+                            <div className="flex items-start space-x-1">
+                              <User className="h-3 w-3 mt-0.5" />
+                              <span><span className="font-medium">Director:</span> {episode.director}</span>
+                            </div>
+                          )}
+                          {episode.writer && episode.writer !== 'N/A' && (
+                            <div className="flex items-start space-x-1">
+                              <User className="h-3 w-3 mt-0.5" />
+                              <span><span className="font-medium">Writer:</span> {episode.writer}</span>
+                            </div>
+                          )}
+                          {episode.actors && episode.actors !== 'N/A' && (
+                            <div className="flex items-start space-x-1">
+                              <Users className="h-3 w-3 mt-0.5" />
+                              <span><span className="font-medium">Stars:</span> {episode.actors}</span>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -847,7 +786,18 @@ export function EnhancedEpisodesBrowserPage({
         </div>
       </div>
 
-      {/* Episode Review Modal - FIXED INTERFACE */}
+      {/* Series Review Modal */}
+      {showSeriesReviewModal && (
+        <ReviewModal
+          isOpen={showSeriesReviewModal}
+          onClose={() => setShowSeriesReviewModal(false)}
+          onSave={handleSaveSeriesReview}
+          initialReview={localReview || ''}
+          movieTitle={series.title}
+        />
+      )}
+
+      {/* Episode Review Modal */}
       {showReviewModal && selectedEpisode && (
         <ReviewModal
           isOpen={showReviewModal}
@@ -857,29 +807,10 @@ export function EnhancedEpisodesBrowserPage({
           }}
           movieTitle={`${series.title} - S${selectedEpisode.season}E${selectedEpisode.episode}${selectedEpisode.title ? ': ' + selectedEpisode.title : ''}`}
           initialReview={selectedEpisode.user_review || ''}
-          onSave={(review: string) => {
-            // Update episode with new review data
-            setEpisodes(episodes.map(ep => 
-              ep.imdbID === selectedEpisode.imdbID 
-                ? { ...ep, user_review: review }
-                : ep
-            ));
+          onSave={(review) => {
+            console.log('Episode review saved:', review);
             setShowReviewModal(false);
             setSelectedEpisode(null);
-          }}
-        />
-      )}
-
-      {/* Series Review Modal - FIXED INTERFACE */}
-      {showSeriesReviewModal && (
-        <ReviewModal
-          isOpen={showSeriesReviewModal}
-          onClose={() => setShowSeriesReviewModal(false)}
-          movieTitle={series.title}
-          initialReview={localReview || ''}
-          onSave={async (review: string) => {
-            await handleSaveSeriesReview(review);
-            setShowSeriesReviewModal(false);
           }}
         />
       )}
