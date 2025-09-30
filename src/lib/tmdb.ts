@@ -297,7 +297,7 @@ class TMDBService {
    */
   private async getTVSeriesDetails(tmdbId: number): Promise<TMDBTVSeriesDetails | null> {
     try {
-      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids`;
+      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers`;
       const response = await fetch(url);
 
       if (!response.ok) {
