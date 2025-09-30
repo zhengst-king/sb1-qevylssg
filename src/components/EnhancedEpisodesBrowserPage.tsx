@@ -187,7 +187,23 @@ export function EnhancedEpisodesBrowserPage({
         if (cacheStatus.isBeingFetched) {
           setError(`Season ${seasonNumber} is being loaded in the background. Please check back in a moment.`);
         } else {
-          setError(`No episodes found for Season ${seasonNumber}. This season might not be available yet.`);
+          // FIXED: Auto-trigger episode discovery when no episodes found and not being fetched
+          console.log(`[Episodes] No episodes found for ${series.title}. Triggering automatic discovery...`);
+          
+          try {
+            await serverSideEpisodeService.addSeriesToQueue(
+              series.imdb_id,
+              series.title,
+              'high' // High priority for user-initiated requests
+            );
+            
+            setError(`No episodes found for Season ${seasonNumber}. Episode discovery has been started automatically. Please check back in a few minutes as episodes are being fetched in the background.`);
+            
+            console.log(`[Episodes] Successfully queued ${series.title} for episode discovery`);
+          } catch (discoveryError) {
+            console.error('[Episodes] Failed to trigger automatic discovery:', discoveryError);
+            setError(`No episodes found for Season ${seasonNumber}. This season might not be available yet. You can try refreshing the page or manually trigger discovery.`);
+          }
         }
       }
     } catch (error) {
