@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS tmdb_series_cache (
   
   -- External IDs
   external_ids JSONB, -- Object with imdb_id, tvdb_id, etc.
+
+  -- Object with results by region containing flatrate, buy, rent arrays
+  watch_providers JSONB,
   
   -- Full API Response (for reference)
   api_response JSONB,
