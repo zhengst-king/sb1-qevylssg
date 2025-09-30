@@ -88,6 +88,8 @@ export function EnhancedEpisodesBrowserPage({
     currentlyProcessing: null
   });
 
+  const [debugTmdbData, setDebugTmdbData] = useState<any>(null);
+
   // Update local state when series prop changes
   useEffect(() => {
     setLocalRating(series.user_rating || null);
@@ -151,6 +153,33 @@ export function EnhancedEpisodesBrowserPage({
       isMounted = false;
       clearInterval(interval);
     };
+  }, [series.imdb_id]);
+
+  // ADD THE DEBUG USEEFFECT HERE:
+  useEffect(() => {
+    // Debug: Test TMDB data fetching
+    const testTmdbFetch = async () => {
+      if (!series.imdb_id) return;
+    
+      console.log('[DEBUG] Testing TMDB fetch for:', series.imdb_id);
+    
+      try {
+        // Clear cache first to ensure fresh fetch
+        await tmdbService.clearCacheForSeries(series.imdb_id);
+      
+        // Fetch fresh data
+        const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+      
+        console.log('[DEBUG] TMDB data received:', tmdbData);
+        console.log('[DEBUG] Watch providers:', tmdbData?.watch_providers);
+      
+        setDebugTmdbData(tmdbData);
+      } catch (error) {
+        console.error('[DEBUG] TMDB fetch error:', error);
+      }
+    };
+
+    testTmdbFetch();
   }, [series.imdb_id]);
 
   const loadEpisodesFromCache = async (seasonNumber: number) => {
@@ -525,6 +554,34 @@ export function EnhancedEpisodesBrowserPage({
               {series.imdb_id && (
                 <div className="mb-6">
                   <TMDBTVDetailsSection imdbId={series.imdb_id} />
+                </div>
+              )}
+
+              {/* 🐛 DEBUG: TMDB Watch Providers Test */}
+              {debugTmdbData && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <h3 className="font-bold text-yellow-800 mb-2">🐛 DEBUG: TMDB Watch Providers</h3>
+                  
+                  {debugTmdbData.watch_providers ? (
+                    <div>
+                      <div className="text-green-600 mb-2">✅ Watch providers data found!</div>
+                      <details>
+                        <summary className="cursor-pointer text-sm">Show watch providers data</summary>
+                        <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
+                          {JSON.stringify(debugTmdbData.watch_providers, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  ) : (
+                    <div className="text-red-600">❌ No watch providers data found</div>
+                  )}
+                  
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm text-gray-600">Show full TMDB data</summary>
+                    <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
+                      {JSON.stringify(debugTmdbData, null, 2)}
+                    </pre>
+                  </details>
                 </div>
               )}
 
