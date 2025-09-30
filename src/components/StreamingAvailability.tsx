@@ -1,9 +1,9 @@
+// src/components/StreamingAvailability.tsx
 import React from 'react';
-import { useUserRegion } from '../hooks/useUserRegion';
+import { useUserRegion, REGIONS } from '../hooks/useUserRegion';
+import { TMDBTVSeriesDetails } from '../lib/tmdb';
 import { getLibrarySearchLinks } from '../lib/libraryServices';
 import { getPhysicalMediaLinks } from '../lib/physicalMediaMarketplaces';
-import { REGIONS } from '../hooks/useUserRegion';
-import { TMDBTVSeriesDetails } from '../lib/tmdb';
 
 interface StreamingAvailabilityProps {
   tmdbData: TMDBTVSeriesDetails;
@@ -25,6 +25,15 @@ export function StreamingAvailability({
   // Get top 5 other regions
   const otherRegions = ['GB', 'CA', 'AU', 'DE', 'FR'].filter(r => r !== region);
   
+  // Get other regions with availability
+  const otherRegionsWithProviders = otherRegions
+    .map(regionCode => ({
+      code: regionCode,
+      name: REGIONS[regionCode as keyof typeof REGIONS],
+      providers: watchProviders?.[regionCode]
+    }))
+    .filter(r => r.providers?.flatrate?.length);
+  
   // Library services
   const libraryLinks = getLibrarySearchLinks(title, year);
   
@@ -39,16 +48,18 @@ export function StreamingAvailability({
     Object.keys(watchProviders || {}).length > 0;
   
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <h3 className="text-base font-semibold text-slate-900">Where to Watch</h3>
+      
       {/* User's Region */}
       {userRegionProviders && (
         <div>
           <h4 className="text-sm font-medium text-slate-700 mb-2">
-            Streaming ({REGIONS[region]})
+            Streaming ({REGIONS[region as keyof typeof REGIONS]})
           </h4>
           
           {/* Flatrate (Subscription) */}
-          {userRegionProviders.flatrate && (
+          {userRegionProviders.flatrate && userRegionProviders.flatrate.length > 0 && (
             <div className="text-sm mb-2">
               <span className="text-slate-600">✓ </span>
               <span className="text-slate-900">
@@ -58,7 +69,7 @@ export function StreamingAvailability({
           )}
           
           {/* Digital Purchase */}
-          {userRegionProviders.buy && (
+          {userRegionProviders.buy && userRegionProviders.buy.length > 0 && (
             <div className="text-sm mb-2">
               <span className="text-slate-600">Digital Purchase: </span>
               <span className="text-slate-900">
@@ -68,7 +79,7 @@ export function StreamingAvailability({
           )}
           
           {/* Digital Rental */}
-          {userRegionProviders.rent && (
+          {userRegionProviders.rent && userRegionProviders.rent.length > 0 && (
             <div className="text-sm">
               <span className="text-slate-600">Digital Rental: </span>
               <span className="text-slate-900">
@@ -80,7 +91,21 @@ export function StreamingAvailability({
       )}
       
       {/* Other Regions */}
-      {/* ... implementation ... */}
+      {otherRegionsWithProviders.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-slate-700 mb-2">
+            Available in other regions
+          </h4>
+          {otherRegionsWithProviders.map(({ code, name, providers }) => (
+            <div key={code} className="text-sm mb-1">
+              <span className="text-slate-600">{name}: </span>
+              <span className="text-slate-900">
+                {providers?.flatrate?.map(p => p.provider_name).join(', ')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       
       {/* Library Services */}
       <div className="text-sm">
