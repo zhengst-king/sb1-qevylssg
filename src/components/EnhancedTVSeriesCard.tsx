@@ -1,5 +1,5 @@
 // src/components/EnhancedTVSeriesCard.tsx
-// Simplified version matching My Discs layout style with only essential elements
+// FIXED VERSION - Replace your existing file with this
 import React, { useState, useEffect } from 'react';
 import { 
   Star, 
@@ -42,7 +42,8 @@ export function EnhancedTVSeriesCard({
       if (!movie.imdb_id) return;
       
       try {
-        const status = await serverSideEpisodeService.checkCacheStatus(movie.imdb_id);
+        // FIXED: Changed from checkCacheStatus to getSeriesStatus
+        const status = await serverSideEpisodeService.getSeriesStatus(movie.imdb_id);
         setEpisodeStatus(status);
       } catch (error) {
         console.error('Failed to check episode status:', error);
