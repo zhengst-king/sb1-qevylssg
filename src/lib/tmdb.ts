@@ -333,6 +333,24 @@ class TMDBService {
     }
   }
 
+  // In TMDBService class
+  async getWatchProviders(tmdbId: number): Promise<WatchProvidersData | null> {
+    try {
+      const url = `${this.baseUrl}/tv/${tmdbId}/watch/providers?api_key=${this.apiKey}`;
+      const response = await fetch(url);
+    
+      if (!response.ok) {
+        console.error('[TMDB] Get watch providers failed:', response.status);
+        return null;
+      }
+    
+      return await response.json();
+    } catch (error) {
+      console.error('[TMDB] Error getting watch providers:', error);
+      return null;
+    }
+  }
+
   /**
    * Get image URL helper
    */
