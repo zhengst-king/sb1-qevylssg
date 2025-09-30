@@ -29,6 +29,7 @@ import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 import { OMDBEpisodeDetails } from '../lib/omdb';
 import { ReviewModal } from './ReviewModal';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
+import { TMDBTVDetailsSection } from './TMDBTVDetailsSection';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -495,6 +496,13 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 )}
               </div>
+
+              {/* ✅ NEW: TMDB Data Section - INSERT ABOVE PLOT */}
+              {series.imdb_id && (
+                <div className="mb-6">
+                  <TMDBTVDetailsSection imdbId={series.imdb_id} />
+                </div>
+              )}
 
               {/* ✅ UPDATED: Plot with expand/collapse */}
               {series.plot && series.plot !== 'N/A' && (
