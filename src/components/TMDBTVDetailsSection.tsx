@@ -14,6 +14,7 @@ import {
   Youtube
 } from 'lucide-react';
 import { tmdbService, TMDBTVSeriesDetails } from '../lib/tmdb';
+import { StreamingAvailability } from './StreamingAvailability';
 
 interface TMDBTVDetailsSectionProps {
   imdbId: string;
