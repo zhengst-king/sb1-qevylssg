@@ -75,6 +75,7 @@ export interface TMDBTVSeriesDetails {
     imdb_id: string;
     tvdb_id: number;
   };
+  watch_providers?: WatchProvidersData;
 }
 
 interface CachedTMDBData {
