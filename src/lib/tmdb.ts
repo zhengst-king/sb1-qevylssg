@@ -7,6 +7,25 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
+export interface WatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+}
+
+export interface RegionalWatchProviders {
+  link?: string;
+  flatrate?: WatchProvider[];
+  buy?: WatchProvider[];
+  rent?: WatchProvider[];
+}
+
+export interface WatchProvidersData {
+  results: {
+    [regionCode: string]: RegionalWatchProviders;
+  };
+}
+
 export interface TMDBTVSeriesDetails {
   id: number;
   name: string;
