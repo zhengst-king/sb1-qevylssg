@@ -2,6 +2,8 @@ import React from 'react';
 import { useUserRegion } from '../hooks/useUserRegion';
 import { getLibrarySearchLinks } from '../lib/libraryServices';
 import { getPhysicalMediaLinks } from '../lib/physicalMediaMarketplaces';
+import { REGIONS } from '../hooks/useUserRegion';
+import { TMDBTVSeriesDetails } from '../lib/tmdb';
 
 interface StreamingAvailabilityProps {
   tmdbData: TMDBTVSeriesDetails;
