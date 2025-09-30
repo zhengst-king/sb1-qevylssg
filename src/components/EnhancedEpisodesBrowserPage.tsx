@@ -30,6 +30,7 @@ import { OMDBEpisodeDetails } from '../lib/omdb';
 import { ReviewModal } from './ReviewModal';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 import { TMDBTVDetailsSection } from './TMDBTVDetailsSection';
+import { tmdbService } from '../lib/tmdb';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -95,6 +96,13 @@ export function EnhancedEpisodesBrowserPage({
     setLocalDateWatched(series.date_watched || null);
   }, [series.user_rating, series.status, series.user_review, series.date_watched]);
 
+  // Sync IMDb rating to TMDB cache for smart TTL calculation
+  useEffect(() => {
+    if (series.imdb_id && series.imdb_score) {
+      tmdbService.updateCacheRating(series.imdb_id, series.imdb_score);
+    }
+  }, [series.imdb_id, series.imdb_score]);
+  
   // Load episodes for current season from background cache
   useEffect(() => {
     loadEpisodesFromCache(currentSeason);
