@@ -1,7 +1,7 @@
 // src/lib/tmdb.ts
 // TMDB API service for fetching TV series data
 
-const TMDB_API_KEY = 'YOUR_TMDB_API_KEY'; // Replace with your actual key
+const TMDB_API_KEY = 'a1c48dd97365677772288676568b781d'; // Replace with your actual key
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
