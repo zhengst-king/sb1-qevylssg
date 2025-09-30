@@ -164,6 +164,18 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
       </div>
+
+      {/* Streaming Availability */}
+      {tmdbData.watch_providers && (
+        <div className="mt-6 pt-6 border-t border-slate-200">
+          <StreamingAvailability 
+            tmdbData={tmdbData}
+            title={tmdbData.name}
+            year={tmdbData.first_air_date?.substring(0, 4)}
+          />
+        </div>
+      )}
+      
     </div>
   );
 }
