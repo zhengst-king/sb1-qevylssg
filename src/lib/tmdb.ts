@@ -94,6 +94,7 @@ interface CachedTMDBData {
   keywords: any;
   videos: any;
   external_ids: any;
+  watch_providers: any;
   api_response: any;
   last_fetched_at: string;
   last_accessed_at: string;
@@ -222,6 +223,7 @@ class TMDBService {
         keywords: data.keywords?.results || [],
         videos: data.videos?.results || [],
         external_ids: data.external_ids,
+        watch_providers: data.watch_providers,
         api_response: data,
         last_fetched_at: new Date().toISOString(),
         last_accessed_at: new Date().toISOString(),
@@ -267,7 +269,8 @@ class TMDBService {
       videos: {
         results: cached.videos || []
       },
-      external_ids: cached.external_ids
+      external_ids: cached.external_ids,
+      watch_providers: cached.watch_providers
     };
   }
 
