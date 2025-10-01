@@ -284,7 +284,7 @@ export function EnhancedEpisodesBrowserPage({
           // Also test our service
           const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
           console.log('[DEBUG] Service response:', tmdbData);
-          console.log('[DEBUG] Service watch providers:', tmdbData?.watch_providers);
+          console.log('[DEBUG] Service watch providers:', tmdbData?.['watch/providers']);
 
           // TEST WITH BREAKING BAD (known to have streaming data)
           const BREAKING_BAD_IMDB = 'tt0903747';
