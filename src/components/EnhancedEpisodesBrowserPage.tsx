@@ -194,6 +194,26 @@ export function EnhancedEpisodesBrowserPage({
           const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
           console.log('[DEBUG] Service response:', tmdbData);
           console.log('[DEBUG] Service watch providers:', tmdbData?.watch_providers);
+
+          // TEST WITH BREAKING BAD (known to have streaming data)
+          const BREAKING_BAD_IMDB = 'tt0903747';
+          const testUrl = `https://api.themoviedb.org/3/find/${BREAKING_BAD_IMDB}?api_key=${API_KEY}&external_source=imdb_id`;
+          console.log('[DEBUG] Testing with Breaking Bad');
+        
+          const testResponse = await fetch(testUrl);
+          const testData = await testResponse.json();
+        
+          if (testData.tv_results && testData.tv_results[0]) {
+            const testTmdbId = testData.tv_results[0].id;
+            console.log('[DEBUG] Breaking Bad TMDB ID:', testTmdbId);
+          
+            const testWatchUrl = `https://api.themoviedb.org/3/tv/${testTmdbId}/watch/providers?api_key=${API_KEY}`;
+            const testWatchResponse = await fetch(testWatchUrl);
+            const testWatchData = await testWatchResponse.json();
+          
+            console.log('[DEBUG] Breaking Bad watch providers:', testWatchData);
+            console.log('[DEBUG] Available regions:', Object.keys(testWatchData.results || {}));
+          }
           
           setDebugTmdbData({
             tmdbId,
