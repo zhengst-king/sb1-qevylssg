@@ -156,25 +156,53 @@ export function EnhancedEpisodesBrowserPage({
     };
   }, [series.imdb_id]);
 
-  // ADD THE DEBUG USEEFFECT HERE:
+  // SIMPLE DEBUG TEST - Add this to your existing debug useEffect
+
   useEffect(() => {
     // Debug: Test TMDB data fetching
     const testTmdbFetch = async () => {
       if (!series.imdb_id) return;
-    
+      
       console.log('[DEBUG] Testing TMDB fetch for:', series.imdb_id);
-    
+      
       try {
         // Clear cache first to ensure fresh fetch
         await tmdbService.clearCacheForSeries(series.imdb_id);
-      
-        // Fetch fresh data
-        const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
-      
-        console.log('[DEBUG] TMDB data received:', tmdbData);
-        console.log('[DEBUG] Watch providers:', tmdbData?.watch_providers);
-      
-        setDebugTmdbData(tmdbData);
+        
+        // TEST: Direct API call to verify data
+        const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+        const directUrl = `https://api.themoviedb.org/3/find/${series.imdb_id}?api_key=${API_KEY}&external_source=imdb_id`;
+        console.log('[DEBUG] Finding TMDB ID for:', series.imdb_id);
+        
+        const findResponse = await fetch(directUrl);
+        const findData = await findResponse.json();
+        console.log('[DEBUG] Find response:', findData);
+        
+        if (findData.tv_results && findData.tv_results[0]) {
+          const tmdbId = findData.tv_results[0].id;
+          console.log('[DEBUG] Found TMDB ID:', tmdbId);
+          
+          // Test watch providers directly
+          const watchUrl = `https://api.themoviedb.org/3/tv/${tmdbId}/watch/providers?api_key=${API_KEY}`;
+          console.log('[DEBUG] Testing watch providers URL');
+          
+          const watchResponse = await fetch(watchUrl);
+          const watchData = await watchResponse.json();
+          console.log('[DEBUG] Watch providers response:', watchData);
+          
+          // Also test our service
+          const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+          console.log('[DEBUG] Service response:', tmdbData);
+          console.log('[DEBUG] Service watch providers:', tmdbData?.watch_providers);
+          
+          setDebugTmdbData({
+            tmdbId,
+            directWatchData: watchData,
+            serviceData: tmdbData,
+            serviceWatchProviders: tmdbData?.watch_providers
+          });
+        }
+        
       } catch (error) {
         console.error('[DEBUG] TMDB fetch error:', error);
       }
