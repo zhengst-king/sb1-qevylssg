@@ -125,6 +125,97 @@ export function EnhancedEpisodesBrowserPage({
     loadQueueStatus();
   }, []);
 
+  useEffect(() => {
+    const debugWatchProviders = async () => {
+      if (!series.imdb_id) return;
+
+      console.log('=== WATCH PROVIDERS DEBUG START ===');
+      console.log('Series:', series.title);
+      console.log('IMDb ID:', series.imdb_id);
+
+      try {
+        // Step 1: Clear cache to ensure fresh fetch
+        console.log('Step 1: Clearing cache...');
+        await tmdbService.clearCacheForSeries(series.imdb_id);
+        
+        // Step 2: Get fresh data from API
+        console.log('Step 2: Fetching fresh data...');
+        const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+        
+        if (!tmdbData) {
+          console.error('❌ No TMDB data returned');
+          return;
+        }
+
+        console.log('✅ TMDB data received');
+        console.log('TMDB ID:', tmdbData.id);
+        
+        // Step 3: Check watch providers
+        console.log('Step 3: Checking watch providers...');
+        const watchProviders = tmdbData['watch/providers'];
+        
+        if (!watchProviders) {
+          console.warn('⚠️ No watch/providers property in data');
+          console.log('Available properties:', Object.keys(tmdbData));
+          return;
+        }
+
+        console.log('✅ Watch providers found');
+        console.log('Watch providers data:', watchProviders);
+
+        // Step 4: Check results
+        if (!watchProviders.results) {
+          console.warn('⚠️ No results in watch providers');
+          return;
+        }
+
+        const regions = Object.keys(watchProviders.results);
+        console.log('✅ Available regions:', regions);
+
+        // Step 5: Show US data if available
+        if (watchProviders.results.US) {
+          const usData = watchProviders.results.US;
+          console.log('US Streaming (flatrate):', usData.flatrate?.map(p => p.provider_name));
+          console.log('US Purchase (buy):', usData.buy?.map(p => p.provider_name));
+          console.log('US Rental (rent):', usData.rent?.map(p => p.provider_name));
+        } else {
+          console.log('⚠️ No US region data');
+        }
+
+        // Step 6: Test direct API call as comparison
+        const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+        if (API_KEY) {
+          console.log('Step 6: Testing direct API call...');
+          const directUrl = `https://api.themoviedb.org/3/tv/${tmdbData.id}/watch/providers?api_key=${API_KEY}`;
+          const directResponse = await fetch(directUrl);
+          const directData = await directResponse.json();
+          console.log('Direct API response:', directData);
+          
+          // Compare
+          const match = JSON.stringify(watchProviders) === JSON.stringify(directData);
+          console.log(match ? '✅ Data matches direct API' : '❌ Data differs from direct API');
+        }
+
+        // Step 7: Check cache
+        console.log('Step 7: Checking what was saved to cache...');
+        const cachedData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+        const cachedWatchProviders = cachedData?.['watch/providers'];
+        console.log('Cached watch providers:', cachedWatchProviders);
+        
+        const cacheMatch = JSON.stringify(watchProviders) === JSON.stringify(cachedWatchProviders);
+        console.log(cacheMatch ? '✅ Cache matches' : '❌ Cache differs');
+
+      } catch (error) {
+        console.error('❌ Debug error:', error);
+      }
+
+      console.log('=== WATCH PROVIDERS DEBUG END ===');
+    };
+
+    // Run debug on component mount
+    debugWatchProviders();
+  }, [series.imdb_id]);
+
   // Monitor cache status and update available seasons
   useEffect(() => {
     if (!series.imdb_id) return;
@@ -434,6 +525,67 @@ export function EnhancedEpisodesBrowserPage({
                   <ArrowLeft className="h-4 w-4" />
                   <span>Back to TV</span>
                 </button>
+
+                {/* Debug Panel - Remove after fixing */}
+                <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
+                  <h3 className="font-bold text-yellow-900 mb-3">🔍 Watch Providers Debug Panel</h3>
+            
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={async () => {
+                        console.log('Manual debug trigger...');
+                        const data = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+                        console.log('Manual fetch result:', data);
+                        console.log('Watch providers:', data?.['watch/providers']);
+                  
+                        // Show in alert for easy viewing
+                        const wp = data?.['watch/providers'];
+                       if (wp?.results) {
+                          const regions = Object.keys(wp.results);
+                          alert(`Found watch providers in regions: ${regions.join(', ')}`);
+                        } else {
+                          alert('No watch providers found');
+                        }
+                      }}
+                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium"
+                    >
+                      Test Watch Providers
+                    </button>
+              
+                    <button
+                      onClick={async () => {
+                        await tmdbService.clearCacheForSeries(series.imdb_id);
+                        alert('Cache cleared for this series. Refresh the page to fetch fresh data.');
+                      }}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium"
+                    >
+                      Clear Cache
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        // Test direct API call
+                        const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+                        const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+                        if (tmdbData) {
+                          const url = `https://api.themoviedb.org/3/tv/${tmdbData.id}/watch/providers?api_key=${API_KEY}`;
+                          const response = await fetch(url);
+                          const data = await response.json();
+                          console.log('Direct API call result:', data);
+                          alert('Check console for direct API result');
+                        }
+                      }}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
+                    >
+                      Test Direct API
+                    </button>
+                  </div>
+            
+                  <div className="text-sm text-yellow-800 bg-yellow-100 p-2 rounded">
+                    <strong>Note:</strong> Open browser console (F12) to see detailed debug logs.
+                    Click "Test Watch Providers" to check if data is being fetched correctly.
+                  </div>
+                </div>
 
                 <div className="flex items-center space-x-3">
                   <Play className="h-6 w-6 text-purple-600" />
