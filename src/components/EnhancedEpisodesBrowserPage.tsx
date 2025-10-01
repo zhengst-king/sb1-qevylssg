@@ -108,7 +108,48 @@ export function EnhancedEpisodesBrowserPage({
   
   // Load episodes for current season from background cache
   useEffect(() => {
-    loadEpisodesFromCache(currentSeason);
+    const loadEpisodes = async () => {
+      if (!series.imdb_id) {
+        setError('No IMDb ID available for this series');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        console.log(`[Episodes] Loading Season ${currentSeason} from cache`);
+        const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(
+          series.imdb_id,
+          currentSeason
+        );
+
+        // ... rest of the logic
+        
+        if (cachedEpisodes && cachedEpisodes.length > 0) {
+          const episodesWithUserData: Episode[] = cachedEpisodes.map(ep => ({
+            ...ep,
+            status: 'To Watch',
+            user_rating: undefined,
+            user_review: undefined,
+            date_watched: undefined,
+            date_added: new Date().toISOString().split('T')[0]
+          }));
+
+          setEpisodes(episodesWithUserData);
+        } else {
+          setEpisodes([]);
+          // ... error handling
+        }
+      } catch (error) {
+        console.error('[Episodes] Error loading episodes:', error);
+        setError('Failed to load episodes. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEpisodes();
   }, [currentSeason, series.imdb_id]);
 
   // Load queue status
