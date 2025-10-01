@@ -133,6 +133,7 @@ class TMDBService {
       const cached = await this.getCachedData(imdbId);
       if (cached) {
         console.log('[TMDB] Cache hit for:', imdbId);
+        console.log('[TMDB] Cached watch providers:', cached.watch_providers ? 'EXISTS' : 'NULL');
         await this.updateLastAccessed(imdbId);
         return this.formatCachedData(cached);
       }
@@ -155,13 +156,19 @@ class TMDBService {
         return null;
       }
 
-      // FIX: Extract watch providers from the nested property
+      // CRITICAL FIX: Extract watch providers from the response
       const watchProviders = details['watch/providers'];
-      console.log('[TMDB] Watch providers from API:', watchProviders);
+      console.log('[TMDB] Watch providers from API:', watchProviders ? 'FOUND' : 'NOT FOUND');
+      if (watchProviders?.results) {
+        const regions = Object.keys(watchProviders.results);
+        console.log('[TMDB] Available regions:', regions);
+        console.log('[TMDB] Sample region data (US):', watchProviders.results.US ? 'has data' : 'no US data');
+      }
 
-      // Save to cache
+      // Save to cache with watch providers explicitly passed
       await this.saveToCacheMVP(imdbId, details, watchProviders);
 
+      // Return details with watch providers properly attached
       return details;
     } catch (error) {
       console.error('[TMDB] Error in getTVSeriesByImdbId:', error);
@@ -174,19 +181,29 @@ class TMDBService {
    */
   private async getCachedData(imdbId: string): Promise<CachedTMDBData | null> {
     try {
+      // Get the most recent cache entry for this IMDb ID
       const { data, error } = await supabase
         .from('tmdb_series_cache')
         .select('*')
         .eq('imdb_id', imdbId)
+        .order('last_fetched_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (error) {
         if (error.code === 'PGRST116') {
           // Not found - this is normal
+          console.log('[TMDB] No cache found for:', imdbId);
           return null;
         }
         console.error('[TMDB] Error reading cache:', error);
         return null;
+      }
+
+      if (data) {
+        console.log('[TMDB] Cache data retrieved for:', imdbId);
+        console.log('[TMDB] Cache has watch_providers:', !!data.watch_providers);
+        console.log('[TMDB] Last fetched:', data.last_fetched_at);
       }
 
       return data;
@@ -201,11 +218,20 @@ class TMDBService {
    */
   private async updateLastAccessed(imdbId: string): Promise<void> {
     try {
+      // First get current access count
+      const { data: currentData } = await supabase
+        .from('tmdb_series_cache')
+        .select('access_count')
+        .eq('imdb_id', imdbId)
+        .single();
+
+      const newAccessCount = (currentData?.access_count || 0) + 1;
+
       const { error } = await supabase
         .from('tmdb_series_cache')
         .update({
           last_accessed_at: new Date().toISOString(),
-          access_count: supabase.sql`access_count + 1`
+          access_count: newAccessCount
         })
         .eq('imdb_id', imdbId);
 
@@ -226,6 +252,17 @@ class TMDBService {
     watchProviders?: WatchProvidersData
   ): Promise<void> {
     try {
+      // CRITICAL FIX: Extract watch providers from the API response
+      // The API returns it as 'watch/providers' (with slash)
+      const extractedWatchProviders = watchProviders || details['watch/providers'] || null;
+      
+      console.log('[TMDB] Saving to cache...');
+      console.log('[TMDB] Watch providers being saved:', extractedWatchProviders ? 'EXISTS' : 'NULL');
+      
+      if (extractedWatchProviders) {
+        console.log('[TMDB] Watch providers regions:', Object.keys(extractedWatchProviders.results || {}));
+      }
+      
       const cacheEntry = {
         imdb_id: imdbId,
         tmdb_id: details.id,
@@ -242,8 +279,8 @@ class TMDBService {
         keywords: details.keywords?.results || [],
         videos: details.videos?.results || [],
         external_ids: details.external_ids,
-        // FIX: Save watch providers separately
-        watch_providers: watchProviders || null,
+        // CRITICAL: Save watch providers with correct structure
+        watch_providers: extractedWatchProviders,
         api_response: details,
         last_fetched_at: new Date().toISOString(),
         last_accessed_at: new Date().toISOString(),
@@ -257,9 +294,11 @@ class TMDBService {
         });
 
       if (error) {
-        console.error('[TMDB] Error saving to cache:', error);
+        console.error('[TMDB] ❌ Error saving to cache:', error);
+        console.error('[TMDB] Failed entry:', cacheEntry);
       } else {
-        console.log('[TMDB] Saved to cache with watch providers:', imdbId);
+        console.log('[TMDB] ✅ Successfully saved to cache:', imdbId);
+        console.log('[TMDB] ✅ Watch providers saved:', !!extractedWatchProviders);
       }
     } catch (error) {
       console.error('[TMDB] Cache save error:', error);
@@ -270,7 +309,14 @@ class TMDBService {
    * Format cached data to match API response structure
    */
   private formatCachedData(cached: CachedTMDBData): TMDBTVSeriesDetails {
-    return {
+    console.log('[TMDB] Formatting cached data for:', cached.imdb_id);
+    console.log('[TMDB] Cached watch_providers exists:', !!cached.watch_providers);
+    
+    if (cached.watch_providers) {
+      console.log('[TMDB] Cached watch_providers structure:', Object.keys(cached.watch_providers));
+    }
+
+    const formatted: TMDBTVSeriesDetails = {
       id: cached.tmdb_id,
       name: cached.name,
       overview: cached.overview,
@@ -289,9 +335,13 @@ class TMDBService {
         results: cached.videos || []
       },
       external_ids: cached.external_ids,
-      // FIX: Return watch providers from cache
-      'watch/providers': cached.watch_providers
+      // FIX: Properly return watch providers from cache
+      'watch/providers': cached.watch_providers || undefined
     };
+
+    console.log('[TMDB] Formatted data has watch/providers:', !!(formatted['watch/providers']));
+    
+    return formatted;
   }
 
   /**
