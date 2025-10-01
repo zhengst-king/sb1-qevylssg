@@ -75,7 +75,8 @@ export interface TMDBTVSeriesDetails {
     imdb_id: string;
     tvdb_id: number;
   };
-  watch_providers?: WatchProvidersData;
+  // FIX: Separate watch providers property (not nested in append_to_response)
+  'watch/providers'?: WatchProvidersData;
 }
 
 interface CachedTMDBData {
@@ -117,39 +118,53 @@ class TMDBService {
   }
 
   /**
-   * Get TV series data from cache or fetch from API
+   * Main entry point: Get TV series data by IMDb ID with caching
    */
   async getTVSeriesByImdbId(imdbId: string): Promise<TMDBTVSeriesDetails | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
     try {
-      // First, check Supabase cache
-      const cached = await this.getFromCache(imdbId);
+      console.log('[TMDB] Looking up series:', imdbId);
+
+      // Check cache first
+      const cached = await this.getCachedData(imdbId);
       if (cached) {
         console.log('[TMDB] Cache hit for:', imdbId);
-        await this.updateAccessTime(imdbId);
+        await this.updateLastAccessed(imdbId);
         return this.formatCachedData(cached);
       }
 
-      console.log('[TMDB] Cache miss, fetching from API:', imdbId);
+      console.log('[TMDB] Cache miss, fetching from API');
 
       // Find TMDB ID from IMDb ID
       const tmdbId = await this.findByImdbId(imdbId);
       if (!tmdbId) {
-        console.warn('[TMDB] Could not find TMDB ID for IMDb ID:', imdbId);
+        console.error('[TMDB] TV series not found for IMDb ID:', imdbId);
         return null;
       }
 
-      // Fetch from TMDB API
-      const data = await this.getTVSeriesDetails(tmdbId);
-      if (!data) {
+      console.log('[TMDB] Found TMDB ID:', tmdbId);
+
+      // Get full details with watch providers
+      const details = await this.getTVSeriesDetails(tmdbId);
+      if (!details) {
+        console.error('[TMDB] Failed to get series details');
         return null;
       }
 
-      // Store in cache
-      await this.saveToCache(imdbId, tmdbId, data);
+      // FIX: Extract watch providers from the nested property
+      const watchProviders = details['watch/providers'];
+      console.log('[TMDB] Watch providers from API:', watchProviders);
 
-      return data;
+      // Save to cache
+      await this.saveToCacheMVP(imdbId, details, watchProviders);
+
+      return details;
     } catch (error) {
-      console.error('[TMDB] Error getting TV series by IMDb ID:', error);
+      console.error('[TMDB] Error in getTVSeriesByImdbId:', error);
       return null;
     }
   }
@@ -157,7 +172,7 @@ class TMDBService {
   /**
    * Get cached data from Supabase
    */
-  private async getFromCache(imdbId: string): Promise<CachedTMDBData | null> {
+  private async getCachedData(imdbId: string): Promise<CachedTMDBData | null> {
     try {
       const { data, error } = await supabase
         .from('tmdb_series_cache')
@@ -167,68 +182,72 @@ class TMDBService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Not found - this is expected for cache misses
+          // Not found - this is normal
           return null;
         }
-        console.error('[TMDB] Cache lookup error:', error);
+        console.error('[TMDB] Error reading cache:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('[TMDB] Cache retrieval error:', error);
+      console.error('[TMDB] Cache lookup error:', error);
       return null;
     }
   }
 
   /**
-   * Update access time for cache management
+   * Update last accessed timestamp
    */
-  private async updateAccessTime(imdbId: string): Promise<void> {
+  private async updateLastAccessed(imdbId: string): Promise<void> {
     try {
-      const { error } = await supabase.rpc('update_tmdb_cache_access', {
-        p_imdb_id: imdbId
-      });
+      const { error } = await supabase
+        .from('tmdb_series_cache')
+        .update({
+          last_accessed_at: new Date().toISOString(),
+          access_count: supabase.sql`access_count + 1`
+        })
+        .eq('imdb_id', imdbId);
 
       if (error) {
-        console.error('[TMDB] Error updating access time:', error);
+        console.error('[TMDB] Error updating last accessed:', error);
       }
     } catch (error) {
-      console.error('[TMDB] Access time update error:', error);
+      console.error('[TMDB] Last accessed update error:', error);
     }
   }
 
   /**
-   * Save data to Supabase cache
+   * Save data to cache (MVP version - simple save)
    */
-  private async saveToCache(
+  private async saveToCacheMVP(
     imdbId: string, 
-    tmdbId: number, 
-    data: TMDBTVSeriesDetails
+    details: TMDBTVSeriesDetails,
+    watchProviders?: WatchProvidersData
   ): Promise<void> {
     try {
       const cacheEntry = {
         imdb_id: imdbId,
-        tmdb_id: tmdbId,
-        name: data.name,
-        overview: data.overview,
-        homepage: data.homepage,
-        status: data.status,
-        first_air_date: data.first_air_date,
-        last_air_date: data.last_air_date,
-        created_by: data.created_by,
-        networks: data.networks,
-        production_companies: data.production_companies,
-        production_countries: data.production_countries,
-        keywords: data.keywords?.results || [],
-        videos: data.videos?.results || [],
-        external_ids: data.external_ids,
-        watch_providers: data.watch_providers,
-        api_response: data,
+        tmdb_id: details.id,
+        name: details.name,
+        overview: details.overview,
+        homepage: details.homepage,
+        status: details.status,
+        first_air_date: details.first_air_date,
+        last_air_date: details.last_air_date,
+        created_by: details.created_by,
+        networks: details.networks,
+        production_companies: details.production_companies,
+        production_countries: details.production_countries,
+        keywords: details.keywords?.results || [],
+        videos: details.videos?.results || [],
+        external_ids: details.external_ids,
+        // FIX: Save watch providers separately
+        watch_providers: watchProviders || null,
+        api_response: details,
         last_fetched_at: new Date().toISOString(),
         last_accessed_at: new Date().toISOString(),
-        access_count: 1,
-        fetch_success: true
+        access_count: 1
       };
 
       const { error } = await supabase
@@ -240,7 +259,7 @@ class TMDBService {
       if (error) {
         console.error('[TMDB] Error saving to cache:', error);
       } else {
-        console.log('[TMDB] Saved to cache:', imdbId);
+        console.log('[TMDB] Saved to cache with watch providers:', imdbId);
       }
     } catch (error) {
       console.error('[TMDB] Cache save error:', error);
@@ -270,7 +289,8 @@ class TMDBService {
         results: cached.videos || []
       },
       external_ids: cached.external_ids,
-      watch_providers: cached.watch_providers
+      // FIX: Return watch providers from cache
+      'watch/providers': cached.watch_providers
     };
   }
 
@@ -300,7 +320,10 @@ class TMDBService {
    */
   private async getTVSeriesDetails(tmdbId: number): Promise<TMDBTVSeriesDetails | null> {
     try {
+      // FIX: Correct append_to_response format - no slash before providers
       const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers`;
+      console.log('[TMDB] Fetching URL:', url);
+      
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -309,9 +332,34 @@ class TMDBService {
       }
 
       const data = await response.json();
+      console.log('[TMDB] API Response received');
+      console.log('[TMDB] Watch providers in response:', data['watch/providers']);
+      
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting TV series details:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get watch providers separately (if needed)
+   */
+  async getWatchProviders(tmdbId: number): Promise<WatchProvidersData | null> {
+    try {
+      const url = `${this.baseUrl}/tv/${tmdbId}/watch/providers?api_key=${this.apiKey}`;
+      const response = await fetch(url);
+    
+      if (!response.ok) {
+        console.error('[TMDB] Get watch providers failed:', response.status);
+        return null;
+      }
+    
+      const data = await response.json();
+      console.log('[TMDB] Watch providers standalone call:', data);
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting watch providers:', error);
       return null;
     }
   }
@@ -333,24 +381,6 @@ class TMDBService {
       }
     } catch (error) {
       console.error('[TMDB] Cache rating update error:', error);
-    }
-  }
-
-  // In TMDBService class
-  async getWatchProviders(tmdbId: number): Promise<WatchProvidersData | null> {
-    try {
-      const url = `${this.baseUrl}/tv/${tmdbId}/watch/providers?api_key=${this.apiKey}`;
-      const response = await fetch(url);
-    
-      if (!response.ok) {
-        console.error('[TMDB] Get watch providers failed:', response.status);
-        return null;
-      }
-    
-      return await response.json();
-    } catch (error) {
-      console.error('[TMDB] Error getting watch providers:', error);
-      return null;
     }
   }
 
