@@ -1,4 +1,4 @@
-// src/components/EnhancedEpisodesBrowserPage.tsx RESTORED TO 10-1 6AM
+// src/components/EnhancedEpisodesBrowserPage.tsx RESTORED TO 09-30
 // Episodes page that uses background-fetched data and dynamic season counts
 import React, { useState, useEffect } from 'react';
 import { 
@@ -310,7 +310,7 @@ export function EnhancedEpisodesBrowserPage({
             tmdbId,
             directWatchData: watchData,
             serviceData: tmdbData,
-            serviceWatchProviders: tmdbData?.watch/providers
+            serviceWatchProviders: tmdbData?.watch_providers
           });
         }
         
@@ -763,13 +763,13 @@ export function EnhancedEpisodesBrowserPage({
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                   <h3 className="font-bold text-yellow-800 mb-2">🐛 DEBUG: TMDB Watch Providers</h3>
                   
-                  {debugTmdbData.serviceWatchProviders ? (
+                  {debugTmdbData.watch_providers ? (
                     <div>
                       <div className="text-green-600 mb-2">✅ Watch providers data found!</div>
                       <details>
                         <summary className="cursor-pointer text-sm">Show watch providers data</summary>
                         <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
-                          {JSON.stringify(debugTmdbData.serviceWatchProviders, null, 2)}
+                          {JSON.stringify(debugTmdbData.watch_providers, null, 2)}
                         </pre>
                       </details>
                     </div>
