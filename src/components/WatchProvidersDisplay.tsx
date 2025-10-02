@@ -501,14 +501,6 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
         </a>
       )}
 
-      {/* DEBUG: Show what data we have */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-          <strong>DEBUG:</strong> Stream: {regionalData.flatrate?.length || 0}, 
-          Purchase/Rental: {purchaseRentalProviders.length}
-        </div>
-      )}
-
       {renderProviders(regionalData.flatrate, 'Stream')}
       {renderProviders(purchaseRentalProviders.length > 0 ? purchaseRentalProviders : undefined, 'Digital Purchase/Rental')}
 
