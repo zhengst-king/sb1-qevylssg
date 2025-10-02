@@ -31,7 +31,6 @@ import { ReviewModal } from './ReviewModal';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 import { TMDBTVDetailsSection } from './TMDBTVDetailsSection';
 import { tmdbService } from '../lib/tmdb';
-import { TMDBAPITester } from './TMDBAPITester';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
