@@ -399,67 +399,6 @@ export function EnhancedEpisodesBrowserPage({
                   <span>Back to TV</span>
                 </button>
 
-                {/* Debug Panel - Remove after fixing */}
-                <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
-                  <h3 className="font-bold text-yellow-900 mb-3">🔍 Watch Providers Debug Panel</h3>
-            
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={async () => {
-                        console.log('Manual debug trigger...');
-                        const data = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
-                        console.log('Manual fetch result:', data);
-                        console.log('Watch providers:', data?.['watch/providers']);
-                  
-                        // Show in alert for easy viewing
-                        const wp = data?.['watch/providers'];
-                       if (wp?.results) {
-                          const regions = Object.keys(wp.results);
-                          alert(`Found watch providers in regions: ${regions.join(', ')}`);
-                        } else {
-                          alert('No watch providers found');
-                        }
-                      }}
-                      className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium"
-                    >
-                      Test Watch Providers
-                    </button>
-              
-                    <button
-                      onClick={async () => {
-                        await tmdbService.clearCacheForSeries(series.imdb_id);
-                        alert('Cache cleared for this series. Refresh the page to fetch fresh data.');
-                      }}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium"
-                    >
-                      Clear Cache
-                    </button>
-
-                    <button
-                      onClick={async () => {
-                        // Test direct API call
-                        const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-                        const tmdbData = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
-                        if (tmdbData) {
-                          const url = `https://api.themoviedb.org/3/tv/${tmdbData.id}/watch/providers?api_key=${API_KEY}`;
-                          const response = await fetch(url);
-                          const data = await response.json();
-                          console.log('Direct API call result:', data);
-                          alert('Check console for direct API result');
-                        }
-                      }}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium"
-                    >
-                      Test Direct API
-                    </button>
-                  </div>
-            
-                  <div className="text-sm text-yellow-800 bg-yellow-100 p-2 rounded">
-                    <strong>Note:</strong> Open browser console (F12) to see detailed debug logs.
-                    Click "Test Watch Providers" to check if data is being fetched correctly.
-                  </div>
-                </div>
-
                 <div className="flex items-center space-x-3">
                   <Play className="h-6 w-6 text-purple-600" />
                   <div className="flex-1">
