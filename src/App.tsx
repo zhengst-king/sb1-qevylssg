@@ -56,7 +56,7 @@ function App() {
     };
 
     initializeEpisodeSystem();
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
   const handlePageChange = (page: PageType) => {
     // Redirect to sign in for protected pages
