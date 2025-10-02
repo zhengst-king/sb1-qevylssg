@@ -10,6 +10,44 @@ interface WatchProvidersDisplayProps {
   title: string;
 }
 
+const handleAppleTVClick = (title: string, e: React.MouseEvent) => {
+  const isMacOS = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.platform);
+  
+  // Only use special handling on Apple devices
+  if (!isMacOS && !isIOS) {
+    return; // Let the default link behavior happen (web version)
+  }
+  
+  e.preventDefault();
+  
+  const encodedTitle = encodeURIComponent(title);
+  const appUrl = `com.apple.tv://search?query=${encodedTitle}`;
+  const webUrl = `https://tv.apple.com/search?q=${encodedTitle}`;
+  
+  // Try to open the app
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = appUrl;
+  document.body.appendChild(iframe);
+  
+  // Set a timeout to check if the app opened
+  const timeout = setTimeout(() => {
+    // App didn't open, fall back to web
+    window.open(webUrl, '_blank');
+    document.body.removeChild(iframe);
+  }, 1500);
+  
+  // Listen for blur event - indicates app opened
+  const onBlur = () => {
+    clearTimeout(timeout);
+    document.body.removeChild(iframe);
+    window.removeEventListener('blur', onBlur);
+  };
+  
+  window.addEventListener('blur', onBlur);
+};
+
 // Helper function to build search URLs for streaming services
 const getProviderSearchUrl = (providerName: string, title: string): string => {
   const encodedTitle = encodeURIComponent(title);
@@ -118,6 +156,12 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
                 href={searchUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => {
+                  // Special handling for Apple TV
+                  if (provider.provider_name.includes('Apple TV')) {
+                    handleAppleTVClick(title, e);
+                  }
+                }}
                 className="flex items-center gap-2 bg-white rounded-lg p-2 border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer group"
                 title={`Watch "${title}" on ${provider.provider_name}`}
               >
