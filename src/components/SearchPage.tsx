@@ -36,9 +36,6 @@ export function SearchPage() {
   const [showingTVRecs, setShowingTVRecs] = useState(false);
   const [claudeConfigured, setClaudeConfigured] = useState(false);
 
-// DISABLED: Auto-test Edge Function on mount
-// This was causing infinite loops when the Edge Function fails
-// Users can manually test via the AI recommendation buttons instead
   useEffect(() => {
     if (isAuthenticated) {
       testSupabaseEdgeFunction();
