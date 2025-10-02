@@ -280,6 +280,24 @@ const handleProviderClick = async (providerName: string, title: string, e: React
   }
 };
 
+// Helper function to get library service URLs
+const getLibraryServiceUrls = (title: string) => {
+  const encodedTitle = encodeURIComponent(title);
+  return {
+    kanopy: `https://www.kanopy.com/search?query=${encodedTitle}`,
+    hoopla: `https://www.hoopladigital.com/search?q=${encodedTitle}&type=video`
+  };
+};
+
+// Helper function to get physical media marketplace URLs
+const getPhysicalMediaUrls = (title: string) => {
+  const encodedTitle = encodeURIComponent(title);
+  return {
+    ebay: `https://www.ebay.com/sch/i.html?_nkw=${encodedTitle}+blu-ray`,
+    amazon: `https://www.amazon.com/s?k=${encodedTitle}+blu-ray`
+  };
+};
+
 // Helper function to get web URL
 const getProviderSearchUrl = (providerName: string, title: string): string => {
   const providerUrls = getProviderUrls(title);
@@ -353,6 +371,10 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
     // Remove duplicates by provider_id
     index === self.findIndex(p => p.provider_id === provider.provider_id)
   );
+
+  // Get library and physical media URLs
+  const libraryUrls = getLibraryServiceUrls(title);
+  const physicalUrls = getPhysicalMediaUrls(title);
 
   const renderProviders = (providers: WatchProvider[] | undefined, label: string) => {
     if (!providers || providers.length === 0) return null;
@@ -489,6 +511,94 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
 
       {renderProviders(regionalData.flatrate, 'Stream')}
       {renderProviders(purchaseRentalProviders.length > 0 ? purchaseRentalProviders : undefined, 'Digital Purchase/Rental')}
+
+      {/* Library Services Section */}
+      <div className="mb-4">
+        <h4 className="text-sm font-medium text-slate-700 mb-2">Library Services</h4>
+        <div className="text-sm text-slate-600">
+          <a
+            href={libraryUrls.kanopy}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-700 underline"
+            onClick={(e) => {
+              e.preventDefault();
+              const link = document.createElement('a');
+              link.href = libraryUrls.kanopy;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          >
+            Search on Kanopy
+          </a>
+          {' • '}
+          <a
+            href={libraryUrls.hoopla}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-700 underline"
+            onClick={(e) => {
+              e.preventDefault();
+              const link = document.createElement('a');
+              link.href = libraryUrls.hoopla;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          >
+            Search on Hoopla
+          </a>
+        </div>
+      </div>
+
+      {/* Physical Media Section */}
+      <div className="mb-4">
+        <h4 className="text-sm font-medium text-slate-700 mb-2">Physical Media</h4>
+        <div className="text-sm text-slate-600">
+          <a
+            href={physicalUrls.ebay}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-700 underline"
+            onClick={(e) => {
+              e.preventDefault();
+              const link = document.createElement('a');
+              link.href = physicalUrls.ebay;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          >
+            Buy on eBay
+          </a>
+          {' • '}
+          <a
+            href={physicalUrls.amazon}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-700 underline"
+            onClick={(e) => {
+              e.preventDefault();
+              const link = document.createElement('a');
+              link.href = physicalUrls.amazon;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
+          >
+            Buy on Amazon
+          </a>
+        </div>
+      </div>
 
       {!regionalData.flatrate && purchaseRentalProviders.length === 0 && (
         <p className="text-slate-600 text-sm">
