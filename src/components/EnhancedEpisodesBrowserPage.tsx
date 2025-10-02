@@ -161,6 +161,7 @@ export function EnhancedEpisodesBrowserPage({
     if (!series.imdb_id) return;
   
     let isMounted = true;
+    let interval: NodeJS.Timeout | null = null; // ← ADD THIS LINE
 
     const updateStatus = async () => {
       try {
@@ -179,11 +180,11 @@ export function EnhancedEpisodesBrowserPage({
     };
 
     updateStatus();
-    const interval = setInterval(updateStatus, 30000);
+    interval = setInterval(updateStatus, 30000); // ← ASSIGN to variable
 
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (interval) clearInterval(interval); // ← PROPER CLEANUP
     };
   }, [series.imdb_id]);
 
