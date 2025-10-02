@@ -14,6 +14,10 @@ interface WatchProvidersDisplayProps {
 const getProviderSearchUrl = (providerName: string, title: string): string => {
   const encodedTitle = encodeURIComponent(title);
   
+  // Special handling for Apple TV - use native app URL scheme on macOS/iOS
+  const isMacOS = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.platform);
+  
   // Map of provider names to their search URLs
   const searchUrls: { [key: string]: string } = {
     'Netflix': `https://www.netflix.com/search?q=${encodedTitle}`,
@@ -24,8 +28,9 @@ const getProviderSearchUrl = (providerName: string, title: string): string => {
     'Disney+': `https://www.disneyplus.com/search?q=${encodedTitle}`,
     'HBO Max': `https://www.max.com/search?q=${encodedTitle}`,
     'Max': `https://www.max.com/search?q=${encodedTitle}`,
-    'Apple TV Plus': `https://tv.apple.com/search?q=${encodedTitle}`,
-    'Apple TV': `https://tv.apple.com/search?q=${encodedTitle}`,
+    // Apple TV - use native app URL on Apple devices
+    'Apple TV Plus': (isMacOS || isIOS) ? `com.apple.tv://search?query=${encodedTitle}` : `https://tv.apple.com/search?q=${encodedTitle}`,
+    'Apple TV': (isMacOS || isIOS) ? `com.apple.tv://search?query=${encodedTitle}` : `https://tv.apple.com/search?q=${encodedTitle}`,
     'Paramount Plus': `https://www.paramountplus.com/search/?query=${encodedTitle}`,
     'Paramount+': `https://www.paramountplus.com/search/?query=${encodedTitle}`,
     'Peacock': `https://www.peacocktv.com/search/${encodedTitle}`,
