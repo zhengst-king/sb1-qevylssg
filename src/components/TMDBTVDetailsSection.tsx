@@ -3,18 +3,11 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Globe,
   ExternalLink,
-  Users,
-  Building2,
-  MapPin,
-  Tag,
-  Tv,
-  CheckCircle,
   Youtube
 } from 'lucide-react';
 import { tmdbService, TMDBTVSeriesDetails } from '../lib/tmdb';
-import { StreamingAvailability } from './StreamingAvailability';
+import WatchProvidersDisplay from './WatchProvidersDisplay';
 
 interface TMDBTVDetailsSectionProps {
   imdbId: string;
@@ -32,6 +25,11 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
         setLoading(true);
         setError(null);
         const data = await tmdbService.getTVSeriesByImdbId(imdbId);
+        
+        console.log('[TMDBTVDetailsSection] Received data:', data);
+        console.log('[TMDBTVDetailsSection] watch/providers:', data?.['watch/providers']);
+        console.log('[TMDBTVDetailsSection] Available properties:', data ? Object.keys(data) : 'none');
+        
         setTmdbData(data);
       } catch (err) {
         console.error('[TMDB] Error fetching TV series data:', err);
@@ -68,6 +66,10 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
   ) || tmdbData.videos?.results.find(
     v => v.type === 'Trailer' && v.site === 'YouTube'
   );
+
+  // CRITICAL FIX: Access watch providers with the correct property name (with slash)
+  const watchProviders = tmdbData['watch/providers'];
+  console.log('[TMDBTVDetailsSection] Watch providers for display:', watchProviders);
 
   return (
     <div className={`${className}`}>
@@ -166,14 +168,19 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
         )}
       </div>
 
-      {/* Streaming Availability */}
-      {tmdbData.watch_providers && (
+      {/* CRITICAL FIX: Check for watch providers using the correct property name */}
+      {watchProviders && watchProviders.results && Object.keys(watchProviders.results).length > 0 ? (
         <div className="mt-6 pt-6 border-t border-slate-200">
-          <StreamingAvailability 
-            tmdbData={tmdbData}
+          <WatchProvidersDisplay 
+            watchProviders={watchProviders}
             title={tmdbData.name}
-            year={tmdbData.first_air_date?.substring(0, 4)}
           />
+        </div>
+      ) : (
+        <div className="mt-6 pt-6 border-t border-slate-200">
+          <div className="text-sm text-slate-500 italic">
+            No streaming availability information found
+          </div>
         </div>
       )}
       
