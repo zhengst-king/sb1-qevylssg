@@ -1,5 +1,5 @@
 // src/components/WatchProvidersDisplay.tsx
-// Updated with clickable provider icons
+// Updated with clickable provider icons and smart app detection
 import React, { useState } from 'react';
 import { WatchProvidersData, WatchProvider } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
@@ -16,7 +16,7 @@ const getProviderUrls = (title: string) => {
   
   return {
     'Netflix': {
-      pwa: `https://www.netflix.com/search?q=${encodedTitle}`, // PWA uses same URL as web
+      pwa: `https://www.netflix.com/search?q=${encodedTitle}`,
       app: `netflix://search?q=${encodedTitle}`,
       web: `https://www.netflix.com/search?q=${encodedTitle}`
     },
@@ -131,49 +131,26 @@ const getProviderUrls = (title: string) => {
 };
 
 /**
- * Check if a PWA is installed using the getInstalledRelatedApps API
- */
-const checkPWAInstalled = async (manifestUrl: string): Promise<boolean> => {
-  // Check if API is available (Chrome/Edge 85+)
-  if ('getInstalledRelatedApps' in navigator) {
-    try {
-      const relatedApps = await (navigator as any).getInstalledRelatedApps();
-      return relatedApps.length > 0;
-    } catch (error) {
-      console.log('[PWA] getInstalledRelatedApps not supported:', error);
-    }
-  }
-  return false;
-};
-
-/**
  * Try to open PWA by navigating to its scope URL
- * Chrome/Edge will open the PWA window if it's installed
  */
 const tryOpenPWA = (url: string): Promise<boolean> => {
   return new Promise((resolve) => {
-    // Open in a new window with specific dimensions (PWA indicator)
     const pwaWindow = window.open(
       url,
       '_blank',
       'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no'
     );
     
-    // If window opened, check if it's a PWA
     if (pwaWindow) {
-      // PWAs usually open almost instantly
       setTimeout(() => {
         try {
-          // If we can't access the window, it might be a PWA (different origin/process)
-          // Or it closed (which means PWA took over)
           if (pwaWindow.closed || !pwaWindow.location) {
-            resolve(true); // Likely opened as PWA
+            resolve(true);
           } else {
-            pwaWindow.close(); // Close our test window
-            resolve(false); // Not a PWA
+            pwaWindow.close();
+            resolve(false);
           }
         } catch (e) {
-          // Cross-origin error likely means PWA opened
           pwaWindow.close();
           resolve(true);
         }
@@ -190,11 +167,10 @@ const tryOpenPWA = (url: string): Promise<boolean> => {
 const handleProviderClick = async (providerName: string, title: string, e: React.MouseEvent) => {
   const providerUrls = getProviderUrls(title);
   
-  // Find matching provider (exact or partial match)
+  // Find matching provider
   let urls = providerUrls[providerName as keyof typeof providerUrls];
   
   if (!urls) {
-    // Try partial match
     const partialMatch = Object.keys(providerUrls).find(key => 
       providerName.toLowerCase().includes(key.toLowerCase()) ||
       key.toLowerCase().includes(providerName.toLowerCase())
@@ -205,7 +181,6 @@ const handleProviderClick = async (providerName: string, title: string, e: React
     }
   }
   
-  // If no special URLs, just use default web behavior
   if (!urls) {
     return;
   }
@@ -214,11 +189,10 @@ const handleProviderClick = async (providerName: string, title: string, e: React
   
   const { pwa: pwaUrl, app: appUrl, web: webUrl } = urls;
   
-  // STEP 1: Try native app first (if available)
+  // STEP 1: Try native app first
   if (appUrl) {
     console.log('[Provider] Attempting to open native app:', providerName);
     
-    // Try to open the native app
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     iframe.src = appUrl;
@@ -226,13 +200,11 @@ const handleProviderClick = async (providerName: string, title: string, e: React
     
     let appOpened = false;
     
-    // Wait to see if app opens
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
         resolve();
       }, 1500);
       
-      // Listen for blur event - indicates app opened successfully
       const onBlur = () => {
         appOpened = true;
         clearTimeout(timeout);
@@ -242,7 +214,6 @@ const handleProviderClick = async (providerName: string, title: string, e: React
         resolve();
       };
       
-      // Also listen for visibility change (more reliable on some browsers)
       const onVisibilityChange = () => {
         if (document.hidden) {
           appOpened = true;
@@ -258,47 +229,43 @@ const handleProviderClick = async (providerName: string, title: string, e: React
       document.addEventListener('visibilitychange', onVisibilityChange);
     });
     
-    // Clean up iframe
     if (iframe.parentNode) {
       document.body.removeChild(iframe);
     }
     
     if (appOpened) {
-      return; // Success! Native app opened
+      return;
     }
     
     console.log('[Provider] Native app not available, trying PWA...');
   }
   
-  // STEP 2: Try PWA (if available and native app didn't work)
+  // STEP 2: Try PWA
   if (pwaUrl) {
     console.log('[Provider] Attempting to open PWA:', providerName);
     
-    // Try opening as PWA
     const pwaOpened = await tryOpenPWA(pwaUrl);
     
     if (pwaOpened) {
       console.log('[Provider] PWA opened successfully');
-      return; // Success! PWA opened
+      return;
     }
     
     console.log('[Provider] PWA not available, opening web version...');
   }
   
-  // STEP 3: Fall back to web (if no native app or PWA)
+  // STEP 3: Fall back to web
   console.log('[Provider] Opening web version');
   window.open(webUrl, '_blank');
 };
 
-// Helper function to build search URLs for streaming services
+// Helper function to get web URL
 const getProviderSearchUrl = (providerName: string, title: string): string => {
   const providerUrls = getProviderUrls(title);
   
-  // Get the web URL from our mapping
   let urls = providerUrls[providerName as keyof typeof providerUrls];
   
   if (!urls) {
-    // Try partial match
     const partialMatch = Object.keys(providerUrls).find(key => 
       providerName.toLowerCase().includes(key.toLowerCase()) ||
       key.toLowerCase().includes(providerName.toLowerCase())
@@ -313,26 +280,7 @@ const getProviderSearchUrl = (providerName: string, title: string): string => {
     return urls.web;
   }
   
-  // Default: Google search for the provider and title
   const encodedTitle = encodeURIComponent(title);
-  return `https://www.google.com/search?q=${encodeURIComponent(providerName + ' ' + title)}`;
-};
-
-// Remove the old searchUrls object and replace with the code above
-  
-  // Check for exact match or partial match
-  const exactMatch = searchUrls[providerName];
-  if (exactMatch) return exactMatch;
-  
-  // Try partial match (case-insensitive)
-  const partialMatch = Object.keys(searchUrls).find(key => 
-    providerName.toLowerCase().includes(key.toLowerCase()) ||
-    key.toLowerCase().includes(providerName.toLowerCase())
-  );
-  
-  if (partialMatch) return searchUrls[partialMatch];
-  
-  // Default: Google search for the provider and title
   return `https://www.google.com/search?q=${encodeURIComponent(providerName + ' ' + title)}`;
 };
 
@@ -372,7 +320,6 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
     );
   }
 
-  // Default to US if available, otherwise first available region
   const defaultRegion = availableRegions.includes('US') ? 'US' : availableRegions[0];
   const currentRegion = availableRegions.includes(selectedRegion) ? selectedRegion : defaultRegion;
   const regionalData = results[currentRegion];
@@ -400,7 +347,6 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => {
-                  // Handle async PWA detection
                   handleProviderClick(displayName, title, e);
                 }}
                 className="flex items-center gap-2 bg-white rounded-lg p-2 border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer group"
