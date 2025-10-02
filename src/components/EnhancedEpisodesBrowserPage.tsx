@@ -95,13 +95,6 @@ export function EnhancedEpisodesBrowserPage({
     setLocalReview(series.user_review || null);
     setLocalDateWatched(series.date_watched || null);
   }, [series.user_rating, series.status, series.user_review, series.date_watched]);
-
-  // Sync IMDb rating to TMDB cache for smart TTL calculation
-  useEffect(() => {
-    if (series.imdb_id && series.imdb_score) {
-      tmdbService.updateCacheRating(series.imdb_id, series.imdb_score);
-    }
-  }, [series.imdb_id, series.imdb_score]);
   
   // Load episodes for current season from background cache
   useEffect(() => {
