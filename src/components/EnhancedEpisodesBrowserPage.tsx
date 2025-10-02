@@ -606,28 +606,44 @@ export function EnhancedEpisodesBrowserPage({
                 </div>
               )}
 
-              {/* 🐛 DEBUG: TMDB Watch Providers Test */}
+              {/* 🐛 DEBUG: TMDB Watch Providers Test - FIXED VERSION */}
               {debugTmdbData && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                   <h3 className="font-bold text-yellow-800 mb-2">🐛 DEBUG: TMDB Watch Providers</h3>
                   
-                  {debugTmdbData.watch_providers ? (
+                  {/* Check for watch providers using the CORRECT property name (with slash) */}
+                  {debugTmdbData.serviceData?.['watch/providers'] ? (
                     <div>
                       <div className="text-green-600 mb-2">✅ Watch providers data found!</div>
+                      <div className="text-sm mb-2">
+                        <span className="font-medium">Available regions: </span>
+                        <span className="text-gray-700">
+                          {Object.keys(debugTmdbData.serviceData['watch/providers'].results || {}).join(', ')}
+                        </span>
+                      </div>
                       <details>
-                        <summary className="cursor-pointer text-sm">Show watch providers data</summary>
-                        <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
-                          {JSON.stringify(debugTmdbData.watch_providers, null, 2)}
+                        <summary className="cursor-pointer text-sm text-gray-600">
+                          Show watch providers data
+                        </summary>
+                        <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-64">
+                          {JSON.stringify(debugTmdbData.serviceData['watch/providers'], null, 2)}
                         </pre>
                       </details>
                     </div>
                   ) : (
-                    <div className="text-red-600">❌ No watch providers data found</div>
+                    <div>
+                      <div className="text-red-600 mb-2">❌ No watch providers data found</div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        Checking serviceData properties: {debugTmdbData.serviceData ? Object.keys(debugTmdbData.serviceData).join(', ') : 'none'}
+                      </div>
+                    </div>
                   )}
                   
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-sm text-gray-600">Show full TMDB data</summary>
-                    <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
+                    <summary className="cursor-pointer text-sm text-gray-600">
+                      Show full TMDB data
+                    </summary>
+                    <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-64">
                       {JSON.stringify(debugTmdbData, null, 2)}
                     </pre>
                   </details>
