@@ -71,8 +71,8 @@ const getProviderUrls = (title: string) => {
       web: `https://tv.apple.com/search?q=${encodedTitle}`
     },
     'Fandango At Home': {
-      pwa: `https://www.vudu.com/content/movies/search/${encodedTitle}`,
-      web: `https://www.vudu.com/content/movies/search/${encodedTitle}`
+      pwa: `https://www.vudu.com/content/browse`,
+      web: `https://www.vudu.com/content/browse`
     },
     'Paramount Plus': {
       pwa: `https://www.paramountplus.com/search/?query=${encodedTitle}`,
@@ -165,98 +165,119 @@ const tryOpenPWA = (url: string): Promise<boolean> => {
  * Smart handler that tries Native App → PWA → Web (in that order)
  */
 const handleProviderClick = async (providerName: string, title: string, e: React.MouseEvent) => {
-  const providerUrls = getProviderUrls(title);
-  
-  // Find matching provider
-  let urls = providerUrls[providerName as keyof typeof providerUrls];
-  
-  if (!urls) {
-    const partialMatch = Object.keys(providerUrls).find(key => 
-      providerName.toLowerCase().includes(key.toLowerCase()) ||
-      key.toLowerCase().includes(providerName.toLowerCase())
-    );
+  try {
+    const providerUrls = getProviderUrls(title);
     
-    if (partialMatch) {
-      urls = providerUrls[partialMatch as keyof typeof providerUrls];
+    // Find matching provider
+    let urls = providerUrls[providerName as keyof typeof providerUrls];
+    
+    if (!urls) {
+      const partialMatch = Object.keys(providerUrls).find(key => 
+        providerName.toLowerCase().includes(key.toLowerCase()) ||
+        key.toLowerCase().includes(providerName.toLowerCase())
+      );
+      
+      if (partialMatch) {
+        urls = providerUrls[partialMatch as keyof typeof providerUrls];
+      }
     }
-  }
-  
-  if (!urls) {
-    return;
-  }
-  
-  e.preventDefault();
-  
-  const { pwa: pwaUrl, app: appUrl, web: webUrl } = urls;
-  
-  // STEP 1: Try native app first
-  if (appUrl) {
-    console.log('[Provider] Attempting to open native app:', providerName);
     
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = appUrl;
-    document.body.appendChild(iframe);
+    if (!urls) {
+      return; // Let default link behavior happen
+    }
     
-    let appOpened = false;
+    e.preventDefault();
     
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        resolve();
-      }, 1500);
+    const { pwa: pwaUrl, app: appUrl, web: webUrl } = urls;
+    
+    // STEP 1: Try native app first
+    if (appUrl) {
+      console.log('[Provider] Attempting to open native app:', providerName);
       
-      const onBlur = () => {
-        appOpened = true;
-        clearTimeout(timeout);
-        console.log('[Provider] Native app opened successfully');
-        window.removeEventListener('blur', onBlur);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-        resolve();
-      };
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = appUrl;
+      document.body.appendChild(iframe);
       
-      const onVisibilityChange = () => {
-        if (document.hidden) {
+      let appOpened = false;
+      
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(() => {
+          resolve();
+        }, 1500);
+        
+        const onBlur = () => {
           appOpened = true;
           clearTimeout(timeout);
-          console.log('[Provider] Native app opened (visibility change)');
-          document.removeEventListener('visibilitychange', onVisibilityChange);
+          console.log('[Provider] Native app opened successfully');
           window.removeEventListener('blur', onBlur);
+          document.removeEventListener('visibilitychange', onVisibilityChange);
           resolve();
-        }
-      };
+        };
+        
+        const onVisibilityChange = () => {
+          if (document.hidden) {
+            appOpened = true;
+            clearTimeout(timeout);
+            console.log('[Provider] Native app opened (visibility change)');
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('blur', onBlur);
+            resolve();
+          }
+        };
+        
+        window.addEventListener('blur', onBlur);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+      });
       
-      window.addEventListener('blur', onBlur);
-      document.addEventListener('visibilitychange', onVisibilityChange);
-    });
-    
-    if (iframe.parentNode) {
-      document.body.removeChild(iframe);
+      if (iframe.parentNode) {
+        document.body.removeChild(iframe);
+      }
+      
+      if (appOpened) {
+        return;
+      }
+      
+      console.log('[Provider] Native app not available, trying PWA...');
     }
     
-    if (appOpened) {
-      return;
+    // STEP 2: Try PWA
+    if (pwaUrl) {
+      console.log('[Provider] Attempting to open PWA:', providerName);
+      
+      const pwaOpened = await tryOpenPWA(pwaUrl);
+      
+      if (pwaOpened) {
+        console.log('[Provider] PWA opened successfully');
+        return;
+      }
+      
+      console.log('[Provider] PWA not available, opening web version...');
     }
     
-    console.log('[Provider] Native app not available, trying PWA...');
+    // STEP 3: Fall back to web - force open in actual browser
+    console.log('[Provider] Opening web version');
+    
+    // Try to force open in system browser (not PWA)
+    const link = document.createElement('a');
+    link.href = webUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error('[Provider] Error in handleProviderClick:', error);
+    // Fallback: just open the href in new tab
+    const fallbackUrl = getProviderSearchUrl(providerName, title);
+    const link = document.createElement('a');
+    link.href = fallbackUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
-  
-  // STEP 2: Try PWA
-  if (pwaUrl) {
-    console.log('[Provider] Attempting to open PWA:', providerName);
-    
-    const pwaOpened = await tryOpenPWA(pwaUrl);
-    
-    if (pwaOpened) {
-      console.log('[Provider] PWA opened successfully');
-      return;
-    }
-    
-    console.log('[Provider] PWA not available, opening web version...');
-  }
-  
-  // STEP 3: Fall back to web
-  console.log('[Provider] Opening web version');
-  window.open(webUrl, '_blank');
 };
 
 // Helper function to get web URL
@@ -324,6 +345,15 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
   const currentRegion = availableRegions.includes(selectedRegion) ? selectedRegion : defaultRegion;
   const regionalData = results[currentRegion];
 
+  // Combine buy and rent into one array for "Digital Purchase/Rental"
+  const purchaseRentalProviders = [
+    ...(regionalData.buy || []),
+    ...(regionalData.rent || [])
+  ].filter((provider, index, self) => 
+    // Remove duplicates by provider_id
+    index === self.findIndex(p => p.provider_id === provider.provider_id)
+  );
+
   const renderProviders = (providers: WatchProvider[] | undefined, label: string) => {
     if (!providers || providers.length === 0) return null;
 
@@ -334,7 +364,7 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
           {providers.map((provider) => {
             // Map provider names for display
             let displayName = provider.provider_name;
-            if (provider.provider_name === 'Apple TV' && label === 'Digital Purchase') {
+            if (provider.provider_name === 'Apple TV' && label === 'Digital Purchase/Rental') {
               displayName = 'Apple Store';
             }
             
@@ -449,11 +479,18 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
         </a>
       )}
 
-      {renderProviders(regionalData.flatrate, 'Stream')}
-      {renderProviders(regionalData.buy, 'Digital Purchase')}
-      {renderProviders(regionalData.rent, 'Digital Rental')}
+      {/* DEBUG: Show what data we have */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+          <strong>DEBUG:</strong> Stream: {regionalData.flatrate?.length || 0}, 
+          Purchase/Rental: {purchaseRentalProviders.length}
+        </div>
+      )}
 
-      {!regionalData.flatrate && !regionalData.buy && !regionalData.rent && (
+      {renderProviders(regionalData.flatrate, 'Stream')}
+      {renderProviders(purchaseRentalProviders.length > 0 ? purchaseRentalProviders : undefined, 'Digital Purchase/Rental')}
+
+      {!regionalData.flatrate && purchaseRentalProviders.length === 0 && (
         <p className="text-slate-600 text-sm">
           No streaming options available in {currentRegion}.
         </p>
