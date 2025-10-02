@@ -634,34 +634,6 @@ export function EnhancedEpisodesBrowserPage({
                 </div>
               )}
 
-              {/* 🐛 DEBUG: TMDB Watch Providers Test */}
-              {debugTmdbData && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                  <h3 className="font-bold text-yellow-800 mb-2">🐛 DEBUG: TMDB Watch Providers</h3>
-                  
-                  {debugTmdbData.serviceWatchProviders ? (
-                    <div>
-                      <div className="text-green-600 mb-2">✅ Watch providers data found!</div>
-                      <details>
-                        <summary className="cursor-pointer text-sm">Show watch providers data</summary>
-                        <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
-                          {JSON.stringify(debugTmdbData.serviceWatchProviders, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  ) : (
-                    <div className="text-red-600">❌ No watch providers data found</div>
-                  )}
-                  
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-sm text-gray-600">Show full TMDB data</summary>
-                    <pre className="text-xs bg-gray-100 p-2 mt-2 rounded overflow-auto max-h-32">
-                      {JSON.stringify(debugTmdbData, null, 2)}
-                    </pre>
-                  </details>
-                </div>
-              )}
-
               {/* ✅ UPDATED: Plot with expand/collapse */}
               {series.plot && series.plot !== 'N/A' && (
                 <div className="bg-slate-50 p-4 rounded-lg mb-6">
