@@ -65,6 +65,15 @@ const getProviderUrls = (title: string) => {
       app: `com.apple.tv://search?query=${encodedTitle}`,
       web: `https://tv.apple.com/search?q=${encodedTitle}`
     },
+    'Apple Store': {
+      pwa: `https://tv.apple.com/search?q=${encodedTitle}`,
+      app: `com.apple.tv://search?query=${encodedTitle}`,
+      web: `https://tv.apple.com/search?q=${encodedTitle}`
+    },
+    'Fandango At Home': {
+      pwa: `https://www.vudu.com/content/movies/search/${encodedTitle}`,
+      web: `https://www.vudu.com/content/movies/search/${encodedTitle}`
+    },
     'Paramount Plus': {
       pwa: `https://www.paramountplus.com/search/?query=${encodedTitle}`,
       app: `paramountplus://search?query=${encodedTitle}`,
@@ -376,7 +385,13 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
         <h4 className="text-sm font-medium text-slate-700 mb-2">{label}</h4>
         <div className="flex flex-wrap gap-2">
           {providers.map((provider) => {
-            const searchUrl = getProviderSearchUrl(provider.provider_name, title);
+            // Map provider names for display
+            let displayName = provider.provider_name;
+            if (provider.provider_name === 'Apple TV' && label === 'Digital Purchase') {
+              displayName = 'Apple Store';
+            }
+            
+            const searchUrl = getProviderSearchUrl(displayName, title);
             
             return (
               <a
@@ -386,26 +401,26 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
                 rel="noopener noreferrer"
                 onClick={(e) => {
                   // Handle async PWA detection
-                  handleProviderClick(provider.provider_name, title, e);
+                  handleProviderClick(displayName, title, e);
                 }}
                 className="flex items-center gap-2 bg-white rounded-lg p-2 border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer group"
-                title={`Watch "${title}" on ${provider.provider_name}`}
+                title={`Watch "${title}" on ${displayName}`}
               >
                 {provider.logo_path ? (
                   <img
                     src={tmdbService.getImageUrl(provider.logo_path, 'w92') || ''}
-                    alt={provider.provider_name}
+                    alt={displayName}
                     className="w-8 h-8 rounded"
                   />
                 ) : (
                   <div className="w-8 h-8 bg-slate-200 rounded flex items-center justify-center">
                     <span className="text-xs text-slate-600">
-                      {provider.provider_name.substring(0, 2).toUpperCase()}
+                      {displayName.substring(0, 2).toUpperCase()}
                     </span>
                   </div>
                 )}
                 <span className="text-sm text-slate-700 group-hover:text-purple-600 transition-colors">
-                  {provider.provider_name}
+                  {displayName}
                 </span>
                 <ExternalLink className="h-3 w-3 text-slate-400 group-hover:text-purple-600 transition-colors" />
               </a>
@@ -489,8 +504,8 @@ const WatchProvidersDisplay: React.FC<WatchProvidersDisplayProps> = ({
       )}
 
       {renderProviders(regionalData.flatrate, 'Stream')}
-      {renderProviders(regionalData.buy, 'Buy')}
-      {renderProviders(regionalData.rent, 'Rent')}
+      {renderProviders(regionalData.buy, 'Digital Purchase')}
+      {renderProviders(regionalData.rent, 'Digital Rental')}
 
       {!regionalData.flatrate && !regionalData.buy && !regionalData.rent && (
         <p className="text-slate-600 text-sm">
