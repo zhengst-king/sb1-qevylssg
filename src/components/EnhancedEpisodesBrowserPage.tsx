@@ -90,8 +90,6 @@ export function EnhancedEpisodesBrowserPage({
     currentlyProcessing: null
   });
 
-  const [debugTmdbData, setDebugTmdbData] = useState<any>(null);
-
   // Update local state when series prop changes
   useEffect(() => {
     setLocalRating(series.user_rating || null);
