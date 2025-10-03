@@ -1,4 +1,4 @@
--- supabase/migrations/[timestamp]_create_user_episode_tracking.sql
+-- supabase/migrations/20251003000000_create_user_episode_tracking.sql
 -- Create table to store user-specific episode tracking data
 
 CREATE TABLE IF NOT EXISTS user_episode_tracking (
