@@ -26,6 +26,67 @@ export interface WatchProvidersData {
   };
 }
 
+export interface TMDBCastMember {
+  adult: boolean;
+  gender: number;
+  id: number;
+  known_for_department: string;
+  name: string;
+  original_name: string;
+  popularity: number;
+  profile_path: string | null;
+  cast_id?: number;
+  character: string;
+  credit_id: string;
+  order: number;
+}
+
+export interface TMDBCrewMember {
+  adult: boolean;
+  gender: number;
+  id: number;
+  known_for_department: string;
+  name: string;
+  original_name: string;
+  popularity: number;
+  profile_path: string | null;
+  credit_id: string;
+  department: string;
+  job: string;
+}
+
+export interface TMDBSeriesCredits {
+  cast: TMDBCastMember[];
+  crew: TMDBCrewMember[];
+  id: number;
+}
+
+// ✅ NEW: Recommendations interfaces
+export interface TMDBRecommendation {
+  adult: boolean;
+  backdrop_path: string | null;
+  id: number;
+  name: string;
+  original_language: string;
+  original_name: string;
+  overview: string;
+  poster_path: string | null;
+  media_type: string;
+  genre_ids: number[];
+  popularity: number;
+  first_air_date: string;
+  vote_average: number;
+  vote_count: number;
+  origin_country: string[];
+}
+
+export interface TMDBRecommendationsResponse {
+  page: number;
+  results: TMDBRecommendation[];
+  total_pages: number;
+  total_results: number;
+}
+
 export interface TMDBTVSeriesDetails {
   id: number;
   name: string;
@@ -76,44 +137,10 @@ export interface TMDBTVSeriesDetails {
     tvdb_id: number | null;
   };
   'watch/providers'?: WatchProvidersData;
-  
-  // ✅ ADD THIS:
   credits?: TMDBSeriesCredits;
-}
-
-export interface TMDBCastMember {
-  adult: boolean;
-  gender: number;
-  id: number;
-  known_for_department: string;
-  name: string;
-  original_name: string;
-  popularity: number;
-  profile_path: string | null;
-  cast_id?: number;
-  character: string;
-  credit_id: string;
-  order: number;
-}
-
-export interface TMDBCrewMember {
-  adult: boolean;
-  gender: number;
-  id: number;
-  known_for_department: string;
-  name: string;
-  original_name: string;
-  popularity: number;
-  profile_path: string | null;
-  credit_id: string;
-  department: string;
-  job: string;
-}
-
-export interface TMDBSeriesCredits {
-  cast: TMDBCastMember[];
-  crew: TMDBCrewMember[];
-  id: number;
+  // ✅ NEW: Add recommendations and similar
+  recommendations?: TMDBRecommendationsResponse;
+  similar?: TMDBRecommendationsResponse;
 }
 
 interface CachedTMDBData {
@@ -137,6 +164,9 @@ interface CachedTMDBData {
     cast: TMDBCastMember[];
     crew: TMDBCrewMember[];
   };
+  // ✅ NEW: Add recommendations and similar
+  recommendations?: TMDBRecommendationsResponse;
+  similar?: TMDBRecommendationsResponse;
   api_response: any;
   last_fetched_at: string;
   last_accessed_at: string;
@@ -326,6 +356,9 @@ class TMDBService {
           cast: details.credits.cast,
           crew: details.credits.crew
         } : undefined,
+        // ✅ NEW: Save recommendations and similar
+        recommendations: details.recommendations,
+        similar: details.similar,
         api_response: details,
         last_fetched_at: new Date().toISOString(),
         last_accessed_at: new Date().toISOString(),
@@ -386,7 +419,10 @@ class TMDBService {
         cast: cached.credits.cast || [],
         crew: cached.credits.crew || [],
         id: cached.tmdb_id
-      } : undefined
+      } : undefined,
+      // ✅ NEW: Return recommendations and similar from cache
+      recommendations: cached.recommendations,
+      similar: cached.similar
     };
 
     console.log('[TMDB] Formatted data has watch/providers:', !!(formatted['watch/providers']));
@@ -421,8 +457,8 @@ class TMDBService {
    */
   private async getTVSeriesDetails(tmdbId: number): Promise<TMDBTVSeriesDetails | null> {
     try {
-      // ✅ ADD credits to append_to_response:
-      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers,credits`;
+      // ✅ UPDATED: Add recommendations and similar to append_to_response
+      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers,credits,recommendations,similar`;
       console.log('[TMDB] Fetching URL:', url);
     
       const response = await fetch(url);
@@ -436,6 +472,9 @@ class TMDBService {
       console.log('[TMDB] API Response received');
       console.log('[TMDB] Watch providers in response:', data['watch/providers']);
       console.log('[TMDB] Credits in response:', data.credits ? `${data.credits.cast?.length} cast members` : 'No credits');
+      // ✅ NEW: Log recommendations and similar
+      console.log('[TMDB] Recommendations in response:', data.recommendations ? `${data.recommendations.results?.length} items` : 'No recommendations');
+      console.log('[TMDB] Similar titles in response:', data.similar ? `${data.similar.results?.length} items` : 'No similar');
     
       return data;
     } catch (error) {
@@ -444,7 +483,9 @@ class TMDBService {
     }
   }
 
-  // ✅ ADD THIS NEW METHOD to get profile image URLs:
+  /**
+   * Get profile image URL for cast members
+   */
   getProfileImageUrl(profilePath: string | null, size: 'w45' | 'w185' | 'h632' | 'original' = 'w185'): string | null {
     if (!profilePath) return null;
     return `https://image.tmdb.org/t/p/${size}${profilePath}`;
