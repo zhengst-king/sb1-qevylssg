@@ -133,6 +133,10 @@ interface CachedTMDBData {
   videos: any;
   external_ids: any;
   watch_providers: any;
+  credits?: {
+    cast: TMDBCastMember[];
+    crew: TMDBCrewMember[];
+  };
   api_response: any;
   last_fetched_at: string;
   last_accessed_at: string;
@@ -318,6 +322,10 @@ class TMDBService {
         external_ids: details.external_ids,
         // CRITICAL: Save watch providers with correct structure
         watch_providers: extractedWatchProviders,
+        credits: details.credits ? {
+          cast: details.credits.cast,
+          crew: details.credits.crew
+        } : undefined,
         api_response: details,
         last_fetched_at: new Date().toISOString(),
         last_accessed_at: new Date().toISOString(),
@@ -374,9 +382,15 @@ class TMDBService {
       external_ids: cached.external_ids,
       // FIX: Properly return watch providers from cache
       'watch/providers': cached.watch_providers || undefined
+      credits: cached.credits ? {
+        cast: cached.credits.cast || [],
+        crew: cached.credits.crew || [],
+        id: cached.tmdb_id
+      } : undefined
     };
 
     console.log('[TMDB] Formatted data has watch/providers:', !!(formatted['watch/providers']));
+    console.log('[TMDB] Formatted data has credits:', !!(formatted.credits));
     
     return formatted;
   }
