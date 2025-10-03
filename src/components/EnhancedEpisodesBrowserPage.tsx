@@ -903,14 +903,24 @@ export function EnhancedEpisodesBrowserPage({
                             <label className="font-medium text-slate-700 whitespace-nowrap">My Rating:</label>
                             <select
                               value={episode.user_rating || ''}
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const newRating = e.target.value ? parseInt(e.target.value) : null;
+                                
+                                // Update local state immediately for responsive UI
                                 const updatedEpisodes = episodes.map(ep => 
                                   ep.season === episode.season && ep.episode === episode.episode
                                     ? { ...ep, user_rating: newRating }
                                     : ep
                                 );
                                 setEpisodes(updatedEpisodes);
+                                
+                                // Save to database
+                                await episodeTrackingService.updateEpisodeTracking(
+                                  series.imdb_id!,
+                                  episode.season,
+                                  episode.episode,
+                                  { user_rating: newRating }
+                                );
                               }}
                               className="flex-1 border border-slate-300 rounded px-1.5 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-xs"
                             >
