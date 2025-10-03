@@ -1,48 +1,14 @@
 // src/components/TMDBTVDetailsSection.tsx
-// Component to display TMDB-specific TV series information
+// Update the existing file to include cast display
 
-import React, { useEffect, useState } from 'react';
-import {
-  ExternalLink,
-  Youtube
-} from 'lucide-react';
-import { tmdbService, TMDBTVSeriesDetails } from '../lib/tmdb';
-import WatchProvidersDisplay from './WatchProvidersDisplay';
+// ADD THIS IMPORT at the top:
+import { SeriesCastDisplay } from './SeriesCastDisplay';
 
-interface TMDBTVDetailsSectionProps {
-  imdbId: string;
-  className?: string;
-}
+// The rest of the component stays the same until the return statement
+// Find the return statement and ADD the cast section AFTER the watch providers:
 
 export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSectionProps) {
-  const [tmdbData, setTmdbData] = useState<TMDBTVSeriesDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchTMDBData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await tmdbService.getTVSeriesByImdbId(imdbId);
-        
-        console.log('[TMDBTVDetailsSection] Received data:', data);
-        console.log('[TMDBTVDetailsSection] watch/providers:', data?.['watch/providers']);
-        console.log('[TMDBTVDetailsSection] Available properties:', data ? Object.keys(data) : 'none');
-        
-        setTmdbData(data);
-      } catch (err) {
-        console.error('[TMDB] Error fetching TV series data:', err);
-        setError('Failed to load additional details');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (imdbId) {
-      fetchTMDBData();
-    }
-  }, [imdbId]);
+  // ... existing state and useEffect code stays the same ...
 
   if (loading) {
     return (
@@ -57,17 +23,15 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
   }
 
   if (error || !tmdbData) {
-    return null; // Gracefully hide if TMDB data unavailable
+    return null;
   }
 
-  // Find official trailer
   const trailer = tmdbData.videos?.results.find(
     v => v.type === 'Trailer' && v.site === 'YouTube' && v.official
   ) || tmdbData.videos?.results.find(
     v => v.type === 'Trailer' && v.site === 'YouTube'
   );
 
-  // CRITICAL FIX: Access watch providers with the correct property name (with slash)
   const watchProviders = tmdbData['watch/providers'];
   console.log('[TMDBTVDetailsSection] Watch providers for display:', watchProviders);
 
@@ -86,7 +50,7 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
 
-        {/* Networks - inline like "HBO" */}
+        {/* Networks */}
         {tmdbData.networks && tmdbData.networks.length > 0 && (
           <div className="text-sm">
             <span className="text-slate-600">Networks: </span>
@@ -96,7 +60,7 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
 
-        {/* Release Status */}
+        {/* Status */}
         {tmdbData.status && (
           <div className="text-sm">
             <span className="text-slate-600">Status: </span>
@@ -104,7 +68,7 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
 
-        {/* Production Companies - normal font, no borders */}
+        {/* Production Companies */}
         {tmdbData.production_companies && tmdbData.production_companies.length > 0 && (
           <div className="text-sm">
             <span className="text-slate-600">Production: </span>
@@ -140,7 +104,7 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
 
-        {/* Keywords - normal font with semicolons */}
+        {/* Keywords */}
         {tmdbData.keywords?.results && tmdbData.keywords.results.length > 0 && (
           <div className="text-sm md:col-span-2">
             <span className="text-slate-600">Keywords: </span>
@@ -150,7 +114,7 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
 
-        {/* Trailer - clickable YouTube icon */}
+        {/* Trailer */}
         {trailer && (
           <div className="text-sm md:col-span-2">
             <span className="text-slate-600">Trailer: </span>
@@ -168,7 +132,16 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
         )}
       </div>
 
-      {/* CRITICAL FIX: Check for watch providers using the correct property name */}
+      {/* ========================================
+          ✅ ADD CAST SECTION HERE (BEFORE WATCH PROVIDERS)
+          ======================================== */}
+      {tmdbData.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
+        <div className="mt-6">
+          <SeriesCastDisplay credits={tmdbData.credits} />
+        </div>
+      )}
+
+      {/* Watch Providers Section */}
       {watchProviders && watchProviders.results && Object.keys(watchProviders.results).length > 0 ? (
         <div className="mt-6 pt-6 border-t border-slate-200">
           <WatchProvidersDisplay 
