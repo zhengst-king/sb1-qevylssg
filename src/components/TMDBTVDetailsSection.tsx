@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { ExternalLink, Youtube } from 'lucide-react';
 import { tmdbService, TMDBTVSeriesDetails } from '../lib/tmdb';
-import { WatchProvidersDisplay } from './WatchProvidersDisplay';
+import WatchProvidersDisplay from './WatchProvidersDisplay'; // ✅ Default export
 import { SeriesCastDisplay } from './SeriesCastDisplay';
 
 interface TMDBTVDetailsSectionProps {
