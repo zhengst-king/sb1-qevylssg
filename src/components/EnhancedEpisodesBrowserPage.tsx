@@ -840,6 +840,17 @@ export function EnhancedEpisodesBrowserPage({
                         </p>
                       )}
 
+                      {/* ✅ ADD THIS: TMDB Cast & Characters Section */}
+                      {series.imdb_id && (
+                        <div className="mb-4">
+                          <EpisodeCastSection
+                            imdbId={series.imdb_id}
+                            seasonNumber={episode.season}
+                            episodeNumber={episode.episode}
+                          />
+                        </div>
+                      )}
+
                       {/* Credits */}
                       {(episode.director || episode.writer || episode.actors) && (
                         <div className="space-y-1 text-xs text-slate-500">
