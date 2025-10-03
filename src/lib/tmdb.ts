@@ -430,6 +430,12 @@ class TMDBService {
     }
   }
 
+  // ✅ ADD THIS NEW METHOD to get profile image URLs:
+  getProfileImageUrl(profilePath: string | null, size: 'w45' | 'w185' | 'h632' | 'original' = 'w185'): string | null {
+    if (!profilePath) return null;
+    return `https://image.tmdb.org/t/p/${size}${profilePath}`;
+  }
+
   /**
    * Get watch providers separately (if needed)
    */
