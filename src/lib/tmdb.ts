@@ -381,7 +381,7 @@ class TMDBService {
       },
       external_ids: cached.external_ids,
       // FIX: Properly return watch providers from cache
-      'watch/providers': cached.watch_providers || undefined
+      'watch/providers': cached.watch_providers || undefined,
       credits: cached.credits ? {
         cast: cached.credits.cast || [],
         crew: cached.credits.crew || [],
