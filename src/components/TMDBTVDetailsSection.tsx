@@ -6,6 +6,7 @@ import { ExternalLink, Youtube } from 'lucide-react';
 import { tmdbService, TMDBTVSeriesDetails } from '../lib/tmdb';
 import WatchProvidersDisplay from './WatchProvidersDisplay'; // ✅ Default export
 import { SeriesCastDisplay } from './SeriesCastDisplay';
+import { SeriesRecommendations } from './SeriesRecommendations';
 
 interface TMDBTVDetailsSectionProps {
   imdbId: string;
@@ -195,6 +196,16 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
       {tmdbData.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
         <div className="mt-6">
           <SeriesCastDisplay credits={tmdbData.credits} />
+        </div>
+      )}
+
+      {/* Recommendations & Similar Series Section */}
+      {(tmdbData.recommendations || tmdbData.similar) && (
+        <div className="mt-6">
+          <SeriesRecommendations 
+            recommendations={tmdbData.recommendations}
+            similar={tmdbData.similar}
+          />
         </div>
       )}
 
