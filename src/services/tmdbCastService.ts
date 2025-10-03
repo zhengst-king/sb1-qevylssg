@@ -145,7 +145,7 @@ class TMDBCastService {
       await this.cacheEpisodeCredits(imdbId, seasonNumber, episodeNumber, credits);
 
       // Optionally, save cast members to people table
-      await this.savecastMembers ToPeopleTable(credits.cast);
+      await this.savecastMembersToPeopleTable(credits.cast);
       await this.saveCastMembersToPeopleTable(credits.guest_stars);
 
       return credits;
