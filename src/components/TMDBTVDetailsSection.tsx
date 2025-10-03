@@ -1,14 +1,53 @@
 // src/components/TMDBTVDetailsSection.tsx
-// Update the existing file to include cast display
+// Displays TMDB data for TV series
 
-// ADD THIS IMPORT at the top:
+import React, { useState, useEffect } from 'react';
+import { ExternalLink, Youtube } from 'lucide-react';
+import { tmdbService, TMDBTVSeriesDetails } from '../lib/tmdb';
+import { WatchProvidersDisplay } from './WatchProvidersDisplay';
 import { SeriesCastDisplay } from './SeriesCastDisplay';
 
-// The rest of the component stays the same until the return statement
-// Find the return statement and ADD the cast section AFTER the watch providers:
+interface TMDBTVDetailsSectionProps {
+  imdbId: string;
+  className?: string;
+}
 
 export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSectionProps) {
-  // ... existing state and useEffect code stays the same ...
+  const [tmdbData, setTmdbData] = useState<TMDBTVSeriesDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTMDBData = async () => {
+      if (!imdbId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        console.log('[TMDBTVDetailsSection] Fetching data for:', imdbId);
+        
+        const data = await tmdbService.getTVSeriesByImdbId(imdbId);
+        
+        if (data) {
+          console.log('[TMDBTVDetailsSection] Data received:', data);
+          console.log('[TMDBTVDetailsSection] Credits:', data.credits ? `${data.credits.cast?.length} cast members` : 'No credits');
+          setTmdbData(data);
+        } else {
+          setError('Could not fetch TMDB data');
+        }
+      } catch (err) {
+        console.error('[TMDBTVDetailsSection] Error:', err);
+        setError('Failed to load TMDB data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTMDBData();
+  }, [imdbId]);
 
   if (loading) {
     return (
@@ -46,6 +85,26 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
             <span className="text-slate-600">Created by: </span>
             <span className="text-slate-900">
               {tmdbData.created_by.map(creator => creator.name).join(', ')}
+            </span>
+          </div>
+        )}
+
+        {/* First Air Date */}
+        {tmdbData.first_air_date && (
+          <div className="text-sm">
+            <span className="text-slate-600">First Aired: </span>
+            <span className="text-slate-900">
+              {new Date(tmdbData.first_air_date).toLocaleDateString()}
+            </span>
+          </div>
+        )}
+
+        {/* Last Air Date */}
+        {tmdbData.last_air_date && (
+          <div className="text-sm">
+            <span className="text-slate-600">Last Aired: </span>
+            <span className="text-slate-900">
+              {new Date(tmdbData.last_air_date).toLocaleDateString()}
             </span>
           </div>
         )}
@@ -132,9 +191,7 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
         )}
       </div>
 
-      {/* ========================================
-          ✅ ADD CAST SECTION HERE (BEFORE WATCH PROVIDERS)
-          ======================================== */}
+      {/* Cast Section */}
       {tmdbData.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
         <div className="mt-6">
           <SeriesCastDisplay credits={tmdbData.credits} />
