@@ -30,15 +30,15 @@ export interface TMDBTVSeriesDetails {
   id: number;
   name: string;
   overview: string;
+  homepage: string | null;
+  status: string;
+  first_air_date: string;
+  last_air_date: string | null;
   created_by: Array<{
     id: number;
     name: string;
     profile_path: string | null;
   }>;
-  first_air_date: string;
-  last_air_date: string;
-  homepage: string;
-  status: string;
   networks: Array<{
     id: number;
     name: string;
@@ -55,13 +55,13 @@ export interface TMDBTVSeriesDetails {
     iso_3166_1: string;
     name: string;
   }>;
-  keywords?: {
+  keywords: {
     results: Array<{
       id: number;
       name: string;
     }>;
   };
-  videos?: {
+  videos: {
     results: Array<{
       id: string;
       key: string;
@@ -71,12 +71,49 @@ export interface TMDBTVSeriesDetails {
       official: boolean;
     }>;
   };
-  external_ids?: {
+  external_ids: {
     imdb_id: string;
-    tvdb_id: number;
+    tvdb_id: number | null;
   };
-  // FIX: Separate watch providers property (not nested in append_to_response)
   'watch/providers'?: WatchProvidersData;
+  
+  // ✅ ADD THIS:
+  credits?: TMDBSeriesCredits;
+}
+
+export interface TMDBCastMember {
+  adult: boolean;
+  gender: number;
+  id: number;
+  known_for_department: string;
+  name: string;
+  original_name: string;
+  popularity: number;
+  profile_path: string | null;
+  cast_id?: number;
+  character: string;
+  credit_id: string;
+  order: number;
+}
+
+export interface TMDBCrewMember {
+  adult: boolean;
+  gender: number;
+  id: number;
+  known_for_department: string;
+  name: string;
+  original_name: string;
+  popularity: number;
+  profile_path: string | null;
+  credit_id: string;
+  department: string;
+  job: string;
+}
+
+export interface TMDBSeriesCredits {
+  cast: TMDBCastMember[];
+  crew: TMDBCrewMember[];
+  id: number;
 }
 
 interface CachedTMDBData {
@@ -370,10 +407,10 @@ class TMDBService {
    */
   private async getTVSeriesDetails(tmdbId: number): Promise<TMDBTVSeriesDetails | null> {
     try {
-      // FIX: Correct append_to_response format - no slash before providers
-      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers`;
+      // ✅ ADD credits to append_to_response:
+      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers,credits`;
       console.log('[TMDB] Fetching URL:', url);
-      
+    
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -384,7 +421,8 @@ class TMDBService {
       const data = await response.json();
       console.log('[TMDB] API Response received');
       console.log('[TMDB] Watch providers in response:', data['watch/providers']);
-      
+      console.log('[TMDB] Credits in response:', data.credits ? `${data.credits.cast?.length} cast members` : 'No credits');
+    
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting TV series details:', error);
