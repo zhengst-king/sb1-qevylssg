@@ -1007,13 +1007,28 @@ export function EnhancedEpisodesBrowserPage({
             setShowReviewModal(false);
             setSelectedEpisode(null);
           }}
-          movieTitle={`${series.title} - S${selectedEpisode.season}E${selectedEpisode.episode}${selectedEpisode.title ? ': ' + selectedEpisode.title : ''}`}
-          initialReview={selectedEpisode.user_review || ''}
-          onSave={(review) => {
-            console.log('Episode review saved:', review);
+          onSave={async (review) => {
+            // Update local state immediately
+            const updatedEpisodes = episodes.map(ep => 
+              ep.season === selectedEpisode.season && ep.episode === selectedEpisode.episode
+                ? { ...ep, user_review: review }
+                : ep
+            );
+            setEpisodes(updatedEpisodes);
+            
+            // Save to database
+            await episodeTrackingService.updateEpisodeTracking(
+              series.imdb_id!,
+              selectedEpisode.season,
+              selectedEpisode.episode,
+              { user_review: review }
+            );
+            
             setShowReviewModal(false);
             setSelectedEpisode(null);
           }}
+          initialReview={selectedEpisode.user_review || ''}
+          movieTitle={`${series.title} - S${selectedEpisode.season}E${selectedEpisode.episode}${selectedEpisode.title ? ': ' + selectedEpisode.title : ''}`}
         />
       )}
     </>
