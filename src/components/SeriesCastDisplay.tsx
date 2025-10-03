@@ -109,38 +109,29 @@ function CastMemberCard({ member }: CastMemberCardProps) {
               src={profileUrl}
               alt={member.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">
+            <div className="w-full h-full flex items-center justify-center">
               <User className="h-12 w-12 text-slate-400" />
-            </div>
-          )}
-          
-          {/* Order Badge for main cast */}
-          {member.order < 5 && (
-            <div className="absolute top-2 left-2 bg-purple-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
-              {member.order + 1}
-            </div>
-          )}
-
-          {/* Popularity Indicator */}
-          {member.popularity > 15 && (
-            <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
-              <Star className="h-3 w-3 text-amber-400 fill-current" />
             </div>
           )}
         </div>
 
-        {/* Actor Info */}
-        <div className="p-3">
-          <h4 className="font-medium text-slate-900 text-sm line-clamp-1 group-hover:text-purple-600 transition-colors">
+        {/* Cast Info */}
+        <div className="p-2">
+          <p className="text-sm font-medium text-slate-900 truncate group-hover:text-purple-600 transition-colors">
             {member.name}
-          </h4>
-          {member.character && (
-            <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-              <span className="italic">{member.character}</span>
-            </p>
+          </p>
+          <p className="text-xs text-slate-600 italic truncate">
+            {member.character}
+          </p>
+          
+          {/* Order badge for main cast */}
+          {member.order < 5 && (
+            <div className="mt-1 inline-flex items-center">
+              <Star className="h-3 w-3 text-yellow-500 fill-current" />
+              <span className="text-xs text-slate-500 ml-1">#{member.order + 1}</span>
+            </div>
           )}
         </div>
       </div>
