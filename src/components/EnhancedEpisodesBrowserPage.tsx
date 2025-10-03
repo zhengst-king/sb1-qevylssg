@@ -507,115 +507,143 @@ export function EnhancedEpisodesBrowserPage({
         <div className="flex-1 overflow-auto">
           <div className="max-w-6xl mx-auto px-6 py-8">
             
-            {/* Series Information Header */}
+            {/* Series Information Header - NEW 2-COLUMN LAYOUT */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
               
-              {/* Rating and Metadata Row */}
-              <div className="flex flex-wrap items-center gap-6 mb-6">
+              {/* Two Column Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* Metascore */}
-                {series.metascore && (
-                  <div className="flex items-center space-x-2">
-                    <Award className="h-5 w-5 text-green-500" />
-                    <span className="font-medium">{series.metascore} Metascore</span>
-                  </div>
-                )}
-
-                {/* ✅ REMOVED: Green "Watched + date" label */}
-              </div>
-
-              {/* Additional Metadata */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-6">
-                
-                {/* Creators */}
-                {(() => {
-                  const creators = parseCreators(series.director);
-                  return creators.length > 0 && (
-                    <div className="flex items-start space-x-2">
-                      <User className="h-4 w-4 text-slate-500 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-700">Creators: </span>
-                        <span className="text-slate-600">{creators.join(', ')}</span>
+                {/* LEFT COLUMN: OMDb + TMDB Data */}
+                <div className="space-y-6">
+                  
+                  {/* Rating and Metadata Row */}
+                  <div className="flex flex-wrap items-center gap-6">
+                    {/* IMDb Rating */}
+                    {series.imdb_score && (
+                      <div className="flex items-center space-x-2">
+                        <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                        <span className="text-lg font-bold text-slate-900">{series.imdb_score}</span>
+                        <span className="text-sm text-slate-500">IMDb</span>
                       </div>
-                    </div>
-                  );
-                })()}
+                    )}
 
-                {/* Awards */}
-                {series.awards && series.awards !== 'N/A' && (
-                  <div className="flex items-start space-x-2">
-                    <Award className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <div>
-                      <span className="font-medium text-slate-700">Awards: </span>
-                      <span className="text-slate-600">{series.awards}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Stars */}
-                {series.actors && series.actors !== 'N/A' && (
-                  <div className="flex items-start space-x-2">
-                    <Users className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <div>
-                      <span className="font-medium text-slate-700">Stars: </span>
-                      <span className="text-slate-600">{series.actors}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Country */}
-                {series.country && series.country !== 'N/A' && (
-                  <div className="flex items-start space-x-2">
-                    <Globe className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <div>
-                      <span className="font-medium text-slate-700">Country: </span>
-                      <span className="text-slate-600">{series.country}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Language */}
-                {series.language && series.language !== 'N/A' && (
-                  <div className="flex items-start space-x-2">
-                    <MessageSquare className="h-4 w-4 text-slate-500 mt-0.5" />
-                    <div>
-                      <span className="font-medium text-slate-700">Language: </span>
-                      <span className="text-slate-600">{series.language}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ✅ NEW: TMDB Data Section - INSERT ABOVE PLOT */}
-              {series.imdb_id && (
-                <div className="mb-6">
-                  <TMDBTVDetailsSection imdbId={series.imdb_id} />
-                </div>
-              )}
-
-              {/* ✅ UPDATED: Plot with expand/collapse */}
-              {series.plot && series.plot !== 'N/A' && (
-                <div className="bg-slate-50 p-4 rounded-lg mb-6">
-                  <div className="relative">
-                    <p className={`text-slate-700 leading-relaxed ${!isPlotExpanded ? 'line-clamp-1' : ''}`}>
-                      {series.plot}
-                    </p>
-                    {series.plot.length > 100 && (
-                      <button
-                        onClick={() => setIsPlotExpanded(!isPlotExpanded)}
-                        className="inline-flex items-center space-x-1 text-purple-600 hover:text-purple-700 text-sm font-medium mt-2 transition-colors"
-                      >
-                        <span>{isPlotExpanded ? 'Show Less' : 'Show More'}</span>
-                        {!isPlotExpanded ? (
-                          <Plus className="h-4 w-4" />
-                        ) : (
-                          <Minus className="h-4 w-4" />
-                        )}
-                      </button>
+                    {/* Metascore */}
+                    {series.metascore && (
+                      <div className="flex items-center space-x-2">
+                        <Award className="h-5 w-5 text-green-500" />
+                        <span className="font-medium">{series.metascore} Metascore</span>
+                      </div>
                     )}
                   </div>
+
+                  {/* OMDb Additional Metadata (2-column grid) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    
+                    {/* Creators */}
+                    {(() => {
+                      const creators = parseCreators(series.director);
+                      return creators.length > 0 && (
+                        <div className="flex items-start space-x-2">
+                          <User className="h-4 w-4 text-slate-500 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-slate-700">Creators: </span>
+                            <span className="text-slate-600">{creators.join(', ')}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Awards */}
+                    {series.awards && series.awards !== 'N/A' && (
+                      <div className="flex items-start space-x-2">
+                        <Award className="h-4 w-4 text-slate-500 mt-0.5" />
+                        <div>
+                          <span className="font-medium text-slate-700">Awards: </span>
+                          <span className="text-slate-600">{series.awards}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Stars */}
+                    {series.actors && series.actors !== 'N/A' && (
+                      <div className="flex items-start space-x-2">
+                        <Users className="h-4 w-4 text-slate-500 mt-0.5" />
+                        <div>
+                          <span className="font-medium text-slate-700">Stars: </span>
+                          <span className="text-slate-600">{series.actors}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Country */}
+                    {series.country && series.country !== 'N/A' && (
+                      <div className="flex items-start space-x-2">
+                        <Globe className="h-4 w-4 text-slate-500 mt-0.5" />
+                        <div>
+                          <span className="font-medium text-slate-700">Country: </span>
+                          <span className="text-slate-600">{series.country}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Language */}
+                    {series.language && series.language !== 'N/A' && (
+                      <div className="flex items-start space-x-2">
+                        <MessageSquare className="h-4 w-4 text-slate-500 mt-0.5" />
+                        <div>
+                          <span className="font-medium text-slate-700">Language: </span>
+                          <span className="text-slate-600">{series.language}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* TMDB Data Section */}
+                  {series.imdb_id && (
+                    <div>
+                      <TMDBTVDetailsSection imdbId={series.imdb_id} />
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* RIGHT COLUMN: Episode Tracking + Plot */}
+                <div className="space-y-6">
+                  
+                  {/* Episode Tracking Grid */}
+                  {series.imdb_id && totalSeasons > 0 && (
+                    <div>
+                      <EpisodeTrackingGrid 
+                        seriesImdbId={series.imdb_id} 
+                        totalSeasons={totalSeasons} 
+                      />
+                    </div>
+                  )}
+
+                  {/* Plot Section */}
+                  {series.plot && series.plot !== 'N/A' && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-700 mb-2">Plot</h3>
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <div className="relative">
+                          <p className={`text-slate-700 leading-relaxed text-sm ${!isPlotExpanded ? 'line-clamp-3' : ''}`}>
+                            {series.plot}
+                          </p>
+                          {series.plot.length > 150 && (
+                            <button
+                              onClick={() => setIsPlotExpanded(!isPlotExpanded)}
+                              className="inline-flex items-center space-x-1 text-purple-600 hover:text-purple-700 text-sm font-medium mt-2 transition-colors"
+                            >
+                              <span>{isPlotExpanded ? 'Show Less' : 'Show More'}</span>
+                              {!isPlotExpanded ? <Plus className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
               {/* ✅ UPDATED: User Actions Section - NO border-t above, fields reorganized */}
               <div className="pt-6">
