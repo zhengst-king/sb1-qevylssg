@@ -867,14 +867,14 @@ export function EnhancedEpisodesBrowserPage({
                         </div>
                       )}
 
-                      {/* ===== NEW: Episode Tracking Section ===== */}
-                      <div className="border-t border-slate-200 pt-4 mt-4 space-y-3">
+                      {/* ===== Episode Tracking Section ===== */}
+                      <div className="border-t border-slate-200 pt-3 mt-3 space-y-2">
                         
-                        {/* Status, Rating, and Review in a row - matching series level */}
-                        <div className="flex items-center gap-3">
+                        {/* Status, Rating, and Review in a row */}
+                        <div className="flex items-center gap-2 text-xs">
                           {/* Status Selector */}
-                          <div className="flex items-center space-x-2 flex-1">
-                            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Status:</label>
+                          <div className="flex items-center space-x-1 flex-1">
+                            <label className="font-medium text-slate-700 whitespace-nowrap">Status:</label>
                             <select
                               value={episode.status || 'To Watch'}
                               onChange={(e) => {
@@ -886,7 +886,7 @@ export function EnhancedEpisodesBrowserPage({
                                 );
                                 setEpisodes(updatedEpisodes);
                               }}
-                              className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                              className="flex-1 border border-slate-300 rounded px-1.5 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-xs"
                             >
                               <option value="To Watch">To Watch</option>
                               <option value="Watching">Watching</option>
@@ -896,8 +896,8 @@ export function EnhancedEpisodesBrowserPage({
                           </div>
 
                           {/* Rating Dropdown */}
-                          <div className="flex items-center space-x-2 flex-1">
-                            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">My Rating:</label>
+                          <div className="flex items-center space-x-1 flex-1">
+                            <label className="font-medium text-slate-700 whitespace-nowrap">My Rating:</label>
                             <select
                               value={episode.user_rating || ''}
                               onChange={(e) => {
@@ -909,7 +909,7 @@ export function EnhancedEpisodesBrowserPage({
                                 );
                                 setEpisodes(updatedEpisodes);
                               }}
-                              className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                              className="flex-1 border border-slate-300 rounded px-1.5 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-xs"
                             >
                               <option value="">No rating</option>
                               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
@@ -926,21 +926,21 @@ export function EnhancedEpisodesBrowserPage({
                               setSelectedEpisode(episode);
                               setShowReviewModal(true);
                             }}
-                            className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                            className="inline-flex items-center space-x-1 px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg transition-colors whitespace-nowrap text-xs"
                           >
-                            <MessageSquare className="h-4 w-4" />
+                            <MessageSquare className="h-3 w-3" />
                             <span>{episode.user_review ? 'Edit Review' : 'Add Review'}</span>
                           </button>
                         </div>
 
-                        {/* Review Display (full width below) */}
+                        {/* Review Display */}
                         {episode.user_review && (
-                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="p-2 bg-blue-50 rounded-lg border border-blue-200">
                             <div className="flex items-start space-x-2">
-                              <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <MessageSquare className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
                               <div>
-                                <p className="text-xs font-medium text-blue-800 mb-1">My Review</p>
-                                <p className="text-sm text-blue-700">{episode.user_review}</p>
+                                <p className="text-xs font-medium text-blue-800 mb-0.5">My Review</p>
+                                <p className="text-xs text-blue-700">{episode.user_review}</p>
                               </div>
                             </div>
                           </div>
