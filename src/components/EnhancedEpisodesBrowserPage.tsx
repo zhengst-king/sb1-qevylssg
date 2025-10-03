@@ -643,9 +643,7 @@ export function EnhancedEpisodesBrowserPage({
                   )}
                 </div>
               </div>
-
-              {/* END OF 2-COLUMN LAYOUT */}
-              {/* Everything below remains FULL WIDTH single column */}
+            </div>            
           
               {/* ✅ UPDATED: User Actions Section - NO border-t above, fields reorganized */}
               <div className="pt-6">
