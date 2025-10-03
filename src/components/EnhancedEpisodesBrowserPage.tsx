@@ -32,6 +32,7 @@ import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDa
 import { TMDBTVDetailsSection } from './TMDBTVDetailsSection';
 import { tmdbService } from '../lib/tmdb';
 import { TMDBAPITester } from './TMDBAPITester';
+import { episodeTrackingService } from '../services/episodeTrackingService';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -232,65 +233,50 @@ export function EnhancedEpisodesBrowserPage({
   }, [series.imdb_id]);
 
   const loadEpisodesFromCache = async (seasonNumber: number) => {
-    if (!series.imdb_id) {
-      setError('No IMDb ID available for this series');
+  if (!series.imdb_id) return;
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    console.log(`[Episodes] Loading Season ${seasonNumber} for ${series.imdb_id}`);
+    
+    // Load episode data from cache
+    const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNumber);
+    
+    if (!cachedEpisodes || cachedEpisodes.length === 0) {
+      setError(`Season ${seasonNumber} episodes haven't been cached yet. They will be discovered in the background.`);
+      setEpisodes([]);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    // Load user tracking data for this season
+    const trackingMap = await episodeTrackingService.getSeasonTracking(series.imdb_id, seasonNumber);
+    
+    // Merge episode data with user tracking data
+    const episodesWithTracking: Episode[] = cachedEpisodes.map(ep => {
+      const tracking = trackingMap.get(ep.episode);
+      return {
+        ...ep,
+        status: tracking?.status || 'To Watch',
+        user_rating: tracking?.user_rating || undefined,
+        user_review: tracking?.user_review || undefined,
+        date_watched: tracking?.date_watched || undefined,
+        date_added: tracking?.date_added || undefined
+      };
+    });
 
-    try {
-      console.log(`[Episodes] Loading Season ${seasonNumber} from cache`);
-      const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(
-        series.imdb_id,
-        seasonNumber
-      );
-
-      if (cachedEpisodes && cachedEpisodes.length > 0) {
-        const episodesWithUserData: Episode[] = cachedEpisodes.map(ep => ({
-          ...ep,
-          status: 'To Watch',
-          user_rating: undefined,
-          user_review: undefined,
-          date_watched: undefined,
-          date_added: new Date().toISOString().split('T')[0]
-        }));
-
-        setEpisodes(episodesWithUserData);
-        console.log(`[Episodes] Loaded ${episodesWithUserData.length} episodes from cache`);
-      } else {
-        setEpisodes([]);
-        
-        if (cacheStatus.isBeingFetched) {
-          setError(`Season ${seasonNumber} is being loaded in the background. Please check back in a moment.`);
-        } else {
-          // FIXED: Auto-trigger episode discovery when no episodes found and not being fetched
-          console.log(`[Episodes] No episodes found for ${series.title}. Triggering automatic discovery...`);
-          
-          try {
-            await serverSideEpisodeService.addSeriesToQueue(
-              series.imdb_id,
-              series.title,
-              'high' // High priority for user-initiated requests
-            );
-            
-            setError(`No episodes found for Season ${seasonNumber}. Episode discovery has been started automatically. Please check back in a few minutes as episodes are being fetched in the background.`);
-            
-            console.log(`[Episodes] Successfully queued ${series.title} for episode discovery`);
-          } catch (discoveryError) {
-            console.error('[Episodes] Failed to trigger automatic discovery:', discoveryError);
-            setError(`No episodes found for Season ${seasonNumber}. This season might not be available yet. You can try refreshing the page or manually trigger discovery.`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('[Episodes] Error loading episodes:', error);
-      setError('Failed to load episodes. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setEpisodes(episodesWithTracking);
+    console.log(`[Episodes] Loaded ${episodesWithTracking.length} episodes for Season ${seasonNumber}`);
+    
+  } catch (err) {
+    console.error('[Episodes] Error loading episodes:', err);
+    setError('Failed to load episodes. Please try again.');
+    setEpisodes([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleManualRefresh = async () => {
     if (!series.imdb_id) return;
