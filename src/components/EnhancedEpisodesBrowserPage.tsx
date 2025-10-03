@@ -779,56 +779,62 @@ export function EnhancedEpisodesBrowserPage({
 
                     {/* Episode Card Content */}
                     <div className="p-6">
-                      {/* Episode Number */}
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="bg-purple-100 p-2 rounded-lg">
+                      {/* Episode Header - Horizontal Layout */}
+                      <div className="flex items-start gap-3 mb-3">
+                        {/* Episode Icon */}
+                        <div className="bg-purple-100 p-2 rounded-lg flex-shrink-0">
                           <Play className="h-5 w-5 text-purple-600" />
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-900 leading-tight">
-                            Episode {episode.episode}
-                          </h3>
-                          <p className="text-sm text-slate-500">Season {episode.season}</p>
-                        </div>
-                      </div>
-
-                      {/* Episode Title with metadata */}
-                      <div className="mb-3">
-                        {episode.title && (
-                          <h4 className="text-lg font-medium text-slate-800 leading-tight mb-2">
-                            {episode.title}
-                          </h4>
-                        )}
-                        <div className="flex items-center flex-wrap gap-3 text-xs text-slate-500">
-                          {episode.released && (
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{new Date(episode.released).toLocaleDateString()}</span>
-                            </div>
+                        
+                        {/* Episode Info - All in one column */}
+                        <div className="flex-1 min-w-0">
+                          {/* Episode Number and Season */}
+                          <div className="mb-1">
+                            <h3 className="font-semibold text-slate-900 leading-tight text-sm">
+                              Episode {episode.episode}
+                            </h3>
+                            <p className="text-xs text-slate-500">Season {episode.season}</p>
+                          </div>
+                          
+                          {/* Episode Title */}
+                          {episode.title && (
+                            <h4 className="text-base font-medium text-slate-800 leading-tight mb-2">
+                              {episode.title}
+                            </h4>
                           )}
-                          {episode.runtime && episode.runtime !== 'N/A' && (
-                            <div className="flex items-center space-x-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{episode.runtime}</span>
-                            </div>
-                          )}
-                          {episode.imdbID && (
-                            <a
-                              href={`https://www.imdb.com/title/${episode.imdbID}/`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center space-x-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-2 py-1 rounded transition-colors"
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              <span>IMDb</span>
-                            </a>
-                          )}
-                          {episode.imdbRating && episode.imdbRating !== 'N/A' && (
-                            <div className="flex items-center space-x-1">
-                              <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                              <span className="font-medium">{episode.imdbRating}</span>
-                            </div>
-                          )}
+                          
+                          {/* Episode Metadata Row */}
+                          <div className="flex items-center flex-wrap gap-2 text-xs text-slate-500">
+                            {episode.released && (
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{new Date(episode.released).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                            {episode.runtime && episode.runtime !== 'N/A' && (
+                              <div className="flex items-center space-x-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{episode.runtime}</span>
+                              </div>
+                            )}
+                            {episode.imdbID && (
+                              <a
+                                href={`https://www.imdb.com/title/${episode.imdbID}/`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-1 bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-2 py-0.5 rounded transition-colors"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                <span>IMDb</span>
+                              </a>
+                            )}
+                            {episode.imdbRating && episode.imdbRating !== 'N/A' && (
+                              <div className="flex items-center space-x-1">
+                                <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                                <span className="font-medium">{episode.imdbRating}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
