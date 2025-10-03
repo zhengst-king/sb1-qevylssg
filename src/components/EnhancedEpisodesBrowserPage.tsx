@@ -838,6 +838,87 @@ export function EnhancedEpisodesBrowserPage({
                           {episode.plot}
                         </p>
                       )}
+
+                      {/* ===== NEW: Episode Tracking Section ===== */}
+                      <div className="border-t border-slate-200 pt-4 mt-4 space-y-3">
+                        
+                        {/* Status, Rating, and Review in a row - matching series level */}
+                        <div className="flex items-center gap-3">
+                          {/* Status Selector */}
+                          <div className="flex items-center space-x-2 flex-1">
+                            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Status:</label>
+                            <select
+                              value={episode.status || 'To Watch'}
+                              onChange={(e) => {
+                                const newStatus = e.target.value as Episode['status'];
+                                const updatedEpisodes = episodes.map(ep => 
+                                  ep.season === episode.season && ep.episode === episode.episode
+                                    ? { ...ep, status: newStatus, date_watched: newStatus === 'Watched' ? getTodayDateString() : ep.date_watched }
+                                    : ep
+                                );
+                                setEpisodes(updatedEpisodes);
+                              }}
+                              className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            >
+                              <option value="To Watch">To Watch</option>
+                              <option value="Watching">Watching</option>
+                              <option value="Watched">Watched</option>
+                              <option value="To Watch Again">To Watch Again</option>
+                            </select>
+                          </div>
+
+                          {/* Rating Dropdown */}
+                          <div className="flex items-center space-x-2 flex-1">
+                            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">My Rating:</label>
+                            <select
+                              value={episode.user_rating || ''}
+                              onChange={(e) => {
+                                const newRating = e.target.value ? parseInt(e.target.value) : null;
+                                const updatedEpisodes = episodes.map(ep => 
+                                  ep.season === episode.season && ep.episode === episode.episode
+                                    ? { ...ep, user_rating: newRating }
+                                    : ep
+                                );
+                                setEpisodes(updatedEpisodes);
+                              }}
+                              className="flex-1 text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                            >
+                              <option value="">No rating</option>
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
+                                <option key={rating} value={rating}>
+                                  {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Review Button */}
+                          <button
+                            onClick={() => {
+                              setSelectedEpisode(episode);
+                              setShowReviewModal(true);
+                            }}
+                            className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                            <span>{episode.user_review ? 'Edit Review' : 'Add Review'}</span>
+                          </button>
+                        </div>
+
+                        {/* Review Display (full width below) */}
+                        {episode.user_review && (
+                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-start space-x-2">
+                              <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs font-medium text-blue-800 mb-1">My Review</p>
+                                <p className="text-sm text-blue-700">{episode.user_review}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {/* ===== END: Episode Tracking Section ===== */}
                     
                       {/* Credits */}
                       {(episode.director || episode.writer || episode.actors) && (
