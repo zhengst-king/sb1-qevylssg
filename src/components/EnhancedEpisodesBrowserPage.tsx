@@ -839,6 +839,30 @@ export function EnhancedEpisodesBrowserPage({
                         </p>
                       )}
 
+                      {/* Credits */}
+                      {(episode.director || episode.writer || episode.actors) && (
+                        <div className="space-y-1 text-xs text-slate-500">
+                          {episode.director && episode.director !== 'N/A' && (
+                            <div className="flex items-start space-x-1">
+                              <User className="h-3 w-3 mt-0.5" />
+                              <span><span className="font-medium">Director:</span> {episode.director}</span>
+                            </div>
+                          )}
+                          {episode.writer && episode.writer !== 'N/A' && (
+                            <div className="flex items-start space-x-1">
+                              <User className="h-3 w-3 mt-0.5" />
+                              <span><span className="font-medium">Writer:</span> {episode.writer}</span>
+                            </div>
+                          )}
+                          {episode.actors && episode.actors !== 'N/A' && (
+                            <div className="flex items-start space-x-1">
+                              <Users className="h-3 w-3 mt-0.5" />
+                              <span><span className="font-medium">Stars:</span> {episode.actors}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* ===== NEW: Episode Tracking Section ===== */}
                       <div className="border-t border-slate-200 pt-4 mt-4 space-y-3">
                         
@@ -920,29 +944,6 @@ export function EnhancedEpisodesBrowserPage({
                       </div>
                       {/* ===== END: Episode Tracking Section ===== */}
                     
-                      {/* Credits */}
-                      {(episode.director || episode.writer || episode.actors) && (
-                        <div className="space-y-1 text-xs text-slate-500">
-                          {episode.director && episode.director !== 'N/A' && (
-                            <div className="flex items-start space-x-1">
-                              <User className="h-3 w-3 mt-0.5" />
-                              <span><span className="font-medium">Director:</span> {episode.director}</span>
-                            </div>
-                          )}
-                          {episode.writer && episode.writer !== 'N/A' && (
-                            <div className="flex items-start space-x-1">
-                              <User className="h-3 w-3 mt-0.5" />
-                              <span><span className="font-medium">Writer:</span> {episode.writer}</span>
-                            </div>
-                          )}
-                          {episode.actors && episode.actors !== 'N/A' && (
-                            <div className="flex items-start space-x-1">
-                              <Users className="h-3 w-3 mt-0.5" />
-                              <span><span className="font-medium">Stars:</span> {episode.actors}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
