@@ -792,7 +792,7 @@ export function EnhancedEpisodesBrowserPage({
                           <div className="flex items-center gap-2 mb-0.5">
                             <div className="text-sm font-semibold text-slate-900">Episode {episode.episode}</div>
                             {episode.title && (
-                              <div className="text-sm font-medium text-slate-800">{episode.title}</div>
+                              <div className="text-sm font-semibold text-slate-900">{episode.title}</div>
                             )}
                           </div>
                           
