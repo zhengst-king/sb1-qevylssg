@@ -33,6 +33,7 @@ import { TMDBTVDetailsSection } from './TMDBTVDetailsSection';
 import { tmdbService } from '../lib/tmdb';
 import { TMDBAPITester } from './TMDBAPITester';
 import { episodeTrackingService } from '../services/episodeTrackingService';
+import { EpisodeTrackingGrid } from './EpisodeTrackingGrid';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
