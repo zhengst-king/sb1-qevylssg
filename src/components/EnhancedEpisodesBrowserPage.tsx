@@ -233,50 +233,50 @@ export function EnhancedEpisodesBrowserPage({
   }, [series.imdb_id]);
 
   const loadEpisodesFromCache = async (seasonNumber: number) => {
-  if (!series.imdb_id) return;
+    if (!series.imdb_id) return;
 
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  try {
-    console.log(`[Episodes] Loading Season ${seasonNumber} for ${series.imdb_id}`);
-    
-    // Load episode data from cache
-    const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNumber);
-    
-    if (!cachedEpisodes || cachedEpisodes.length === 0) {
-      setError(`Season ${seasonNumber} episodes haven't been cached yet. They will be discovered in the background.`);
+    try {
+      console.log(`[Episodes] Loading Season ${seasonNumber} for ${series.imdb_id}`);
+      
+      // Load episode data from cache
+      const cachedEpisodes = await serverSideEpisodeService.getSeasonEpisodes(series.imdb_id, seasonNumber);
+      
+      if (!cachedEpisodes || cachedEpisodes.length === 0) {
+        setError(`Season ${seasonNumber} episodes haven't been cached yet. They will be discovered in the background.`);
+        setEpisodes([]);
+        return;
+      }
+
+      // Load user tracking data for this season
+      const trackingMap = await episodeTrackingService.getSeasonTracking(series.imdb_id, seasonNumber);
+      
+      // Merge episode data with user tracking data
+      const episodesWithTracking: Episode[] = cachedEpisodes.map(ep => {
+        const tracking = trackingMap.get(ep.episode);
+        return {
+          ...ep,
+          status: tracking?.status || 'To Watch',
+          user_rating: tracking?.user_rating || undefined,
+          user_review: tracking?.user_review || undefined,
+          date_watched: tracking?.date_watched || undefined,
+          date_added: tracking?.date_added || undefined
+        };
+      });
+
+      setEpisodes(episodesWithTracking);
+      console.log(`[Episodes] Loaded ${episodesWithTracking.length} episodes for Season ${seasonNumber}`);
+      
+    } catch (err) {
+      console.error('[Episodes] Error loading episodes:', err);
+      setError('Failed to load episodes. Please try again.');
       setEpisodes([]);
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // Load user tracking data for this season
-    const trackingMap = await episodeTrackingService.getSeasonTracking(series.imdb_id, seasonNumber);
-    
-    // Merge episode data with user tracking data
-    const episodesWithTracking: Episode[] = cachedEpisodes.map(ep => {
-      const tracking = trackingMap.get(ep.episode);
-      return {
-        ...ep,
-        status: tracking?.status || 'To Watch',
-        user_rating: tracking?.user_rating || undefined,
-        user_review: tracking?.user_review || undefined,
-        date_watched: tracking?.date_watched || undefined,
-        date_added: tracking?.date_added || undefined
-      };
-    });
-
-    setEpisodes(episodesWithTracking);
-    console.log(`[Episodes] Loaded ${episodesWithTracking.length} episodes for Season ${seasonNumber}`);
-    
-  } catch (err) {
-    console.error('[Episodes] Error loading episodes:', err);
-    setError('Failed to load episodes. Please try again.');
-    setEpisodes([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleManualRefresh = async () => {
     if (!series.imdb_id) return;
