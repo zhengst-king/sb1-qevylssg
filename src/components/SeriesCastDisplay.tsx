@@ -2,10 +2,9 @@
 // Component to display main series cast from TMDB
 
 import React, { useState, useEffect } from 'react';
-import { Users, User, Star, ExternalLink } from 'lucide-react';
+import { Users, User, Star, ExternalLink, Heart } from 'lucide-react';
 import { TMDBSeriesCredits, TMDBCastMember } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
-import { Users, User, Star, ExternalLink, Heart } from 'lucide-react';
 import { favoriteActorsService } from '../services/favoriteActorsService';
 
 interface SeriesCastDisplayProps {
@@ -135,7 +134,7 @@ function CastMemberCard({ member }: CastMemberCardProps) {
   };
 
   return (
-    
+    <a
       href={tmdbPersonUrl}
       target="_blank"
       rel="noopener noreferrer"
