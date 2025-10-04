@@ -105,7 +105,7 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
   };
 
   return (
-    
+    <a
       href={tmdbPersonUrl}
       target="_blank"
       rel="noopener noreferrer"
