@@ -733,7 +733,6 @@ export function EnhancedEpisodesBrowserPage({
                   <MessageSquare className="h-4 w-4" />
                   <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
                 </button>
-              </div>
 
               {/* User Review Display */}
               {localReview && (
@@ -747,6 +746,7 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 </div>
               )}
+              </div> 
             </div>
 
             {/* Loading State */}
