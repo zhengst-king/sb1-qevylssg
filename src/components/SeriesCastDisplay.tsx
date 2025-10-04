@@ -59,7 +59,7 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
       )}
 
       {/* Cast Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {displayCast.map((member) => (
           <CastMemberCard key={member.credit_id} member={member} />
         ))}
