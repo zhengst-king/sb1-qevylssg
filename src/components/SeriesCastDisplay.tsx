@@ -1,7 +1,7 @@
 // src/components/SeriesCastDisplay.tsx
 // Component to display main series cast from TMDB
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, User, Star, ExternalLink } from 'lucide-react';
 import { TMDBSeriesCredits, TMDBCastMember } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
