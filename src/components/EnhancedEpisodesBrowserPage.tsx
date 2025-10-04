@@ -795,14 +795,19 @@ export function EnhancedEpisodesBrowserPage({
               </div>
             )}
 
-            {tmdbData?.['watch/providers'] && ... && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-                <WatchProvidersDisplay 
-                  watchProviders={tmdbData['watch/providers']}
-                  title={series.title}
-                />
-              </div>
-            )}
+            {(() => {
+              const watchProviders = tmdbData?.['watch/providers'];
+              const hasWatchProviders = watchProviders?.results && Object.keys(watchProviders.results).length > 0;
+  
+              return hasWatchProviders ? (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                  <WatchProvidersDisplay 
+                    watchProviders={watchProviders}
+                    title={series.title}
+                  />
+                </div>
+              ) : null;
+            })()}
             
             {/* Loading State */}
             {loading && (
