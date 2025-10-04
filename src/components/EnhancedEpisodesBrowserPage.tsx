@@ -643,11 +643,10 @@ export function EnhancedEpisodesBrowserPage({
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* ✅ UPDATED: User Actions Section - NO border-t above, fields reorganized */}
-            <div className="pt-6">
-              <div className="flex flex-wrap items-center gap-4">
+              {/* ✅ UPDATED: User Actions Section - NO border-t above, fields reorganized */}
+              <div className="pt-6">
+                <div className="flex flex-wrap items-center gap-4">
                   
                 {/* ✅ Status - MOVED TO LEFT */}
                 <div className="flex items-center space-x-2">
@@ -748,8 +747,8 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 </div>
               )}
-          </div>
-        </div>
+              </div>
+            </div>
 
             {/* Loading State */}
             {loading && (
