@@ -73,7 +73,7 @@ export function EnhancedEpisodesBrowserPage({
   const [showSeriesReviewModal, setShowSeriesReviewModal] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
   const [isPlotExpanded, setIsPlotExpanded] = useState(false); 
-  const [isPlotExpanded, setIsPlotExpanded] = useState(false); // ✅ NEW: For plot expansion
+  const [tmdbData, setTmdbData] = useState<TMDBTVSeriesDetails | null>(null);
   
   // Local state for immediate UI updates
   const [localRating, setLocalRating] = useState<number | null>(series.user_rating || null);
