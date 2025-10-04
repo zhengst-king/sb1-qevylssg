@@ -86,8 +86,6 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
 
 // ==================== CAST MEMBER CARD ====================
 
-// ==================== CAST MEMBER CARD ====================
-
 interface CastMemberCardProps {
   member: TMDBCastMember;
 }
