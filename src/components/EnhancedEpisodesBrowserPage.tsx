@@ -747,7 +747,6 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 </div>
               )}
-              </div>
             </div>
 
             {/* Loading State */}
