@@ -191,39 +191,6 @@ export function TMDBTVDetailsSection({ imdbId, className = '' }: TMDBTVDetailsSe
           </div>
         )}
       </div>
-
-      {/* Cast Section */}
-      {tmdbData.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
-        <div className="mt-6">
-          <SeriesCastDisplay credits={tmdbData.credits} />
-        </div>
-      )}
-
-      {/* Recommendations & Similar Series Section */}
-      {(tmdbData.recommendations || tmdbData.similar) && (
-        <div className="mt-6">
-          <SeriesRecommendations 
-            recommendations={tmdbData.recommendations}
-            similar={tmdbData.similar}
-          />
-        </div>
-      )}
-
-      {/* Watch Providers Section */}
-      {watchProviders && watchProviders.results && Object.keys(watchProviders.results).length > 0 ? (
-        <div className="mt-6 pt-6 border-t border-slate-200">
-          <WatchProvidersDisplay 
-            watchProviders={watchProviders}
-            title={tmdbData.name}
-          />
-        </div>
-      ) : (
-        <div className="mt-6 pt-6 border-t border-slate-200">
-          <div className="text-sm text-slate-500 italic">
-            No streaming availability information found
-          </div>
-        </div>
-      )}
       
     </div>
   );
