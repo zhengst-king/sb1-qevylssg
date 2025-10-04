@@ -86,20 +86,60 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
 
 // ==================== CAST MEMBER CARD ====================
 
+// ==================== CAST MEMBER CARD ====================
+
 interface CastMemberCardProps {
   member: TMDBCastMember;
 }
 
 function CastMemberCard({ member }: CastMemberCardProps) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const profileUrl = tmdbService.getProfileImageUrl(member.profile_path, 'w185');
   const tmdbPersonUrl = `https://www.themoviedb.org/person/${member.id}`;
 
+  // Check if actor is favorited
+  useEffect(() => {
+    const checkFavorite = async () => {
+      const favorited = await favoriteActorsService.isFavorite(member.id);
+      setIsFavorite(favorited);
+    };
+    checkFavorite();
+  }, [member.id]);
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsLoading(true);
+    
+    if (isFavorite) {
+      const success = await favoriteActorsService.removeFavorite(member.id);
+      if (success) {
+        setIsFavorite(false);
+      }
+    } else {
+      const result = await favoriteActorsService.addFavorite({
+        actor_id: member.id,
+        actor_name: member.name,
+        character_name: member.character,
+        profile_path: member.profile_path,
+        known_for_department: 'Acting'
+      });
+      if (result) {
+        setIsFavorite(true);
+      }
+    }
+    
+    setIsLoading(false);
+  };
+
   return (
-    <a
+    
       href={tmdbPersonUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="group"
+      className="group relative"
     >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
         {/* Profile Image */}
@@ -117,22 +157,30 @@ function CastMemberCard({ member }: CastMemberCardProps) {
           )}
         </div>
 
-        {/* Cast Info */}
-        <div className="p-2">
-          <p className="text-sm font-medium text-slate-900 truncate group-hover:text-purple-600 transition-colors">
+        {/* Actor Info */}
+        <div className="p-3 relative">
+          <p className="font-medium text-sm text-slate-900 truncate">
             {member.name}
           </p>
-          <p className="text-xs text-slate-600 italic truncate">
-            {member.character}
-          </p>
-          
-          {/* Order badge for main cast */}
-          {member.order < 5 && (
-            <div className="mt-1 inline-flex items-center">
-              <Star className="h-3 w-3 text-yellow-500 fill-current" />
-              <span className="text-xs text-slate-500 ml-1">#{member.order + 1}</span>
-            </div>
+          {member.character && (
+            <p className="text-xs text-slate-500 truncate">
+              as {member.character}
+            </p>
           )}
+
+          {/* Favorite Button */}
+          <button
+            onClick={handleToggleFavorite}
+            disabled={isLoading}
+            className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-all ${
+              isFavorite
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-red-500'
+            } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
+          </button>
         </div>
       </div>
     </a>
