@@ -34,6 +34,10 @@ import { tmdbService } from '../lib/tmdb';
 import { TMDBAPITester } from './TMDBAPITester';
 import { episodeTrackingService } from '../services/episodeTrackingService';
 import { EpisodeTrackingGrid } from './EpisodeTrackingGrid';
+import { SeriesCastDisplay } from './SeriesCastDisplay';
+import { SeriesRecommendations } from './SeriesRecommendations';
+import WatchProvidersDisplay from './WatchProvidersDisplay';
+import { TMDBTVSeriesDetails } from '../lib/tmdb';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -68,6 +72,7 @@ export function EnhancedEpisodesBrowserPage({
   const [isUpdating, setIsUpdating] = useState(false);
   const [showSeriesReviewModal, setShowSeriesReviewModal] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
+  const [isPlotExpanded, setIsPlotExpanded] = useState(false); 
   const [isPlotExpanded, setIsPlotExpanded] = useState(false); // ✅ NEW: For plot expansion
   
   // Local state for immediate UI updates
@@ -107,6 +112,31 @@ export function EnhancedEpisodesBrowserPage({
       tmdbService.updateCacheRating(series.imdb_id, series.imdb_score);
     }
   }, [series.imdb_id, series.imdb_score]);
+
+  useEffect(() => {
+    const fetchTMDBData = async () => {
+      if (!series.imdb_id) return;
+
+      try {
+        console.log('[Episodes] Fetching TMDB data for:', series.imdb_id);
+        const data = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+      
+        if (data) {
+          console.log('[Episodes] TMDB data received:', {
+            cast: data.credits?.cast?.length || 0,
+            recommendations: data.recommendations?.results?.length || 0,
+            similar: data.similar?.results?.length || 0,
+            watchProviders: data['watch/providers'] ? 'Available' : 'Not available'
+          });
+          setTmdbData(data);
+        }
+      } catch (error) {
+        console.error('[Episodes] Error fetching TMDB data:', error);
+      }
+    };
+
+    fetchTMDBData();
+  }, [series.imdb_id]);
   
   // Load episodes for current season from background cache
   useEffect(() => {
@@ -750,6 +780,30 @@ export function EnhancedEpisodesBrowserPage({
               )}
             </div>
 
+            {tmdbData?.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                <SeriesCastDisplay credits={tmdbData.credits} />
+              </div>
+            )}
+
+            {(tmdbData?.recommendations || tmdbData?.similar) && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                <SeriesRecommendations 
+                  recommendations={tmdbData.recommendations}
+                  similar={tmdbData.similar}
+                />
+              </div>
+            )}
+
+            {tmdbData?.['watch/providers'] && ... && (
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                <WatchProvidersDisplay 
+                  watchProviders={tmdbData['watch/providers']}
+                  title={series.title}
+                />
+              </div>
+            )}
+            
             {/* Loading State */}
             {loading && (
               <div className="text-center py-12">
