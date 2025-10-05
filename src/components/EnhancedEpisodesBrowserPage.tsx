@@ -341,6 +341,7 @@ export function EnhancedEpisodesBrowserPage({
     switch (status) {
       case 'To Watch': return 'bg-blue-100 text-blue-800';
       case 'Watching': return 'bg-yellow-100 text-yellow-800';
+      case 'Paused': return 'bg-orange-100 text-orange-800';
       case 'Watched': return 'bg-green-100 text-green-800';
       case 'To Watch Again': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
