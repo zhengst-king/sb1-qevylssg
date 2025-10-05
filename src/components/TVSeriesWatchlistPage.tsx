@@ -722,7 +722,7 @@ export function TVSeriesWatchlistPage() {
         {/* Statistics Cards / Filter Buttons */}
         {movies.length > 0 && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
               <button
                 onClick={() => handleStatusFilter('All')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
