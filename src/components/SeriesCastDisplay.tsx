@@ -92,30 +92,37 @@ interface CastMemberCardProps {
 }
 
 function CastMemberCard({ member }: CastMemberCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFavoriteActor, setIsFavoriteActor] = useState(false);
+  const [isFavoriteCharacter, setIsFavoriteCharacter] = useState(false);
+  const [isLoadingActor, setIsLoadingActor] = useState(false);
+  const [isLoadingCharacter, setIsLoadingCharacter] = useState(false);
   const profileUrl = tmdbService.getProfileImageUrl(member.profile_path, 'w185');
   const tmdbPersonUrl = `https://www.themoviedb.org/person/${member.id}`;
 
-  // Check if actor is favorited
+  // Check if actor and character are favorited
   useEffect(() => {
-    const checkFavorite = async () => {
-      const favorited = await favoriteActorsService.isFavorite(member.id);
-      setIsFavorite(favorited);
-    };
-    checkFavorite();
-  }, [member.id]);
+    const checkFavorites = async () => {
+      const actorFavorited = await favoriteActorsService.isFavorite(member.id);
+      setIsFavoriteActor(actorFavorited);
 
-  const handleToggleFavorite = async (e: React.MouseEvent) => {
+      if (member.character) {
+        const characterFavorited = await favoriteCharactersService.isFavorite(member.character);
+        setIsFavoriteCharacter(characterFavorited);
+      }
+    };
+    checkFavorites();
+  }, [member.id, member.character]);
+
+  const handleToggleFavoriteActor = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    setIsLoading(true);
+    setIsLoadingActor(true);
     
-    if (isFavorite) {
+    if (isFavoriteActor) {
       const success = await favoriteActorsService.removeFavorite(member.id);
       if (success) {
-        setIsFavorite(false);
+        setIsFavoriteActor(false);
       }
     } else {
       const result = await favoriteActorsService.addFavorite({
@@ -126,15 +133,43 @@ function CastMemberCard({ member }: CastMemberCardProps) {
         known_for_department: 'Acting'
       });
       if (result) {
-        setIsFavorite(true);
+        setIsFavoriteActor(true);
       }
     }
     
-    setIsLoading(false);
+    setIsLoadingActor(false);
+  };
+
+  const handleToggleFavoriteCharacter = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!member.character) return;
+    
+    setIsLoadingCharacter(true);
+    
+    if (isFavoriteCharacter) {
+      const success = await favoriteCharactersService.removeFavorite(member.character);
+      if (success) {
+        setIsFavoriteCharacter(false);
+      }
+    } else {
+      const result = await favoriteCharactersService.addFavorite({
+        character_name: member.character,
+        actor_id: member.id,
+        actor_name: member.name,
+        profile_path: member.profile_path
+      });
+      if (result) {
+        setIsFavoriteCharacter(true);
+      }
+    }
+    
+    setIsLoadingCharacter(false);
   };
 
   return (
-    <a
+    
       href={tmdbPersonUrl}
       target="_blank"
       rel="noopener noreferrer"
@@ -157,29 +192,46 @@ function CastMemberCard({ member }: CastMemberCardProps) {
         </div>
 
         {/* Actor Info */}
-        <div className="p-3 relative">
-          <p className="font-medium text-sm text-slate-900 truncate">
-            {member.name}
-          </p>
-          {member.character && (
-            <p className="text-xs text-slate-500 truncate">
-              as {member.character}
+        <div className="p-3">
+          {/* Actor Name with Favorite Icon */}
+          <div className="flex items-center justify-between mb-1">
+            <p className="font-medium text-sm text-slate-900 truncate flex-1">
+              {member.name}
             </p>
-          )}
+            <button
+              onClick={handleToggleFavoriteActor}
+              disabled={isLoadingActor}
+              className={`p-1 rounded-full transition-all flex-shrink-0 ${
+                isFavoriteActor
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-red-500'
+              } ${isLoadingActor ? 'opacity-50 cursor-wait' : ''}`}
+              title={isFavoriteActor ? 'Remove actor from favorites' : 'Add actor to favorites'}
+            >
+              <Heart className={`h-3 w-3 ${isFavoriteActor ? 'fill-current' : ''}`} />
+            </button>
+          </div>
 
-          {/* Favorite Button */}
-          <button
-            onClick={handleToggleFavorite}
-            disabled={isLoading}
-            className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-all ${
-              isFavorite
-                ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-red-500'
-            } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
-            title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Heart className={`h-3.5 w-3.5 ${isFavorite ? 'fill-current' : ''}`} />
-          </button>
+          {/* Character Name with Favorite Icon */}
+          {member.character && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500 truncate flex-1">
+                as {member.character}
+              </p>
+              <button
+                onClick={handleToggleFavoriteCharacter}
+                disabled={isLoadingCharacter}
+                className={`p-1 rounded-full transition-all flex-shrink-0 ${
+                  isFavoriteCharacter
+                    ? 'bg-purple-500 text-white hover:bg-purple-600'
+                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-purple-500'
+                } ${isLoadingCharacter ? 'opacity-50 cursor-wait' : ''}`}
+                title={isFavoriteCharacter ? 'Remove character from favorites' : 'Add character to favorites'}
+              >
+                <Heart className={`h-3 w-3 ${isFavoriteCharacter ? 'fill-current' : ''}`} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </a>
