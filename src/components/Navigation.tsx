@@ -7,6 +7,7 @@ import {
   Disc3, 
   Sparkles, 
   Star,
+  Users,
   MapPin,
   Tag,
   Calendar,
@@ -23,6 +24,7 @@ type PageType =
   | 'collections' 
   | 'new2me'
   | 'my-stars'
+  | 'characters'
   | 'my-spots'
   | 'my-tags'
   | 'calendars'
@@ -141,6 +143,22 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
               >
                 <Star className="h-4 w-4" />
                 <span>My Stars</span>
+              </button>
+
+              {/* Characters */}
+              <button
+                onClick={() => onPageChange('characters')}
+                disabled={!isAuthenticated}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                  currentPage === 'characters'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : isAuthenticated 
+                      ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                      : 'text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Characters</span>
               </button>
 
               {/* My Spots */}
