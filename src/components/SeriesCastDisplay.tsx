@@ -169,7 +169,7 @@ function CastMemberCard({ member }: CastMemberCardProps) {
   };
 
   return (
-    
+    <a
       href={tmdbPersonUrl}
       target="_blank"
       rel="noopener noreferrer"
