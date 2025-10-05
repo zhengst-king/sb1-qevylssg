@@ -690,6 +690,7 @@ export function EnhancedEpisodesBrowserPage({
                   >
                     <option value="To Watch">To Watch</option>
                     <option value="Watching">Watching</option>
+                    <option value="Paused">Paused</option>
                     <option value="Watched">Watched</option>
                     <option value="To Watch Again">To Watch Again</option>
                   </select>
