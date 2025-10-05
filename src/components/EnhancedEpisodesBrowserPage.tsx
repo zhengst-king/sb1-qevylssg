@@ -795,22 +795,6 @@ export function EnhancedEpisodesBrowserPage({
                   </div>
                 </div>
               )}
-
-              {/* Wikipedia Link */}
-              {series.title && (
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <a
-                    href={`https://en.wikipedia.org/wiki/${encodeURIComponent(series.title.replace(/ /g, '_'))}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
-                  >
-                    <Globe className="h-4 w-4" />
-                    <span>View on Wikipedia</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              )}
             </div>
 
             {tmdbData?.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
