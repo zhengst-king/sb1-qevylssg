@@ -9,6 +9,7 @@ import { MyCollectionsPage } from './components/MyCollectionsPage';
 import { SettingsPage } from './components/SettingsPage';
 import { SmartRecommendationsContainer } from './components/SmartRecommendationsContainer';
 import { MyStarsPage } from './components/MyStarsPage';
+import { CharactersPage } from './components/CharactersPage';
 import { MySpotsPage } from './components/MySpotsPage';
 import { MyTagsPage } from './components/MyTagsPage';
 import { CalendarsPage } from './components/CalendarsPage';
@@ -23,6 +24,7 @@ type PageType =
   | 'collections' 
   | 'new2me'
   | 'my-stars'
+  | 'characters' 
   | 'my-spots'
   | 'my-tags'
   | 'calendars'
@@ -111,6 +113,7 @@ function App() {
         {currentPage === 'collections' && <MyCollectionsPage />}
         {currentPage === 'new2me' && <SmartRecommendationsContainer />}
         {currentPage === 'my-stars' && <MyStarsPage />}
+        {currentPage === 'characters' && <CharactersPage />}
         {currentPage === 'my-spots' && <MySpotsPage />}
         {currentPage === 'my-tags' && <MyTagsPage />}
         {currentPage === 'calendars' && <CalendarsPage />}
