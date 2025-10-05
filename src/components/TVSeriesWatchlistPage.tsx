@@ -30,8 +30,16 @@ export function TVSeriesWatchlistPage() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showEpisodesModal, setShowEpisodesModal] = useState(false);
   const [selectedSeries, setSelectedSeries] = useState<Movie | null>(null);
-  const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>('date_added');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  // Initialize sort settings from localStorage
+  const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>(() => {
+    const saved = localStorage.getItem('movie-sort-by');
+    return (saved as typeof sortBy) || 'date_added';
+  });
+
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+    const saved = localStorage.getItem('movie-sort-order');
+    return (saved as 'asc' | 'desc') || 'desc';
+  });
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [filters, setFilters] = useState<FilterState>(() => {
@@ -60,6 +68,12 @@ export function TVSeriesWatchlistPage() {
       status: 'All'
     };
   });
+
+  // Save sort settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('movie-sort-by', sortBy);
+    localStorage.setItem('movie-sort-order', sortOrder);
+  }, [sortBy, sortOrder]);
 
   // Calculate active filter count
   const activeFilterCount = useMemo(() => {
