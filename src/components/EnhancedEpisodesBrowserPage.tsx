@@ -784,7 +784,7 @@ export function EnhancedEpisodesBrowserPage({
               {/* Wikipedia Link */}
               {series.title && (
                 <div className="mt-4 pt-4 border-t border-slate-200">
-                  
+                  <a
                     href={`https://en.wikipedia.org/wiki/${encodeURIComponent(series.title.replace(/ /g, '_'))}`}
                     target="_blank"
                     rel="noopener noreferrer"
