@@ -6,6 +6,7 @@ import { Users, User, Star, ExternalLink, Heart } from 'lucide-react';
 import { TMDBSeriesCredits, TMDBCastMember } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 import { favoriteActorsService } from '../services/favoriteActorsService';
+import { favoriteCharactersService } from '../services/favoriteCharactersService';
 
 interface SeriesCastDisplayProps {
   credits: TMDBSeriesCredits;
