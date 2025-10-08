@@ -46,11 +46,11 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
     loadFavorites();
   }, []);
 
-  // Load favorite crew
+  // Load favorite actors
   useEffect(() => {
     const loadFavorites = async () => {
-      const favorites = await favoriteCrewService.getFavoriteCrew();
-      setFavoriteCrewIds(new Set(favorites.map(f => f.tmdb_person_id)));
+      const favorites = await favoriteActorsService.getAllFavorites();
+      setFavoriteActorIds(new Set(favorites.map(f => f.actor_id)));
     };
     loadFavorites();
   }, []);
