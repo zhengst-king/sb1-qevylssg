@@ -27,9 +27,6 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
   const displayCast = showAllCast ? sortedCast : sortedCast.slice(0, 8);
   const hasMoreCast = sortedCast.length > 8;
 
-  // Get main creators from crew
-  const creators = credits.crew?.filter(c => c.job === 'Creator' || c.job === 'Executive Producer').slice(0, 3) || [];
-
   return (
     <div className={`bg-slate-50 p-4 rounded-lg ${className}`}>
       {/* Section Header */}
@@ -47,18 +44,6 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
           </button>
         )}
       </div>
-
-      {/* Main Creators (if available) */}
-      {creators.length > 0 && (
-        <div className="mb-4 pb-4 border-b border-slate-200">
-          <div className="text-sm text-slate-600">
-            <span className="font-medium">Created by:</span>{' '}
-            <span className="text-slate-900">
-              {creators.map(c => c.name).join(', ')}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Cast Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
