@@ -347,7 +347,7 @@ function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
   };
 
   return (
-    
+    <a
       href={tmdbPersonUrl}
       target="_blank"
       rel="noopener noreferrer"
