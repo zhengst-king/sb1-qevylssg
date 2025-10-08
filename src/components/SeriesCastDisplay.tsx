@@ -1,225 +1,289 @@
 // src/components/SeriesCastDisplay.tsx
-// Component to display main series cast from TMDB
-
 import React, { useState, useEffect } from 'react';
-import { Users, User, Star, ExternalLink, Heart } from 'lucide-react';
-import { TMDBSeriesCredits, TMDBCastMember } from '../lib/tmdb';
+import { Users, User, Heart, Film, Camera, Music, Palette, Wand2, Sparkles, Clapperboard } from 'lucide-react';
+import { TMDBSeriesCredits, TMDBCastMember, TMDBCrewMember } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 import { favoriteActorsService } from '../services/favoriteActorsService';
-import { favoriteCharactersService } from '../services/favoriteCharactersService';
+import { favoriteCrewService } from '../services/favoriteCrewService';
 
 interface SeriesCastDisplayProps {
   credits: TMDBSeriesCredits;
   className?: string;
 }
 
+type MainTab = 'cast' | 'crew';
+type CrewSubTab = 'director' | 'creator' | 'producer' | 'executive-producer' | 'cinematographer' | 'editor' | 'music' | 'production-design' | 'costume-design' | 'vfx' | 'sfx' | 'choreographer';
+
+const crewJobMapping: Record<CrewSubTab, { jobs: string[]; label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  'director': { jobs: ['Director'], label: 'Director', icon: Film },
+  'creator': { jobs: ['Creator'], label: 'Creator', icon: Sparkles },
+  'producer': { jobs: ['Producer'], label: 'Producer', icon: Clapperboard },
+  'executive-producer': { jobs: ['Executive Producer'], label: 'Executive Producer', icon: Clapperboard },
+  'cinematographer': { jobs: ['Director of Photography'], label: 'Cinematographer', icon: Camera },
+  'editor': { jobs: ['Editor'], label: 'Editor', icon: Film },
+  'music': { jobs: ['Original Music Composer', 'Music'], label: 'Music', icon: Music },
+  'production-design': { jobs: ['Production Design'], label: 'Production Design', icon: Palette },
+  'costume-design': { jobs: ['Costume Design'], label: 'Costume Design', icon: Palette },
+  'vfx': { jobs: ['Visual Effects Supervisor'], label: 'Visual Effects', icon: Wand2 },
+  'sfx': { jobs: ['Special Effects'], label: 'Special Effects', icon: Wand2 },
+  'choreographer': { jobs: ['Choreographer'], label: 'Choreographer', icon: Users }
+};
+
 export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplayProps) {
+  const [mainTab, setMainTab] = useState<MainTab>('cast');
+  const [crewSubTab, setCrewSubTab] = useState<CrewSubTab>('director');
   const [showAllCast, setShowAllCast] = useState(false);
+  const [favoriteActorIds, setFavoriteActorIds] = useState<Set<number>>(new Set());
+  const [favoriteCrewIds, setFavoriteCrewIds] = useState<Set<number>>(new Set());
+
+  // Load favorite actors
+  useEffect(() => {
+    const loadFavorites = async () => {
+      const favorites = await favoriteActorsService.getFavoriteActors();
+      setFavoriteActorIds(new Set(favorites.map(f => f.tmdb_person_id)));
+    };
+    loadFavorites();
+  }, []);
+
+  // Load favorite crew
+  useEffect(() => {
+    const loadFavorites = async () => {
+      const favorites = await favoriteCrewService.getFavoriteCrew();
+      setFavoriteCrewIds(new Set(favorites.map(f => f.tmdb_person_id)));
+    };
+    loadFavorites();
+  }, []);
+
+  const handleToggleFavoriteActor = async (castMember: TMDBCastMember) => {
+    const isFavorite = favoriteActorIds.has(castMember.id);
+    
+    if (isFavorite) {
+      await favoriteActorsService.removeFavoriteActor(castMember.id);
+      setFavoriteActorIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(castMember.id);
+        return newSet;
+      });
+    } else {
+      await favoriteActorsService.addFavoriteActor(
+        castMember.id,
+        castMember.name,
+        castMember.profile_path,
+        castMember.character
+      );
+      setFavoriteActorIds(prev => new Set([...prev, castMember.id]));
+    }
+  };
+
+  const handleToggleFavoriteCrew = async (crewMember: TMDBCrewMember) => {
+    const isFavorite = favoriteCrewIds.has(crewMember.id);
+    
+    if (isFavorite) {
+      await favoriteCrewService.removeFavoriteCrew(crewMember.id);
+      setFavoriteCrewIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(crewMember.id);
+        return newSet;
+      });
+    } else {
+      await favoriteCrewService.addFavoriteCrew(
+        crewMember.id,
+        crewMember.name,
+        crewMember.profile_path,
+        crewMember.job,
+        crewMember.department
+      );
+      setFavoriteCrewIds(prev => new Set([...prev, crewMember.id]));
+    }
+  };
 
   if (!credits || !credits.cast || credits.cast.length === 0) {
     return null;
   }
 
-  // Sort by order (main cast first)
+  // Sort cast by order
   const sortedCast = [...credits.cast].sort((a, b) => a.order - b.order);
-  
-  // Show top 8 by default, all if expanded
-  const displayCast = showAllCast ? sortedCast : sortedCast.slice(0, 8);
-  const hasMoreCast = sortedCast.length > 8;
+  const displayCast = showAllCast ? sortedCast : sortedCast.slice(0, 12);
+  const hasMoreCast = sortedCast.length > 12;
 
-  return (
-    <div className={`bg-slate-50 p-4 rounded-lg ${className}`}>
-      {/* Section Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <Users className="h-5 w-5 text-slate-600" />
-          <h3 className="text-base font-semibold text-slate-900">Series Cast</h3>
-        </div>
-        {hasMoreCast && (
-          <button
-            onClick={() => setShowAllCast(!showAllCast)}
-            className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
-          >
-            {showAllCast ? 'Show Less' : `Show All (${sortedCast.length})`}
-          </button>
-        )}
-      </div>
-
-      {/* Cast Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {displayCast.map((member) => (
-          <CastMemberCard key={member.credit_id} member={member} />
-        ))}
-      </div>
-
-      {/* TMDB Attribution */}
-      <div className="mt-4 pt-4 border-t border-slate-200">
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span>Cast data from TMDB</span>
-          <a
-            href={`https://www.themoviedb.org/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1 hover:text-slate-600 transition-colors"
-          >
-            <ExternalLink className="h-3 w-3" />
-            <span>TMDB</span>
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==================== CAST MEMBER CARD ====================
-
-interface CastMemberCardProps {
-  member: TMDBCastMember;
-}
-
-function CastMemberCard({ member }: CastMemberCardProps) {
-  const [isFavoriteActor, setIsFavoriteActor] = useState(false);
-  const [isFavoriteCharacter, setIsFavoriteCharacter] = useState(false);
-  const [isLoadingActor, setIsLoadingActor] = useState(false);
-  const [isLoadingCharacter, setIsLoadingCharacter] = useState(false);
-  const profileUrl = tmdbService.getProfileImageUrl(member.profile_path, 'w185');
-  const tmdbPersonUrl = `https://www.themoviedb.org/person/${member.id}`;
-
-  // Check if actor and character are favorited
-  useEffect(() => {
-    const checkFavorites = async () => {
-      const actorFavorited = await favoriteActorsService.isFavorite(member.id);
-      setIsFavoriteActor(actorFavorited);
-
-      if (member.character) {
-        const characterFavorited = await favoriteCharactersService.isFavorite(member.character);
-        setIsFavoriteCharacter(characterFavorited);
-      }
-    };
-    checkFavorites();
-  }, [member.id, member.character]);
-
-  const handleToggleFavoriteActor = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Get crew members by job
+  const getCrewByJob = (subTab: CrewSubTab): TMDBCrewMember[] => {
+    const mapping = crewJobMapping[subTab];
+    if (!credits.crew) return [];
     
-    setIsLoadingActor(true);
-    
-    if (isFavoriteActor) {
-      const success = await favoriteActorsService.removeFavorite(member.id);
-      if (success) {
-        setIsFavoriteActor(false);
-      }
-    } else {
-      const result = await favoriteActorsService.addFavorite({
-        actor_id: member.id,
-        actor_name: member.name,
-        character_name: member.character,
-        profile_path: member.profile_path,
-        known_for_department: 'Acting'
-      });
-      if (result) {
-        setIsFavoriteActor(true);
-      }
-    }
-    
-    setIsLoadingActor(false);
+    return credits.crew
+      .filter(c => mapping.jobs.includes(c.job))
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
-  const handleToggleFavoriteCharacter = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!member.character) return;
-    
-    setIsLoadingCharacter(true);
-    
-    if (isFavoriteCharacter) {
-      const success = await favoriteCharactersService.removeFavorite(member.character);
-      if (success) {
-        setIsFavoriteCharacter(false);
-      }
-    } else {
-      const result = await favoriteCharactersService.addFavorite({
-        character_name: member.character,
-        actor_id: member.id,
-        actor_name: member.name,
-        profile_path: member.profile_path
-      });
-      if (result) {
-        setIsFavoriteCharacter(true);
-      }
-    }
-    
-    setIsLoadingCharacter(false);
-  };
+  const currentCrewMembers = getCrewByJob(crewSubTab);
 
   return (
-    <a
-      href={tmdbPersonUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative"
-    >
-      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
-        {/* Profile Image */}
-        <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
-          {profileUrl ? (
-            <img
-              src={profileUrl}
-              alt={member.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <User className="h-12 w-12 text-slate-400" />
-            </div>
-          )}
-        </div>
+    <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-6 ${className}`}>
+      {/* Main Tabs */}
+      <div className="flex items-center space-x-4 mb-6 border-b border-slate-200">
+        <button
+          onClick={() => setMainTab('cast')}
+          className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+            mainTab === 'cast'
+              ? 'border-purple-600 text-purple-600'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <Users className="h-5 w-5" />
+            <span>Series Cast</span>
+          </div>
+        </button>
+        
+        <button
+          onClick={() => setMainTab('crew')}
+          className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+            mainTab === 'crew'
+              ? 'border-purple-600 text-purple-600'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <Film className="h-5 w-5" />
+            <span>Series Crew</span>
+          </div>
+        </button>
+      </div>
 
-        {/* Actor Info */}
-        <div className="p-3">
-          {/* Actor Name with Favorite Icon */}
-          <div className="flex items-center justify-between mb-1">
-            <p className="font-medium text-sm text-slate-900 truncate flex-1">
-              {member.name}
-            </p>
-            <button
-              onClick={handleToggleFavoriteActor}
-              disabled={isLoadingActor}
-              className={`p-1 rounded-full transition-all flex-shrink-0 ${
-                isFavoriteActor
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-red-500'
-              } ${isLoadingActor ? 'opacity-50 cursor-wait' : ''}`}
-              title={isFavoriteActor ? 'Remove actor from favorites' : 'Add actor to favorites'}
-            >
-              <Heart className={`h-3 w-3 ${isFavoriteActor ? 'fill-current' : ''}`} />
-            </button>
+      {/* Cast Tab Content */}
+      {mainTab === 'cast' && (
+        <div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {displayCast.map((castMember) => {
+              const isFavorite = favoriteActorIds.has(castMember.id);
+              
+              return (
+                <div key={castMember.id} className="relative group">
+                  {/* Favorite Button */}
+                  <button
+                    onClick={() => handleToggleFavoriteActor(castMember)}
+                    className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
+                    title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    <Heart
+                      className={`h-4 w-4 transition-colors ${
+                        isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 hover:text-red-500'
+                      }`}
+                    />
+                  </button>
+
+                  {castMember.profile_path ? (
+                    <img
+                      src={tmdbService.getProfileImageUrl(castMember.profile_path, 'w185')}
+                      alt={castMember.name}
+                      className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
+                      <User className="h-12 w-12 text-slate-400" />
+                    </div>
+                  )}
+                  <p className="text-sm font-medium text-slate-900 line-clamp-2">{castMember.name}</p>
+                  <p className="text-xs text-slate-500 line-clamp-1">{castMember.character}</p>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Character Name with Favorite Icon */}
-          {member.character && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500 truncate flex-1">
-                as {member.character}
-              </p>
+          {hasMoreCast && (
+            <div className="mt-6 text-center">
               <button
-                onClick={handleToggleFavoriteCharacter}
-                disabled={isLoadingCharacter}
-                className={`p-1 rounded-full transition-all flex-shrink-0 ${
-                  isFavoriteCharacter
-                    ? 'bg-purple-500 text-white hover:bg-purple-600'
-                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-purple-500'
-                } ${isLoadingCharacter ? 'opacity-50 cursor-wait' : ''}`}
-                title={isFavoriteCharacter ? 'Remove character from favorites' : 'Add character to favorites'}
+                onClick={() => setShowAllCast(!showAllCast)}
+                className="px-6 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg font-medium transition-colors"
               >
-                <Heart className={`h-3 w-3 ${isFavoriteCharacter ? 'fill-current' : ''}`} />
+                {showAllCast ? 'Show Less' : `Show All ${sortedCast.length} Cast Members`}
               </button>
             </div>
           )}
         </div>
-      </div>
-    </a>
+      )}
+
+      {/* Crew Tab Content */}
+      {mainTab === 'crew' && (
+        <div>
+          {/* Crew Sub-tabs */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {(Object.keys(crewJobMapping) as CrewSubTab[]).map((subTab) => {
+              const mapping = crewJobMapping[subTab];
+              const Icon = mapping.icon;
+              const count = getCrewByJob(subTab).length;
+              
+              return (
+                <button
+                  key={subTab}
+                  onClick={() => setCrewSubTab(subTab)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    crewSubTab === subTab
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{mapping.label}</span>
+                  {count > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      crewSubTab === subTab ? 'bg-purple-700' : 'bg-slate-200'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Crew Members Grid */}
+          {currentCrewMembers.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {currentCrewMembers.map((crewMember) => {
+                const isFavorite = favoriteCrewIds.has(crewMember.id);
+                
+                return (
+                  <div key={`${crewMember.id}-${crewMember.credit_id}`} className="relative group">
+                    {/* Favorite Button */}
+                    <button
+                      onClick={() => handleToggleFavoriteCrew(crewMember)}
+                      className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
+                      title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Heart
+                        className={`h-4 w-4 transition-colors ${
+                          isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 hover:text-red-500'
+                        }`}
+                      />
+                    </button>
+
+                    {crewMember.profile_path ? (
+                      <img
+                        src={tmdbService.getProfileImageUrl(crewMember.profile_path, 'w185')}
+                        alt={crewMember.name}
+                        className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+                      />
+                    ) : (
+                      <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
+                        <User className="h-12 w-12 text-slate-400" />
+                      </div>
+                    )}
+                    <p className="text-sm font-medium text-slate-900 line-clamp-2">{crewMember.name}</p>
+                    <p className="text-xs text-slate-500 line-clamp-1">{crewMember.job}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <User className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-600">No {crewJobMapping[crewSubTab].label} information available</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
