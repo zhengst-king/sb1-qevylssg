@@ -1,4 +1,6 @@
 // src/components/FilterPanel.tsx
+// MINIMAL CHANGES: Only add pageType prop and change Director label conditionally
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronUp, X, Filter, Search } from 'lucide-react';
 import { Movie } from '../lib/supabase';
@@ -17,6 +19,7 @@ interface FilterState {
 interface FilterPanelProps {
   movies: Movie[];
   onFiltersChange: (filters: FilterState) => void;
+  pageType?: 'movies' | 'tv-series'; // ADD THIS LINE
 }
 
 // NEW: Dynamic year calculation (current year + 5)
@@ -34,7 +37,7 @@ const DEFAULT_FILTERS: FilterState = {
   status: 'All'
 };
 
-export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
+export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: FilterPanelProps) { // MODIFY THIS LINE
   const [isExpanded, setIsExpanded] = useState(true);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [directorSearch, setDirectorSearch] = useState(''); // NEW: Director search instead of checkboxes
@@ -165,6 +168,12 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
       updateFilters({ ...filters, directors: [] });
     }
   };
+
+  // ADD THESE 3 LINES - Conditional labels based on page type
+  const directorLabel = pageType === 'tv-series' ? 'Creator' : 'Director';
+  const directorPlaceholder = pageType === 'tv-series' 
+    ? 'Search by creator name...' 
+    : 'Search by director name...';
 
   return (
     <div ref={filterRef} className="bg-white rounded-xl shadow-lg border border-slate-200 mb-8">
@@ -309,16 +318,16 @@ export function FilterPanel({ movies, onFiltersChange }: FilterPanelProps) {
               </div>
             </div>
 
-            {/* Directors - NEW: Search bar instead of checkboxes */}
+            {/* Directors/Creators - ONLY CHANGE: Use conditional label and placeholder */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Director</label>
+              <label className="block text-sm font-medium text-slate-700 mb-3">{directorLabel}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={directorSearch}
                   onChange={(e) => handleDirectorSearch(e.target.value)}
-                  placeholder="Search by director name..."
+                  placeholder={directorPlaceholder}
                   className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
