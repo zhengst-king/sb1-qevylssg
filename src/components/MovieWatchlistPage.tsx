@@ -326,60 +326,96 @@ export function MovieWatchlistPage() {
   }, [filteredMovies, sortBy, sortOrder]);
 
   const downloadMovieWatchlist = (movies: Movie[]) => {
+    // Sort by rating
     const sortedMovies = [...movies].sort((a, b) => {
       const aRating = a.user_rating || a.imdb_score || 0;
       const bRating = b.user_rating || b.imdb_score || 0;
       return bRating - aRating;
     });
 
-    const data = {
-      exportInfo: {
-        exportDate: new Date().toISOString(),
-        totalCount: movies.length,
-        exportType: 'movie_watchlist',
-        sortedBy: 'user_rating_desc'
-      },
-      movies: sortedMovies.map(movie => ({
-        id: movie.id,
-        title: movie.title,
-        imdbID: movie.imdb_id,
-        mediaType: movie.media_type,
-        year: movie.year,
-        genre: movie.genre,
-        country: movie.country,
-        language: movie.language,
-        runtime: movie.runtime,
-        rated: movie.rated,
-        released: movie.released,
-        director: movie.director,
-        writer: movie.writer,
-        actors: movie.actors,
-        myRating: movie.user_rating,
-        imdbRating: movie.imdb_score,
-        metascore: movie.metascore,
-        imdbVotes: movie.imdb_votes,
-        status: movie.status,
-        dateWatched: movie.date_watched,
-        userReview: movie.user_review,
-        posterUrl: movie.poster_url,
-        imdbUrl: movie.imdb_url,
-        website: movie.website,
-        plot: movie.plot,
-        awards: movie.awards,
-        boxOffice: movie.box_office,
-        production: movie.production,
-        createdAt: movie.created_at,
-        statusUpdatedAt: movie.status_updated_at,
-        ratingUpdatedAt: movie.rating_updated_at,
-        lastModifiedAt: movie.last_modified_at
-      }))
+    // Helper function to escape CSV values
+    const escapeCSV = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      let str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
     };
+
+    // CSV Headers
+    const headers = [
+      'Title',
+      'Year',
+      'Genre',
+      'Country',
+      'Language',
+      'Runtime',
+      'Rated',
+      'Released',
+      'Director',
+      'Writer',
+      'Actors',
+      'My Rating',
+      'IMDb Rating',
+      'Metascore',
+      'IMDb Votes',
+      'Status',
+      'Date Watched',
+      'User Review',
+      'Plot',
+      'Awards',
+      'Box Office',
+      'Production',
+      'IMDb ID',
+      'IMDb URL',
+      'Poster URL',
+      'Website',
+      'Date Added'
+    ];
+
+    // Generate CSV rows
+    const rows = sortedMovies.map(movie => [
+      escapeCSV(movie.title),
+      escapeCSV(movie.year),
+      escapeCSV(movie.genre),
+      escapeCSV(movie.country),
+      escapeCSV(movie.language),
+      escapeCSV(movie.runtime),
+      escapeCSV(movie.rated),
+      escapeCSV(movie.released),
+      escapeCSV(movie.director),
+      escapeCSV(movie.writer),
+      escapeCSV(movie.actors),
+      escapeCSV(movie.user_rating),
+      escapeCSV(movie.imdb_score),
+      escapeCSV(movie.metascore),
+      escapeCSV(movie.imdb_votes),
+      escapeCSV(movie.status),
+      escapeCSV(movie.date_watched),
+      escapeCSV(movie.user_review),
+      escapeCSV(movie.plot),
+      escapeCSV(movie.awards),
+      escapeCSV(movie.box_office),
+      escapeCSV(movie.production),
+      escapeCSV(movie.imdb_id),
+      escapeCSV(movie.imdb_url),
+      escapeCSV(movie.poster_url),
+      escapeCSV(movie.website),
+      escapeCSV(movie.created_at ? new Date(movie.created_at).toISOString().split('T')[0] : '')
+    ].join(','));
+
+    // Combine headers and rows
+    const csvContent = [headers.join(','), ...rows].join('\n');
+
+    // Add BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `my_movies_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `my_movies_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
