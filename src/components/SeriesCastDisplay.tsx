@@ -59,19 +59,19 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
     const isFavorite = favoriteActorIds.has(castMember.id);
     
     if (isFavorite) {
-      await favoriteActorsService.removeFavoriteActor(castMember.id);
+      await favoriteActorsService.removeFavorite(castMember.id);
       setFavoriteActorIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(castMember.id);
         return newSet;
       });
     } else {
-      await favoriteActorsService.addFavoriteActor(
-        castMember.id,
-        castMember.name,
-        castMember.profile_path,
-        castMember.character
-      );
+      await favoriteActorsService.addFavorite({
+        actor_id: castMember.id,
+        actor_name: castMember.name,
+        profile_path: castMember.profile_path || undefined,
+        character_name: castMember.character
+      });
       setFavoriteActorIds(prev => new Set([...prev, castMember.id]));
     }
   };
