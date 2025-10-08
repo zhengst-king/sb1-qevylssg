@@ -5,6 +5,7 @@ import { TMDBSeriesCredits, TMDBCastMember, TMDBCrewMember } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 import { favoriteActorsService } from '../services/favoriteActorsService';
 import { favoriteCrewService } from '../services/favoriteCrewService';
+import { favoriteCharactersService } from '../services/favoriteCharactersService';
 
 interface SeriesCastDisplayProps {
   credits: TMDBSeriesCredits;
@@ -155,40 +156,14 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
       {mainTab === 'cast' && (
         <div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {displayCast.map((castMember) => {
-              const isFavorite = favoriteActorIds.has(castMember.id);
-              
-              return (
-                <div key={castMember.id} className="relative group">
-                  {/* Favorite Button */}
-                  <button
-                    onClick={() => handleToggleFavoriteActor(castMember)}
-                    className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
-                    title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    <Heart
-                      className={`h-4 w-4 transition-colors ${
-                        isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 hover:text-red-500'
-                      }`}
-                    />
-                  </button>
-
-                  {castMember.profile_path ? (
-                    <img
-                      src={tmdbService.getProfileImageUrl(castMember.profile_path, 'w185')}
-                      alt={castMember.name}
-                      className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
-                    />
-                  ) : (
-                    <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
-                      <User className="h-12 w-12 text-slate-400" />
-                    </div>
-                  )}
-                  <p className="text-sm font-medium text-slate-900 line-clamp-2">{castMember.name}</p>
-                  <p className="text-xs text-slate-500 line-clamp-1">{castMember.character}</p>
-                </div>
-              );
-            })}
+            {displayCast.map((castMember) => (
+              <CastMemberCard
+                key={castMember.id}
+                castMember={castMember}
+                favoriteActorIds={favoriteActorIds}
+                onToggleFavoriteActor={handleToggleFavoriteActor}
+              />
+            ))}
           </div>
 
           {hasMoreCast && (
@@ -282,6 +257,107 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
               <p className="text-slate-600">No {crewJobMapping[crewSubTab].label} information available</p>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==================== CAST MEMBER CARD ====================
+
+interface CastMemberCardProps {
+  castMember: TMDBCastMember;
+  favoriteActorIds: Set<number>;
+  onToggleFavoriteActor: (castMember: TMDBCastMember) => void;
+}
+
+function CastMemberCard({ castMember, favoriteActorIds, onToggleFavoriteActor }: CastMemberCardProps) {
+  const [isFavoriteCharacter, setIsFavoriteCharacter] = useState(false);
+  const [isLoadingCharacter, setIsLoadingCharacter] = useState(false);
+  const isFavoriteActor = favoriteActorIds.has(castMember.id);
+
+  // Check if character is favorited
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (castMember.character) {
+        const isFav = await favoriteCharactersService.isFavorite(castMember.character);
+        setIsFavoriteCharacter(isFav);
+      }
+    };
+    checkFavorite();
+  }, [castMember.character]);
+
+  const handleToggleFavoriteCharacter = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!castMember.character) return;
+    
+    setIsLoadingCharacter(true);
+    
+    if (isFavoriteCharacter) {
+      await favoriteCharactersService.removeFavorite(castMember.character);
+      setIsFavoriteCharacter(false);
+    } else {
+      await favoriteCharactersService.addFavorite({
+        character_name: castMember.character,
+        actor_id: castMember.id,
+        actor_name: castMember.name,
+        profile_path: castMember.profile_path || undefined
+      });
+      setIsFavoriteCharacter(true);
+    }
+    
+    setIsLoadingCharacter(false);
+  };
+
+  return (
+    <div className="relative group">
+      {/* Actor Favorite Button */}
+      <button
+        onClick={() => onToggleFavoriteActor(castMember)}
+        className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
+        title={isFavoriteActor ? 'Remove actor from favorites' : 'Add actor to favorites'}
+      >
+        <Heart
+          className={`h-4 w-4 transition-colors ${
+            isFavoriteActor ? 'fill-red-500 text-red-500' : 'text-slate-400 hover:text-red-500'
+          }`}
+        />
+      </button>
+
+      {castMember.profile_path ? (
+        <img
+          src={tmdbService.getProfileImageUrl(castMember.profile_path, 'w185')}
+          alt={castMember.name}
+          className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+        />
+      ) : (
+        <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
+          <User className="h-12 w-12 text-slate-400" />
+        </div>
+      )}
+      
+      <p className="text-sm font-medium text-slate-900 line-clamp-2">{castMember.name}</p>
+      
+      {/* Character name with favorite button */}
+      {castMember.character && (
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-xs text-slate-500 line-clamp-1 flex-1">
+            {castMember.character}
+          </p>
+          <button
+            onClick={handleToggleFavoriteCharacter}
+            disabled={isLoadingCharacter}
+            className={`ml-1 p-1 rounded-full transition-all flex-shrink-0 ${
+              isFavoriteCharacter
+                ? 'bg-purple-500 text-white hover:bg-purple-600'
+                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-purple-500'
+            } ${isLoadingCharacter ? 'opacity-50 cursor-wait' : ''}`}
+            title={isFavoriteCharacter ? 'Remove character from favorites' : 'Add character to favorites'}
+          >
+            <Heart className={`h-3 w-3 ${isFavoriteCharacter ? 'fill-current' : ''}`} />
+          </button>
         </div>
       )}
     </div>
