@@ -187,7 +187,7 @@ export function MovieDetailsPage({
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-6">
           {/* Flat Metadata Grid - TV Episode Style */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {movie.runtime && (
