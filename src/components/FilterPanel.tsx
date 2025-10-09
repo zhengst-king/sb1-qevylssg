@@ -154,15 +154,12 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
     return count;
   }, [filters]);
 
-  // NEW: Director filtering logic for search bar
+  // NEW: Director filtering logic for search bar - works like Cast/Actors filter
   const handleDirectorSearch = (searchTerm: string) => {
     setDirectorSearch(searchTerm);
     if (searchTerm.trim()) {
-      // Find directors that match the search and add them to filter
-      const matchingDirectors = filterOptions.directors.filter(director =>
-        director.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      updateFilters({ ...filters, directors: matchingDirectors });
+      // Pass the search term directly - let parent component handle matching
+      updateFilters({ ...filters, directors: [searchTerm] });
     } else {
       // Clear director filter when search is empty
       updateFilters({ ...filters, directors: [] });
