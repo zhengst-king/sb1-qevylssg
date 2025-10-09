@@ -568,7 +568,11 @@ export function MovieWatchlistPage() {
 
                 {showFilterPanel && (
                   <div className="absolute top-full left-0 mt-2 w-[600px] z-20">
-                    <FilterPanel movies={movies} onFiltersChange={setFilters} />
+                    <FilterPanel 
+                      movies={movies} 
+                      onFiltersChange={setFilters} 
+                      storageKey="watchlist-filters"
+                    />
                   </div>
                 )}
               </div>
