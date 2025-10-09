@@ -100,75 +100,40 @@ export function TVSeriesWatchlistPage() {
     }
   };
 
-  // Add keyboard and click-outside handlers for sort dropdown
+  // Single unified event handler for all dropdowns and modals
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showSortDropdown) {
-        setShowSortDropdown(false);
-      }
-    };
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.sort-dropdown-container')) {
-        setShowSortDropdown(false);
-      }
-    };
-
-    if (showSortDropdown) {
-      document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showSortDropdown]);
-
-  // Close dropdowns on Escape key
-  React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowSortDropdown(false);
+        setShowFilterPanel(false);
+        if (showEpisodesModal) {
+          handleCloseEpisodes();
+        }
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+    
+      // Check if click is outside sort dropdown
+      if (showSortDropdown && !target.closest('.sort-dropdown')) {
+        setShowSortDropdown(false);
+      }
+    
+      // Check if click is outside filter panel
+      if (showFilterPanel && !target.closest('.filter-dropdown')) {
         setShowFilterPanel(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  // Close dropdowns when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.sort-dropdown') && !target.closest('.filter-dropdown')) {
-        setShowSortDropdown(false);
-        setShowFilterPanel(false);
-      }
-    };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  // Close episodes modal on Escape key
-  React.useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showEpisodesModal) {
-        handleCloseEpisodes();
-      }
-    };
-
-    if (showEpisodesModal) {
-      document.addEventListener('keydown', handleEscape);
-    }
-
-  return () => {
+    return () => {
       document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showEpisodesModal]);
+  }, [showSortDropdown, showFilterPanel, showEpisodesModal]);
 
   const filteredMovies = useMemo(() => {
     return movies.filter(movie => {
