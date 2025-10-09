@@ -458,6 +458,20 @@ export function EnhancedEpisodesBrowserPage({
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-1">
                       <h1 className="text-2xl font-bold text-slate-900">{series.title}</h1>
+
+                      {series.year && (
+                        <div className="flex items-center space-x-1 text-sm text-slate-600">
+                          <Calendar className="h-4 w-4" />
+                          <span>{series.year}</span>
+                        </div>
+                      )}
+  
+                      {series.rated && (
+                        <div className="flex items-center space-x-1 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                          <span>Rated {series.rated}</span>
+                        </div>
+                      )}
+                      
                       {series.genre && series.genre !== 'N/A' && (
                         <div className="flex flex-wrap gap-1">
                           {series.genre.split(',').map(genre => {
