@@ -608,7 +608,8 @@ export function TVSeriesWatchlistPage() {
                     <FilterPanel 
                       movies={movies} 
                       onFiltersChange={handleFiltersChange} 
-                      pageType="tv-series"  // ADD THIS LINE
+                      pageType="tv-series"
+                      storageKey="watchlist-filters-tv"
                     />
                   </div>
                 )}
