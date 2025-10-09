@@ -32,12 +32,12 @@ export function TVSeriesWatchlistPage() {
   const [selectedSeries, setSelectedSeries] = useState<Movie | null>(null);
   // Initialize sort settings from localStorage
   const [sortBy, setSortBy] = useState<'title' | 'year' | 'imdb_rating' | 'user_rating' | 'date_added'>(() => {
-    const saved = localStorage.getItem('movie-sort-by');
+    const saved = localStorage.getItem('tv-sort-by');  // ✅ CORRECT KEY
     return (saved as typeof sortBy) || 'date_added';
   });
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
-    const saved = localStorage.getItem('movie-sort-order');
+    const saved = localStorage.getItem('tv-sort-order');  // ✅ CORRECT KEY
     return (saved as 'asc' | 'desc') || 'desc';
   });
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -71,8 +71,8 @@ export function TVSeriesWatchlistPage() {
 
   // Save sort settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('movie-sort-by', sortBy);
-    localStorage.setItem('movie-sort-order', sortOrder);
+    localStorage.setItem('tv-sort-by', sortBy);
+    localStorage.setItem('tv-sort-order', sortOrder);
   }, [sortBy, sortOrder]);
 
   // Calculate active filter count
