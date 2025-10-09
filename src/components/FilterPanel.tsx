@@ -1,5 +1,5 @@
 // src/components/FilterPanel.tsx
-// MINIMAL CHANGES: Only add pageType prop and change Director label conditionally
+// FIXED: Added storageKey prop to prevent filter state conflicts between pages
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronDown, ChevronUp, X, Filter, Search } from 'lucide-react';
@@ -19,15 +19,16 @@ interface FilterState {
 interface FilterPanelProps {
   movies: Movie[];
   onFiltersChange: (filters: FilterState) => void;
-  pageType?: 'movies' | 'tv-series'; // ADD THIS LINE
+  pageType?: 'movies' | 'tv-series';
+  storageKey?: string; // ✅ ADDED: Allow different storage keys for each page
 }
 
-// NEW: Dynamic year calculation (current year + 5)
+// Dynamic year calculation (current year + 5)
 const getCurrentYear = () => new Date().getFullYear();
 const getMaxYear = () => getCurrentYear() + 5;
 
 const DEFAULT_FILTERS: FilterState = {
-  yearRange: { min: 1900, max: getMaxYear() }, // NEW: Dynamic max year
+  yearRange: { min: 1900, max: getMaxYear() },
   imdbRating: { min: 0, max: 10 },
   genres: [],
   directors: [],
@@ -37,13 +38,18 @@ const DEFAULT_FILTERS: FilterState = {
   status: 'All'
 };
 
-export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: FilterPanelProps) { // MODIFY THIS LINE
+export function FilterPanel({ 
+  movies, 
+  onFiltersChange, 
+  pageType = 'movies',
+  storageKey = 'watchlist-filters' // ✅ FIXED: Default value but can be overridden
+}: FilterPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [directorSearch, setDirectorSearch] = useState(''); // NEW: Director search instead of checkboxes
-  const filterRef = useRef<HTMLDivElement>(null); // NEW: For outside click detection
+  const [directorSearch, setDirectorSearch] = useState('');
+  const filterRef = useRef<HTMLDivElement>(null);
 
-  // NEW: Handle outside clicks to collapse filter panel
+  // Handle outside clicks to collapse filter panel
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
@@ -74,7 +80,6 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
         directors.add(movie.director.trim());
       }
       
-      // NEW: Split countries properly for individual selection
       if (movie.country) {
         // Handle various country separators
         const countrySeparators = [', ', ',', ' / ', '/', ' | ', '|'];
@@ -109,9 +114,9 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
     };
   }, [movies]);
 
-  // Load filters from localStorage on mount
+  // ✅ FIXED: Load filters from localStorage using the correct storageKey
   useEffect(() => {
-    const savedFilters = localStorage.getItem('watchlist-filters');
+    const savedFilters = localStorage.getItem(storageKey);
     if (savedFilters) {
       try {
         const parsed = JSON.parse(savedFilters);
@@ -127,9 +132,9 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
         console.error('Failed to parse saved filters:', error);
       }
     }
-  }, [onFiltersChange]);
+  }, [onFiltersChange, storageKey]); // ✅ ADDED: storageKey as dependency
 
-  // Sync directorSearch when filters.directors changes (e.g., when filter panel reopens)
+  // Sync directorSearch when filters.directors changes
   useEffect(() => {
     if (filters.directors.length > 0) {
       setDirectorSearch(filters.directors[0]);
@@ -138,10 +143,10 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
     }
   }, [filters.directors]);
 
-  // Save filters to localStorage and notify parent
+  // ✅ FIXED: Save filters to localStorage using the correct storageKey
   const updateFilters = (newFilters: FilterState) => {
     setFilters(newFilters);
-    localStorage.setItem('watchlist-filters', JSON.stringify(newFilters));
+    localStorage.setItem(storageKey, JSON.stringify(newFilters)); // ✅ FIXED: Use storageKey prop
     onFiltersChange(newFilters);
   };
 
@@ -167,19 +172,17 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
     return count;
   }, [filters]);
 
-  // NEW: Director filtering logic for search bar - works like Cast/Actors filter
+  // Director filtering logic for search bar
   const handleDirectorSearch = (searchTerm: string) => {
     setDirectorSearch(searchTerm);
     if (searchTerm.trim()) {
-      // Pass the search term directly - let parent component handle matching
       updateFilters({ ...filters, directors: [searchTerm] });
     } else {
-      // Clear director filter when search is empty
       updateFilters({ ...filters, directors: [] });
     }
   };
 
-  // ADD THESE 3 LINES - Conditional labels based on page type
+  // Conditional labels based on page type
   const directorLabel = pageType === 'tv-series' ? 'Creator' : 'Director';
   const directorPlaceholder = pageType === 'tv-series' 
     ? 'Search by creator name...' 
@@ -204,181 +207,179 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
       </button>
 
       {isExpanded && (
-        <div className="px-6 pb-6 space-y-6 border-t border-slate-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
-            {/* Year Range */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Year Range</label>
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
+        <div className="px-6 pb-6 space-y-6">
+          {/* Year Range */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Release Year: {filters.yearRange.min} - {filters.yearRange.max}
+            </label>
+            <div className="space-y-2">
+              <input
+                type="range"
+                min="1900"
+                max={getMaxYear()}
+                step="1"
+                value={filters.yearRange.min}
+                onChange={(e) => updateFilters({
+                  ...filters,
+                  yearRange: { ...filters.yearRange, min: parseInt(e.target.value) }
+                })}
+                className="w-full"
+              />
+              <input
+                type="range"
+                min="1900"
+                max={getMaxYear()}
+                step="1"
+                value={filters.yearRange.max}
+                onChange={(e) => updateFilters({
+                  ...filters,
+                  yearRange: { ...filters.yearRange, max: parseInt(e.target.value) }
+                })}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* IMDb Rating */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              IMDb Rating: {filters.imdbRating.min} - {filters.imdbRating.max}
+            </label>
+            <div className="space-y-2">
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={filters.imdbRating.min}
+                onChange={(e) => updateFilters({
+                  ...filters,
+                  imdbRating: { ...filters.imdbRating, min: parseFloat(e.target.value) }
+                })}
+                className="w-full"
+              />
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={filters.imdbRating.max}
+                onChange={(e) => updateFilters({
+                  ...filters,
+                  imdbRating: { ...filters.imdbRating, max: parseFloat(e.target.value) }
+                })}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* My Rating */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              My Rating: {filters.myRating.min} - {filters.myRating.max}
+            </label>
+            <div className="space-y-2">
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={filters.myRating.min}
+                onChange={(e) => updateFilters({
+                  ...filters,
+                  myRating: { ...filters.myRating, min: parseInt(e.target.value) }
+                })}
+                className="w-full"
+              />
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={filters.myRating.max}
+                onChange={(e) => updateFilters({
+                  ...filters,
+                  myRating: { ...filters.myRating, max: parseInt(e.target.value) }
+                })}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Genres */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">Genres</label>
+            <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
+              {filterOptions.genres.map(genre => (
+                <label key={genre} className="flex items-center">
                   <input
-                    type="number"
-                    min="1900"
-                    max={getMaxYear()}
-                    value={filters.yearRange.min}
-                    onChange={(e) => updateFilters({
-                      ...filters,
-                      yearRange: { ...filters.yearRange, min: parseInt(e.target.value) || 1900 }
-                    })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="From"
+                    type="checkbox"
+                    checked={filters.genres.includes(genre)}
+                    onChange={(e) => {
+                      const newGenres = e.target.checked
+                        ? [...filters.genres, genre]
+                        : filters.genres.filter(g => g !== genre);
+                      updateFilters({ ...filters, genres: newGenres });
+                    }}
+                    className="mr-2 text-blue-600 focus:ring-blue-500"
                   />
+                  <span className="text-sm text-slate-700">{genre}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Directors/Creators */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">{directorLabel}</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={directorSearch}
+                onChange={(e) => handleDirectorSearch(e.target.value)}
+                placeholder={directorPlaceholder}
+                className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Countries */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">Countries</label>
+            <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
+              {filterOptions.countries.map(country => (
+                <label key={country} className="flex items-center">
                   <input
-                    type="number"
-                    min="1900"
-                    max={getMaxYear()}
-                    value={filters.yearRange.max}
-                    onChange={(e) => updateFilters({
-                      ...filters,
-                      yearRange: { ...filters.yearRange, max: parseInt(e.target.value) || getMaxYear() }
-                    })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="To"
+                    type="checkbox"
+                    checked={filters.countries.includes(country)}
+                    onChange={(e) => {
+                      const newCountries = e.target.checked
+                        ? [...filters.countries, country]
+                        : filters.countries.filter(c => c !== country);
+                      updateFilters({ ...filters, countries: newCountries });
+                    }}
+                    className="mr-2 text-blue-600 focus:ring-blue-500"
                   />
-                </div>
-              </div>
+                  <span className="text-sm text-slate-700">{country}</span>
+                </label>
+              ))}
             </div>
+          </div>
 
-            {/* IMDb Rating */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                IMDb Rating: {filters.imdbRating.min} - {filters.imdbRating.max}
-              </label>
-              <div className="space-y-2">
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={filters.imdbRating.min}
-                  onChange={(e) => updateFilters({
-                    ...filters,
-                    imdbRating: { ...filters.imdbRating, min: parseFloat(e.target.value) }
-                  })}
-                  className="w-full"
-                />
-                <input
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={filters.imdbRating.max}
-                  onChange={(e) => updateFilters({
-                    ...filters,
-                    imdbRating: { ...filters.imdbRating, max: parseFloat(e.target.value) }
-                  })}
-                  className="w-full"
-                />
-              </div>
-            </div>
-
-            {/* My Rating */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                My Rating: {filters.myRating.min} - {filters.myRating.max}
-              </label>
-              <div className="space-y-2">
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="1"
-                  value={filters.myRating.min}
-                  onChange={(e) => updateFilters({
-                    ...filters,
-                    myRating: { ...filters.myRating, min: parseInt(e.target.value) }
-                  })}
-                  className="w-full"
-                />
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="1"
-                  value={filters.myRating.max}
-                  onChange={(e) => updateFilters({
-                    ...filters,
-                    myRating: { ...filters.myRating, max: parseInt(e.target.value) }
-                  })}
-                  className="w-full"
-                />
-              </div>
-            </div>
-
-            {/* Genres */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Genres</label>
-              <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
-                {filterOptions.genres.map(genre => (
-                  <label key={genre} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={filters.genres.includes(genre)}
-                      onChange={(e) => {
-                        const newGenres = e.target.checked
-                          ? [...filters.genres, genre]
-                          : filters.genres.filter(g => g !== genre);
-                        updateFilters({ ...filters, genres: newGenres });
-                      }}
-                      className="mr-2 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-slate-700">{genre}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Directors/Creators - ONLY CHANGE: Use conditional label and placeholder */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">{directorLabel}</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={directorSearch}
-                  onChange={(e) => handleDirectorSearch(e.target.value)}
-                  placeholder={directorPlaceholder}
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Countries - UPDATED: Individual countries */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Countries</label>
-              <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-lg p-2 space-y-1">
-                {filterOptions.countries.map(country => (
-                  <label key={country} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={filters.countries.includes(country)}
-                      onChange={(e) => {
-                        const newCountries = e.target.checked
-                          ? [...filters.countries, country]
-                          : filters.countries.filter(c => c !== country);
-                        updateFilters({ ...filters, countries: newCountries });
-                      }}
-                      className="mr-2 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-slate-700">{country}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Actors */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Cast/Actors</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={filters.actors}
-                  onChange={(e) => updateFilters({ ...filters, actors: e.target.value })}
-                  placeholder="Search by actor name..."
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+          {/* Actors */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">Cast/Actors</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                value={filters.actors}
+                onChange={(e) => updateFilters({ ...filters, actors: e.target.value })}
+                placeholder="Search by actor name..."
+                className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
           </div>
 
