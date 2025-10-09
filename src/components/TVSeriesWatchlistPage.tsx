@@ -847,7 +847,7 @@ export function TVSeriesWatchlistPage() {
         {showEpisodesModal && selectedSeries && (
           <div className="fixed inset-0 z-50 overflow-hidden">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCloseEpisodes} />
-            <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="fixed inset-4 md:inset-50 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
               <EnhancedEpisodesBrowserPage 
                 series={selectedSeries} 
                 onBack={handleCloseEpisodes}
