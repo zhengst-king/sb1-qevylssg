@@ -118,12 +118,25 @@ export function FilterPanel({ movies, onFiltersChange, pageType = 'movies' }: Fi
         // Update year range max to current dynamic value
         parsed.yearRange.max = Math.max(parsed.yearRange.max, getMaxYear());
         setFilters(parsed);
+        // Sync directorSearch with the saved director filter
+        if (parsed.directors && parsed.directors.length > 0) {
+          setDirectorSearch(parsed.directors[0]);
+        }
         onFiltersChange(parsed);
       } catch (error) {
         console.error('Failed to parse saved filters:', error);
       }
     }
   }, [onFiltersChange]);
+
+  // Sync directorSearch when filters.directors changes (e.g., when filter panel reopens)
+  useEffect(() => {
+    if (filters.directors.length > 0) {
+      setDirectorSearch(filters.directors[0]);
+    } else {
+      setDirectorSearch('');
+    }
+  }, [filters.directors]);
 
   // Save filters to localStorage and notify parent
   const updateFilters = (newFilters: FilterState) => {
