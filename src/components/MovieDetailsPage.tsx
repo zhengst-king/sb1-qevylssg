@@ -18,6 +18,7 @@ import {
 import { Movie } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
+import { MovieCastSection } from './MovieCastSection';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -303,6 +304,8 @@ export function MovieDetailsPage({
             )}
           </div>
         </div>
+
+        
 
         {/* User Actions Section - Separate Card */}
         <div className="max-w-6xl mx-auto px-6">
