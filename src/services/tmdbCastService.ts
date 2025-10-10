@@ -207,6 +207,173 @@ class TMDBCastService {
   }
 
   /**
+   * Get movie credits (cast & crew) with caching
+   */
+  async getMovieCredits(imdbId: string): Promise<TMDBMovieCredits | null> {
+    if (!this.apiKey) {
+      console.error('[TMDBCast] API key not configured');
+      return null;
+    }
+
+    try {
+      console.log(`[TMDBCast] Fetching credits for movie ${imdbId}`);
+
+      // Check cache first
+      const cached = await this.getCachedMovieCredits(imdbId);
+      if (cached) {
+        console.log('[TMDBCast] Cache hit for movie credits');
+        return cached;
+      }
+
+      console.log('[TMDBCast] Cache miss, fetching from API');
+
+      // First, get TMDB movie ID from IMDb ID
+      const tmdbMovieId = await this.findMovieIdByImdbId(imdbId);
+      if (!tmdbMovieId) {
+        console.error('[TMDBCast] Could not find TMDB movie ID');
+        return null;
+      }
+
+      // Fetch movie credits from TMDB
+      const credits = await this.fetchMovieCreditsFromAPI(tmdbMovieId);
+
+      if (!credits) {
+        console.error('[TMDBCast] Failed to fetch movie credits from API');
+        return null;
+      }
+
+      // Cache the results
+      await this.cacheMovieCredits(imdbId, tmdbMovieId, credits);
+
+      // Optionally, save cast members to people table
+      await this.saveCastMembersToPeopleTable(credits.cast);
+      await this.saveCastMembersToPeopleTable(credits.crew as unknown as TMDBCastMember[]);
+
+      return credits;
+    } catch (error) {
+      console.error('[TMDBCast] Error getting movie credits:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Find TMDB movie ID from IMDb ID
+   */
+  private async findMovieIdByImdbId(imdbId: string): Promise<number | null> {
+    try {
+      const url = `${this.baseUrl}/find/${imdbId}?api_key=${this.apiKey}&external_source=imdb_id`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDBCast] Find movie failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.movie_results?.[0]?.id || null;
+    } catch (error) {
+      console.error('[TMDBCast] Error finding movie by IMDb ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch movie credits from TMDB API
+   */
+  private async fetchMovieCreditsFromAPI(tmdbMovieId: number): Promise<TMDBMovieCredits | null> {
+    try {
+      const url = `${this.baseUrl}/movie/${tmdbMovieId}/credits?api_key=${this.apiKey}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDBCast] Fetch movie credits failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log(`[TMDBCast] Fetched ${data.cast?.length || 0} cast and ${data.crew?.length || 0} crew members`);
+
+      return data;
+    } catch (error) {
+      console.error('[TMDBCast] Error fetching movie credits:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get cached movie credits from Supabase
+   */
+  private async getCachedMovieCredits(imdbId: string): Promise<TMDBMovieCredits | null> {
+    try {
+      const { data, error } = await supabase
+        .from('movie_cast_cache')
+        .select('*')
+        .eq('imdb_id', imdbId)
+        .eq('fetch_success', true)
+        .order('last_fetched_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') { // Not found error
+          console.error('[TMDBCast] Error getting cached movie credits:', error);
+        }
+        return null;
+      }
+
+      // Check if cache is fresh (30 days)
+      const cacheAge = Date.now() - new Date(data.last_fetched_at).getTime();
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+      if (cacheAge > thirtyDaysMs) {
+        console.log('[TMDBCast] Cache is stale, will refetch');
+        return null;
+      }
+
+      return {
+        cast: data.cast_data || [],
+        crew: data.crew_data || [],
+        id: data.tmdb_movie_id || 0
+      };
+    } catch (error) {
+      console.error('[TMDBCast] Error getting cached movie credits:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Cache movie credits to Supabase
+   */
+  private async cacheMovieCredits(
+    imdbId: string,
+    tmdbMovieId: number,
+    credits: TMDBMovieCredits
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('movie_cast_cache')
+        .upsert({
+          imdb_id: imdbId,
+          tmdb_movie_id: tmdbMovieId,
+          cast_data: credits.cast,
+          crew_data: credits.crew,
+          last_fetched_at: new Date().toISOString(),
+          fetch_success: true
+        }, {
+          onConflict: 'imdb_id'
+        });
+
+      if (error) {
+        console.error('[TMDBCast] Error caching movie credits:', error);
+      } else {
+        console.log('[TMDBCast] Successfully cached movie credits');
+      }
+    } catch (error) {
+      console.error('[TMDBCast] Error in cacheMovieCredits:', error);
+    }
+  }
+
+  /**
    * Get detailed person information
    */
   async getPersonDetails(tmdbPersonId: number): Promise<TMDBPersonDetails | null> {
