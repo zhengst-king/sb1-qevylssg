@@ -305,7 +305,7 @@ export function MovieDetailsPage({
         </div>
 
         {/* User Actions Section - Separate Card */}
-        <div className="max-w-6xl mx-auto px-6 pb-6">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-2">
             <div className="flex flex-wrap items-center gap-4">
               
