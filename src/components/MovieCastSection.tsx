@@ -68,7 +68,7 @@ export function MovieCastSection({
   const allCast = (credits.cast || []).sort((a, b) => a.order - b.order);
 
   // Show top 12 by default, all if expanded
-  const displayCast = showAllCast ? allCast : allCast.slice(0, 6;
+  const displayCast = showAllCast ? allCast : allCast.slice(0, 6);
   const hasMoreCast = allCast.length > 6;
 
   // Get directors and writers from crew
