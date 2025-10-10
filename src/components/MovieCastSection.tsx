@@ -1,8 +1,8 @@
 // src/components/MovieCastSection.tsx
-// Component to display cast and crew for a movie
+// Component to display cast and crew for a movie - UPDATED TO MATCH EPISODE STYLE
 
 import React, { useEffect, useState } from 'react';
-import { User, Users, ExternalLink } from 'lucide-react';
+import { User, Users, ExternalLink, Heart } from 'lucide-react';
 import { tmdbCastService, TMDBMovieCredits, TMDBCastMember } from '../services/tmdbCastService';
 
 interface MovieCastSectionProps {
@@ -67,14 +67,14 @@ export function MovieCastSection({
   // Get cast sorted by prominence (order)
   const allCast = (credits.cast || []).sort((a, b) => a.order - b.order);
 
-  // Show top 12 by default, all if expanded
-  const displayCast = showAllCast ? allCast : allCast.slice(0, 6);
+  // Show top 6 by default, all if expanded
+  const displayCast = showAllCast ?
+    allCast : allCast.slice(0, 6);
   const hasMoreCast = allCast.length > 6;
 
   // Get directors and writers from crew
   const directors = credits.crew?.filter(c => c.job === 'Director') || [];
   const writers = credits.crew?.filter(c => c.job === 'Writer' || c.job === 'Screenplay' || c.job === 'Story') || [];
-  const producers = credits.crew?.filter(c => c.job === 'Producer' || c.job === 'Executive Producer') || [];
 
   if (allCast.length === 0 && directors.length === 0 && writers.length === 0) {
     return null; // No cast or crew data
@@ -93,12 +93,13 @@ export function MovieCastSection({
             onClick={() => setShowAllCast(!showAllCast)}
             className="text-xs text-purple-600 hover:text-purple-700 font-medium transition-colors"
           >
-            {showAllCast ? 'Show Less' : `Show All (${allCast.length})`}
+            {showAllCast ?
+              'Show Less' : `Show All (${allCast.length})`}
           </button>
         )}
       </div>
 
-      {/* Director, Writer, Producer Credits */}
+      {/* Director & Writer Credits */}
       {(directors.length > 0 || writers.length > 0) && (
         <div className="mb-4 pb-3 border-b border-slate-200 space-y-1">
           {directors.length > 0 && (
@@ -116,8 +117,8 @@ export function MovieCastSection({
         </div>
       )}
 
-      {/* Cast Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Cast Grid - 6 cards per row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {displayCast.map((member) => (
           <CastMemberCard key={member.credit_id} member={member} />
         ))}
@@ -142,7 +143,7 @@ export function MovieCastSection({
   );
 }
 
-// ==================== CAST MEMBER CARD ====================
+// ==================== CAST MEMBER CARD - VERTICAL CARD LAYOUT ====================
 
 interface CastMemberCardProps {
   member: TMDBCastMember;
@@ -153,38 +154,53 @@ function CastMemberCard({ member }: CastMemberCardProps) {
   const tmdbPersonUrl = `https://www.themoviedb.org/person/${member.id}`;
 
   return (
-    <div className="flex items-start space-x-3 p-2 rounded-lg bg-white hover:bg-slate-50 transition-colors group">
-      {/* Profile Image */}
-      <div className="flex-shrink-0">
-        {profileUrl ? (
-          <img
-            src={profileUrl}
-            alt={member.name}
-            className="w-12 h-12 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center">
-            <User className="h-6 w-6 text-slate-400" />
-          </div>
-        )}
-      </div>
+    <a
+      href={tmdbPersonUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative block"
+    >
+      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+        {/* Profile Image - Portrait aspect ratio */}
+        <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+          {profileUrl ? (
+            <img
+              src={profileUrl}
+              alt={member.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <User className="h-12 w-12 text-slate-400" />
+            </div>
+          )}
 
-      {/* Cast Member Info */}
-      <div className="flex-1 min-w-0">
-        <a
-          href={tmdbPersonUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm font-medium text-slate-900 hover:text-purple-600 transition-colors line-clamp-1"
-        >
-          {member.name}
-        </a>
-        {member.character && (
-          <p className="text-xs text-slate-500 line-clamp-2">
-            as {member.character}
+          {/* Optional: Heart button overlay (can be enabled if favorite feature exists) */}
+          {/* <button
+            className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Add favorite logic here
+            }}
+          >
+            <Heart className="h-4 w-4 text-slate-400 hover:text-red-500 transition-colors" />
+          </button> */}
+        </div>
+
+        {/* Actor & Character Info */}
+        <div className="p-3">
+          <p className="text-sm font-medium text-slate-900 line-clamp-2 group-hover:text-purple-600 transition-colors">
+            {member.name}
           </p>
-        )}
+          {member.character && (
+            <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+              as {member.character}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </a>
   );
 }
