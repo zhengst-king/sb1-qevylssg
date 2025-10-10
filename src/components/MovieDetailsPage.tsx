@@ -299,86 +299,93 @@ export function MovieDetailsPage({
               <p className="text-slate-700 leading-relaxed text-sm">{movie.plot}</p>
             </div>
           )}
+        </div>
 
-          {/* Tracking Controls - TV Episode Style */}
-          <div className="flex flex-wrap items-center gap-6 mb-6">
-            {/* My Rating */}
-            <div className="flex items-center space-x-2 text-sm">
-              <span className="text-slate-600">My Rating:</span>
-              <select
-                value={localRating || ''}
-                onChange={(e) => handleRatingChange(e.target.value ? parseInt(e.target.value) : null)}
-                disabled={isUpdating}
-                className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-              >
-                <option value="">No rating</option>
-                {[...Array(10)].map((_, i) => (
-                  <option key={i + 1} value={i + 1}>{i + 1}/10</option>
-                ))}
-              </select>
-              {movie.rating_updated_at && (
-                <span className="text-xs text-slate-400">
-                  {formatRelativeTime(movie.rating_updated_at)}
-                </span>
-              )}
-            </div>
-
-            {/* Add Review Button */}
-            <button
-              onClick={() => setShowReviewModal(true)}
-              disabled={isUpdating}
-              className="flex items-center space-x-2 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 hover:border-blue-400 rounded transition-colors disabled:cursor-not-allowed"
-            >
-              <MessageSquare className="h-3 w-3" />
-              <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
-            </button>
-
-            {/* Status */}
-            <div className="flex items-center space-x-2 text-sm">
-              <span className="text-slate-600">Status:</span>
-              <select
-                value={localStatus}
-                onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                disabled={isUpdating}
-                className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-              >
-                <option value="To Watch">To Watch</option>
-                <option value="Watching">Watching</option>
-                <option value="Watched">Watched</option>
-                <option value="To Watch Again">To Watch Again</option>
-              </select>
-              {movie.status_updated_at && (
-                <span className="text-xs text-slate-400">
-                  {formatRelativeTime(movie.status_updated_at)}
-                </span>
-              )}
-            </div>
-
-            {/* Date Watched */}
-            {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
-              <div className="flex items-center space-x-2 text-sm">
-                <span className="text-slate-600">Date Watched:</span>
-                <input
-                  type="date"
-                  value={localDateWatched || ''}
-                  onChange={(e) => handleDateWatchedChange(e.target.value)}
+        {/* User Actions Section - Separate Card */}
+        <div className="max-w-6xl mx-auto px-6 pb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="flex flex-wrap items-center gap-4">
+              
+              {/* Status */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-slate-700">Status:</span>
+                <select
+                  value={localStatus}
+                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
                   disabled={isUpdating}
-                  max={getTodayDateString()}
-                  className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-50 disabled:cursor-not-allowed"
-                />
-                {dateWatchedError && (
-                  <span className="text-xs text-red-600">{dateWatchedError}</span>
+                  className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="To Watch">To Watch</option>
+                  <option value="Watching">Watching</option>
+                  <option value="Watched">Watched</option>
+                  <option value="To Watch Again">To Watch Again</option>
+                </select>
+                {movie.status_updated_at && (
+                  <span className="text-xs text-slate-400">
+                    {formatRelativeTime(movie.status_updated_at)}
+                  </span>
                 )}
+              </div>
+
+              {/* My Rating */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-slate-700">My Rating:</span>
+                <select
+                  value={localRating || ''}
+                  onChange={(e) => handleRatingChange(e.target.value ? parseFloat(e.target.value) : null)}
+                  disabled={isUpdating}
+                  className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">No rating</option>
+                  {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((rating) => (
+                    <option key={rating} value={rating}>
+                      {rating}/10
+                    </option>
+                  ))}
+                </select>
+                {movie.rating_updated_at && (
+                  <span className="text-xs text-slate-400">
+                    {formatRelativeTime(movie.rating_updated_at)}
+                  </span>
+                )}
+              </div>
+
+              {/* Add Review Button */}
+              <button
+                onClick={() => setShowReviewModal(true)}
+                disabled={isUpdating}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed text-sm"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
+              </button>
+
+              {/* Date Watched */}
+              {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-slate-700">Date Watched:</span>
+                  <input
+                    type="date"
+                    value={localDateWatched || ''}
+                    onChange={(e) => handleDateWatchedChange(e.target.value)}
+                    disabled={isUpdating}
+                    max={getTodayDateString()}
+                    className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {dateWatchedError && (
+                    <span className="text-xs text-red-600">{dateWatchedError}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Review Display */}
+            {localReview && (
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-blue-900 text-sm leading-relaxed">{localReview}</p>
               </div>
             )}
           </div>
-
-          {/* Review Display */}
-          {localReview && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-              <p className="text-blue-900 text-sm leading-relaxed">{localReview}</p>
-            </div>
-          )}
         </div>
       </div>
 
