@@ -200,105 +200,108 @@ export function MovieDetailsPage({
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-slate-50">
         <div className="max-w-6xl mx-auto p-6">
-          {/* Flat Metadata Grid - TV Episode Style */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {movie.runtime && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <Clock className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Runtime:</span> {movie.runtime} min
+          {/* Details Section - White Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            {/* Flat Metadata Grid - TV Episode Style */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {movie.runtime && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <Clock className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Runtime:</span> {movie.runtime} min
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.actors && (
-              <div className="flex items-start space-x-2 text-slate-600 text-sm">
-                <Users className="h-4 w-4 mt-0.5" />
-                <div>
-                  <span className="font-medium">Stars:</span> {movie.actors}
+              {movie.actors && (
+                <div className="flex items-start space-x-2 text-slate-600 text-sm">
+                  <Users className="h-4 w-4 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Stars:</span> {movie.actors}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.country && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <MapPin className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Country:</span> {movie.country}
+              {movie.country && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <MapPin className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Country:</span> {movie.country}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.language && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <Globe className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Language:</span> {movie.language}
+              {movie.language && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <Globe className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Language:</span> {movie.language}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.awards && (
-              <div className="flex items-start space-x-2 text-slate-600 text-sm">
-                <Award className="h-4 w-4 mt-0.5" />
-                <div>
-                  <span className="font-medium">Awards:</span> {movie.awards}
+              {movie.awards && (
+                <div className="flex items-start space-x-2 text-slate-600 text-sm">
+                  <Award className="h-4 w-4 mt-0.5" />
+                  <div>
+                    <span className="font-medium">Awards:</span> {movie.awards}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.director && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <User className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Director:</span> {movie.director}
+              {movie.director && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <User className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Director:</span> {movie.director}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.writer && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <User className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Writer:</span> {movie.writer}
+              {movie.writer && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <User className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Writer:</span> {movie.writer}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.released && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <Calendar className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Release Date:</span> {movie.released}
+              {movie.released && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <Calendar className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Release Date:</span> {movie.released}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.box_office && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <DollarSign className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Box Office:</span> ${movie.box_office.toLocaleString()}
+              {movie.box_office && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <DollarSign className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Box Office:</span> ${movie.box_office.toLocaleString()}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {movie.production && (
-              <div className="flex items-center space-x-2 text-slate-600 text-sm">
-                <Film className="h-4 w-4" />
-                <div>
-                  <span className="font-medium">Production:</span> {movie.production}
+              {movie.production && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <Film className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Production:</span> {movie.production}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Plot Text */}
+            {movie.plot && (
+              <div>
+                <p className="text-slate-700 leading-relaxed text-sm">{movie.plot}</p>
               </div>
             )}
           </div>
-
-          {/* Plot Text */}
-          {movie.plot && (
-            <div className="mb-6">
-              <p className="text-slate-700 leading-relaxed text-sm">{movie.plot}</p>
-            </div>
-          )}
         </div>
 
         {/* User Actions Section - Separate Card */}
