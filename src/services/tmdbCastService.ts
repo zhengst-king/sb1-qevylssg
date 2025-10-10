@@ -81,6 +81,12 @@ export interface TMDBAggregateCredits {
   id: number;
 }
 
+export interface TMDBMovieCredits {
+  cast: TMDBCastMember[];
+  crew: TMDBCrewMember[];
+  id: number;
+}
+
 // ==================== SERVICE CLASS ====================
 
 class TMDBCastService {
