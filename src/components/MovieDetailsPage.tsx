@@ -134,63 +134,65 @@ export function MovieDetailsPage({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 p-6 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          {/* Left: Back button + Title Info */}
-          <div className="flex items-center space-x-4 flex-1 min-w-0">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
-              title="Back to Collection"
-            >
-              <ArrowLeft className="h-5 w-5 text-slate-600" />
-            </button>
-            
-            {/* Movie Title and Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-3 mb-1 flex-wrap">
-                <Film className="h-6 w-6 text-blue-600 flex-shrink-0" />
-                <h1 className="text-2xl font-bold text-slate-900">{movie.title}</h1>
-                
-                {movie.year && (
-                  <div className="flex items-center space-x-1 text-sm text-slate-600">
-                    <Calendar className="h-4 w-4" />
-                    <span>{movie.year}</span>
+      <div className="bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onBack}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Movies</span>
+              </button>
+
+              <div className="flex items-center space-x-3">
+                <Film className="h-6 w-6 text-blue-600" />
+                <div>
+                  <div className="flex items-center space-x-3 mb-1">
+                    <h1 className="text-2xl font-bold text-slate-900">{movie.title}</h1>
+                    
+                    {movie.year && (
+                      <div className="flex items-center space-x-1 text-sm text-slate-600">
+                        <Calendar className="h-4 w-4" />
+                        <span>{movie.year}</span>
+                      </div>
+                    )}
+                    
+                    {movie.rated && (
+                      <div className="flex items-center space-x-1 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                        <span>Rated {movie.rated}</span>
+                      </div>
+                    )}
+                    
+                    {movie.genre && movie.genre !== 'N/A' && (
+                      <div className="flex flex-wrap gap-1">
+                        {movie.genre.split(',').slice(0, 3).map((genre, index) => {
+                          const trimmedGenre = genre.trim();
+                          return trimmedGenre && (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
+                            >
+                              {trimmedGenre}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                {movie.rated && (
-                  <div className="flex items-center space-x-1 text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">
-                    <span>Rated {movie.rated}</span>
-                  </div>
-                )}
-                
-                {movie.genre && movie.genre !== 'N/A' && (
-                  <div className="flex flex-wrap gap-1">
-                    {movie.genre.split(',').slice(0, 3).map((genre) => {
-                      const trimmedGenre = genre.trim();
-                      return trimmedGenre && (
-                        <span
-                          key={trimmedGenre}
-                          className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
-                        >
-                          {trimmedGenre}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
-          </div>
-          
-          {/* Right: Last Updated */}
-          <div className="flex items-center space-x-3 flex-shrink-0">
-            {movie.updated_at && (
-              <span className="text-sm text-slate-500" title={formatExactTimestamp(movie.updated_at)}>
-                Updated {formatRelativeTime(movie.updated_at)}
-              </span>
-            )}
+            
+            {/* Right side can be used for additional controls if needed */}
+            <div className="flex items-center space-x-3">
+              {movie.updated_at && (
+                <span className="text-sm text-slate-500" title={formatExactTimestamp(movie.updated_at)}>
+                  Updated {formatRelativeTime(movie.updated_at)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
