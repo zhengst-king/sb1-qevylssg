@@ -305,7 +305,10 @@ export function MovieDetailsPage({
           </div>
         </div>
 
-        
+        {/* ✅ ADD THIS SECTION HERE - Cast & Crew Section */}
+        <div className="max-w-6xl mx-auto px-6 pb-4">
+          <MovieCastSection imdbId={movie.imdb_id} />
+        </div>
 
         {/* User Actions Section - Separate Card */}
         <div className="max-w-6xl mx-auto px-6">
