@@ -393,6 +393,12 @@ export function MovieDetailsPage({
             )}
           </div>
         </div>
+
+        {/* ✅ ADD THE MOVIE CAST SECTION HERE - BELOW User Actions Section */}
+        <div className="max-w-6xl mx-auto px-6 pb-4">
+          <MovieCastSection imdbId={movie.imdb_id} />
+        </div>
+        
       </div>
 
       {/* Review Modal */}
