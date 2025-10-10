@@ -553,7 +553,7 @@ export function EnhancedEpisodesBrowserPage({
           <div className="max-w-6xl mx-auto px-4 py-8">
             
             {/* Series Information Header - NEW 2-COLUMN LAYOUT */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-2">
               
               {/* Two Column Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -706,7 +706,7 @@ export function EnhancedEpisodesBrowserPage({
             </div>
 
             {/* User Actions Section - OUTSIDE the white card for full-width layout below */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-2">
               <div className="flex flex-wrap items-center gap-4">
                   
                 {/* Status */}
@@ -812,13 +812,13 @@ export function EnhancedEpisodesBrowserPage({
             </div>
 
             {tmdbData?.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-2">
                 <SeriesCastDisplay credits={tmdbData.credits} />
               </div>
             )}
 
             {(tmdbData?.recommendations || tmdbData?.similar) && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-2">
                 <SeriesRecommendations 
                   recommendations={tmdbData.recommendations}
                   similar={tmdbData.similar}
@@ -831,7 +831,7 @@ export function EnhancedEpisodesBrowserPage({
               const hasWatchProviders = watchProviders?.results && Object.keys(watchProviders.results).length > 0;
   
               return hasWatchProviders ? (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-2">
                   <WatchProvidersDisplay 
                     watchProviders={watchProviders}
                     title={series.title}
