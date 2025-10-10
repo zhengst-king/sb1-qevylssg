@@ -68,8 +68,8 @@ export function MovieCastSection({
   const allCast = (credits.cast || []).sort((a, b) => a.order - b.order);
 
   // Show top 12 by default, all if expanded
-  const displayCast = showAllCast ? allCast : allCast.slice(0, 12);
-  const hasMoreCast = allCast.length > 12;
+  const displayCast = showAllCast ? allCast : allCast.slice(0, 6;
+  const hasMoreCast = allCast.length > 6;
 
   // Get directors and writers from crew
   const directors = credits.crew?.filter(c => c.job === 'Director') || [];
@@ -86,7 +86,7 @@ export function MovieCastSection({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-2">
           <Users className="h-4 w-4 text-slate-600" />
-          <h3 className="text-sm font-semibold text-slate-900">Cast & Crew</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Cast & Characters</h3>
         </div>
         {hasMoreCast && (
           <button
@@ -99,7 +99,7 @@ export function MovieCastSection({
       </div>
 
       {/* Director, Writer, Producer Credits */}
-      {(directors.length > 0 || writers.length > 0 || producers.length > 0) && (
+      {(directors.length > 0 || writers.length > 0) && (
         <div className="mb-4 pb-3 border-b border-slate-200 space-y-1">
           {directors.length > 0 && (
             <div className="text-xs text-slate-600">
@@ -110,13 +110,7 @@ export function MovieCastSection({
           {writers.length > 0 && (
             <div className="text-xs text-slate-600">
               <span className="font-medium">Written by:</span>{' '}
-              <span className="text-slate-900">{writers.slice(0, 3).map(w => w.name).join(', ')}</span>
-            </div>
-          )}
-          {producers.length > 0 && (
-            <div className="text-xs text-slate-600">
-              <span className="font-medium">Produced by:</span>{' '}
-              <span className="text-slate-900">{producers.slice(0, 2).map(p => p.name).join(', ')}</span>
+              <span className="text-slate-900">{writers.map(w => w.name).join(', ')}</span>
             </div>
           )}
         </div>
