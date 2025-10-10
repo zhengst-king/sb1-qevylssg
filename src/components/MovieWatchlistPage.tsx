@@ -815,7 +815,7 @@ export function MovieWatchlistPage() {
               className="fixed inset-0 bg-black bg-opacity-50" 
               onClick={handleModalBackgroundClick}
             />
-            <div className="fixed inset-4 md:inset-8 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
               <MovieDetailsPage 
                 movie={selectedMovie} 
                 onBack={handleCloseDetails}
