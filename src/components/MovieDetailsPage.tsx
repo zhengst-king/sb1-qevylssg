@@ -19,6 +19,8 @@ import { Movie } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 import { MovieCastSection } from './MovieCastSection';
+import { MovieRecommendations } from './MovieRecommendations';
+import { tmdbService, TMDBMovieDetails } from '../lib/tmdb';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -44,6 +46,7 @@ export function MovieDetailsPage({
   const [localStatus, setLocalStatus] = useState<Movie['status']>(movie.status);
   const [localReview, setLocalReview] = useState<string | null>(movie.user_review || null);
   const [localDateWatched, setLocalDateWatched] = useState<string | null>(movie.date_watched || null);
+  const [tmdbData, setTmdbData] = useState<TMDBMovieDetails | null>(null);
 
   // Update local state when movie prop changes
   useEffect(() => {
@@ -64,6 +67,22 @@ export function MovieDetailsPage({
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onBack]);
+
+  // Fetch TMDB data for recommendations
+  useEffect(() => {
+    const fetchTMDBData = async () => {
+      if (movie.imdb_id) {
+        try {
+          const data = await tmdbService.getMovieByImdbId(movie.imdb_id);
+          setTmdbData(data);
+        } catch (error) {
+          console.error('Error fetching TMDB movie data:', error);
+        }
+      }
+    };
+
+    fetchTMDBData();
+  }, [movie.imdb_id]);
 
   const handleStatusChange = async (status: Movie['status']) => {
     setLocalStatus(status);
@@ -396,6 +415,16 @@ export function MovieDetailsPage({
         <div className="max-w-6xl mx-auto px-6 pb-4">
           <MovieCastSection imdbId={movie.imdb_id} />
         </div>
+
+        {/* ✅ NEW: MOVIE RECOMMENDATIONS SECTION */}
+        {tmdbData && (
+          <div className="max-w-6xl mx-auto px-6 pb-6">
+            <MovieRecommendations 
+              recommendations={tmdbData.recommendations}
+              similar={tmdbData.similar}
+            />
+          </div>
+        )}
         
       </div>
 
