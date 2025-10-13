@@ -424,8 +424,7 @@ export function MovieDetailsPage({
               similar={tmdbData.similar}
             />
           </div>
-        )}
-        
+        )}        
       </div>
 
       {/* Review Modal */}
