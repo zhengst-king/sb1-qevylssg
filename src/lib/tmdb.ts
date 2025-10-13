@@ -143,6 +143,44 @@ export interface TMDBTVSeriesDetails {
   similar?: TMDBRecommendationsResponse;
 }
 
+// Movie-specific interfaces (add these after TMDBRecommendationsResponse)
+export interface TMDBMovieRecommendation {
+  adult: boolean;
+  backdrop_path: string | null;
+  id: number;
+  title: string; // Movies use 'title' instead of 'name'
+  original_language: string;
+  original_title: string; // Movies use 'original_title' instead of 'original_name'
+  overview: string;
+  poster_path: string | null;
+  media_type: string;
+  genre_ids: number[];
+  popularity: number;
+  release_date: string; // Movies use 'release_date' instead of 'first_air_date'
+  vote_average: number;
+  vote_count: number;
+  video: boolean;
+}
+
+export interface TMDBMovieRecommendationsResponse {
+  page: number;
+  results: TMDBMovieRecommendation[];
+  total_pages: number;
+  total_results: number;
+}
+
+export interface TMDBMovieDetails {
+  id: number;
+  title: string;
+  overview: string;
+  homepage: string | null;
+  status: string;
+  release_date: string;
+  runtime: number | null;
+  recommendations?: TMDBMovieRecommendationsResponse;
+  similar?: TMDBMovieRecommendationsResponse;
+}
+
 interface CachedTMDBData {
   imdb_id: string;
   tmdb_id: number;
@@ -595,7 +633,87 @@ class TMDBService {
       return null;
     }
   }
+
+  /**
+   * Get movie details with recommendations by IMDb ID
+   */
+  async getMovieByImdbId(imdbId: string): Promise<TMDBMovieDetails | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      console.log('[TMDB] Looking up movie:', imdbId);
+
+      // Find TMDB ID from IMDb ID
+      const tmdbId = await this.findMovieByImdbId(imdbId);
+      if (!tmdbId) {
+        console.error('[TMDB] Movie not found for IMDb ID:', imdbId);
+        return null;
+      }
+
+      console.log('[TMDB] Found TMDB movie ID:', tmdbId);
+
+      // Get full movie details with recommendations and similar
+      const details = await this.getMovieDetails(tmdbId);
+      return details;
+    } catch (error) {
+      console.error('[TMDB] Error getting movie by IMDb ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Search for movie by IMDb ID
+   */
+  private async findMovieByImdbId(imdbId: string): Promise<number | null> {
+    try {
+      const url = `${this.baseUrl}/find/${imdbId}?api_key=${this.apiKey}&external_source=imdb_id`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Find movie by IMDb ID failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      return data.movie_results?.[0]?.id || null;
+    } catch (error) {
+      console.error('[TMDB] Error finding movie by IMDb ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get movie details from TMDB API
+   */
+  private async getMovieDetails(tmdbId: number): Promise<TMDBMovieDetails | null> {
+    try {
+      const url = `${this.baseUrl}/movie/${tmdbId}?api_key=${this.apiKey}&append_to_response=recommendations,similar`;
+      console.log('[TMDB] Fetching movie URL:', url);
+    
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Get movie details failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Movie API Response received');
+      console.log('[TMDB] Movie Recommendations:', data.recommendations ? `${data.recommendations.results?.length} items` : 'No recommendations');
+      console.log('[TMDB] Similar Movies:', data.similar ? `${data.similar.results?.length} items` : 'No similar');
+    
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting movie details:', error);
+      return null;
+    }
+  }
 }
+
+
 
 // Export singleton instance
 export const tmdbService = new TMDBService(TMDB_API_KEY);
