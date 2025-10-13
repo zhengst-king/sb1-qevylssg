@@ -2,7 +2,7 @@
 // Component to display TMDB movie recommendations and similar titles
 
 import React, { useState } from 'react';
-import { ThumbsUp, Sparkles, ExternalLink, Star } from 'lucide-react';
+import { ThumbsUp, Sparkles, ExternalLink, Star, Film } from 'lucide-react';
 import { TMDBMovieRecommendationsResponse } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 
@@ -84,7 +84,7 @@ export function MovieRecommendations({
       <div className="mt-4 pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between text-xs text-slate-400">
           <span>Recommendations from TMDB</span>
-          
+          <a
             href="https://www.themoviedb.org/"
             target="_blank"
             rel="noopener noreferrer"
@@ -115,7 +115,7 @@ function RecommendationCard({ item }: RecommendationCardProps) {
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
 
   return (
-    
+    <a
       href={tmdbUrl}
       target="_blank"
       rel="noopener noreferrer"
