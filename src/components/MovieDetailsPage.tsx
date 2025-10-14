@@ -314,6 +314,31 @@ export function MovieDetailsPage({
                   </div>
                 </div>
               )}
+              {tmdbData?.belongs_to_collection && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <Film className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Franchise:</span> {tmdbData.belongs_to_collection.name}
+                  </div>
+                </div>
+              )}
+
+              {movie.website && (
+                <div className="flex items-center space-x-2 text-slate-600 text-sm">
+                  <Globe className="h-4 w-4" />
+                  <div>
+                    <span className="font-medium">Website:</span>{' '}
+                    
+                      href={movie.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Visit
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Plot Text */}
