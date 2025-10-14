@@ -43,14 +43,8 @@ export function CollectionDetailModal({
     setAddingMovies(prev => new Set([...prev, movie.id]));
     
     try {
-      // Search for IMDb ID using TMDB movie ID
-      const movieDetails = await tmdbService.getMovieDetails(movie.id);
-      
-      if (!movieDetails) {
-        console.error('Could not fetch movie details');
-        return;
-      }
-
+      // Add movie with available data from collection
+      // The backend will enrich it with additional details
       const newMovie: Partial<Movie> = {
         title: movie.title,
         year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
