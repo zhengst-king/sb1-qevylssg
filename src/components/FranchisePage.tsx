@@ -5,7 +5,6 @@ import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
 import { CollectionDetailModal } from './CollectionDetailModal';
-import { MovieSearchModal } from './MovieSearchModal';
 
 export function FranchisePage() {
   const [favorites, setFavorites] = useState<FavoriteFranchise[]>([]);
@@ -59,15 +58,12 @@ export function FranchisePage() {
   };
 
   const handleCollectionClick = (collection: TMDBCollectionSearchResult | FavoriteFranchise) => {
-    const collectionId = 'tmdb_collection_id' in collection ? collection.tmdb_collection_id : collection.id;
+    const collectionId = 'tmdb_collection_id' in collection ? 
+      collection.tmdb_collection_id : collection.id;
     setSelectedCollection({
       id: collectionId,
       name: collection.name
     });
-  };
-
-  const handleAddFranchise = () => {
-    setShowSearchModal(true);
   };
 
   const handleFranchiseAdded = async (collection: TMDBCollectionSearchResult) => {
@@ -101,10 +97,10 @@ export function FranchisePage() {
 
         {/* Action Buttons Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-end space-x-3">
+          <div className="flex items-center justify-end">
             {/* Add Franchise Button */}
             <button
-              onClick={handleAddFranchise}
+              onClick={() => setShowSearchModal(true)}
               className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
             >
               <Plus className="h-4 w-4" />
@@ -124,7 +120,7 @@ export function FranchisePage() {
               <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-600 mb-2">No favorite franchises yet</p>
               <p className="text-sm text-slate-500">
-                Search for collections above and add them to your favorites
+                Click "Add Franchise" above to search for and add your favorite movie collections
               </p>
             </div>
           ) : (
@@ -181,12 +177,13 @@ export function FranchisePage() {
         />
       )}
 
-      {/* Search Modal for adding franchises */}
+      {/* Franchise Search Modal */}
       {showSearchModal && (
-        <MovieSearchModal
+        <FranchiseSearchModal
           isOpen={showSearchModal}
           onClose={() => setShowSearchModal(false)}
-          onMovieAdded={handleFranchiseAdded}
+          onFranchiseAdded={handleFranchiseAdded}
+          favoriteIds={favoriteIds}
         />
       )}
     </div>
