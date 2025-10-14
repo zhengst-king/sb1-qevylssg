@@ -4,12 +4,12 @@ import { Film, Heart, Search, X, Trash2 } from 'lucide-react';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
 import { CollectionDetailModal } from './CollectionDetailModal';
+import { Plus } from 'lucide-react';
+import { MovieSearchModal } from './MovieSearchModal';
 
 export function FranchisePage() {
   const [favorites, setFavorites] = useState<FavoriteFranchise[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<TMDBCollectionSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState<{
     id: number;
@@ -27,26 +27,6 @@ export function FranchisePage() {
     setFavorites(data);
     setFavoriteIds(new Set(data.map(f => f.tmdb_collection_id)));
     setLoading(false);
-  };
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setSearching(true);
-    try {
-      const results = await tmdbService.searchCollections(searchQuery);
-      setSearchResults(results?.results || []);
-    } catch (error) {
-      console.error('Error searching collections:', error);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
   };
 
   const handleToggleFavorite = async (collection: TMDBCollectionSearchResult | FavoriteFranchise) => {
@@ -86,9 +66,13 @@ export function FranchisePage() {
     });
   };
 
-  const clearSearch = () => {
-    setSearchQuery('');
-    setSearchResults([]);
+  const handleAddFranchise = () => {
+    setShowSearchModal(true);
+  };
+
+  const handleFranchiseAdded = () => {
+    refetch();
+    setShowSearchModal(false);
   };
 
   if (loading) {
@@ -116,89 +100,18 @@ export function FranchisePage() {
           </p>
         </div>
 
-        {/* Search Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Search Collections</h2>
-          <div className="flex space-x-2">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Search for movie collections (e.g., Marvel, Star Wars, Harry Potter)..."
-                className="w-full px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              )}
-            </div>
+        {/* Action Buttons Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-end space-x-3">
+            {/* Add Franchise Button */}
             <button
-              onClick={handleSearch}
-              disabled={searching || !searchQuery.trim()}
-              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors"
+              onClick={handleAddFranchise}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
             >
-              <Search className="h-5 w-5" />
-              <span>{searching ? 'Searching...' : 'Search'}</span>
+              <Plus className="h-4 w-4" />
+              <span>Add Franchise</span>
             </button>
           </div>
-
-          {/* Search Results */}
-          {searchResults.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Search Results</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {searchResults.map((collection) => (
-                  <div
-                    key={collection.id}
-                    className="group relative bg-slate-50 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                  >
-                    <div onClick={() => handleCollectionClick(collection)}>
-                      {collection.poster_path ? (
-                        <img
-                          src={tmdbService.getImageUrl(collection.poster_path, 'w342')}
-                          alt={collection.name}
-                          className="w-full h-64 object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-64 bg-slate-200 flex items-center justify-center">
-                          <Film className="h-16 w-16 text-slate-400" />
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <h4 className="font-semibold text-slate-900 text-sm line-clamp-2">
-                          {collection.name}
-                        </h4>
-                      </div>
-                    </div>
-                    
-                    {/* Favorite Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleFavorite(collection);
-                      }}
-                      className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-sm transition-colors ${
-                        favoriteIds.has(collection.id)
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-white/80 text-slate-600 hover:bg-white hover:text-purple-600'
-                      }`}
-                      title={favoriteIds.has(collection.id) ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Heart
-                        className={`h-5 w-5 ${favoriteIds.has(collection.id) ? 'fill-current' : ''}`}
-                      />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Favorites Section */}
@@ -266,6 +179,15 @@ export function FranchisePage() {
           onClose={() => setSelectedCollection(null)}
           collectionId={selectedCollection.id}
           collectionName={selectedCollection.name}
+        />
+      )}
+
+      {/* Search Modal for adding franchises */}
+      {showSearchModal && (
+        <MovieSearchModal
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          onMovieAdded={handleFranchiseAdded}
         />
       )}
     </div>
