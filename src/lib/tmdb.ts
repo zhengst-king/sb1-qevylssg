@@ -188,6 +188,48 @@ export interface TMDBMovieDetails {
   'watch/providers'?: WatchProvidersData;
 }
 
+// Collection interfaces
+export interface TMDBCollection {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  parts: TMDBCollectionPart[];
+}
+
+export interface TMDBCollectionPart {
+  adult: boolean;
+  backdrop_path: string | null;
+  id: number;
+  title: string;
+  original_language: string;
+  original_title: string;
+  overview: string;
+  poster_path: string | null;
+  media_type: string;
+  genre_ids: number[];
+  popularity: number;
+  release_date: string;
+  vote_average: number;
+  vote_count: number;
+  video: boolean;
+}
+
+export interface TMDBCollectionSearchResult {
+  id: number;
+  name: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+}
+
+export interface TMDBCollectionSearchResponse {
+  page: number;
+  results: TMDBCollectionSearchResult[];
+  total_pages: number;
+  total_results: number;
+}
+
 interface CachedTMDBData {
   imdb_id: string;
   tmdb_id: number;
@@ -716,6 +758,67 @@ class TMDBService {
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting movie details:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Search for collections by name
+   */
+  async searchCollections(query: string): Promise<TMDBCollectionSearchResponse | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `${this.baseUrl}/search/collection?api_key=${this.apiKey}&query=${encodedQuery}`;
+      console.log('[TMDB] Searching collections:', query);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Search collections failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Found', data.results?.length || 0, 'collections');
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error searching collections:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get collection details by ID
+   */
+  async getCollectionDetails(collectionId: number): Promise<TMDBCollection | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const url = `${this.baseUrl}/collection/${collectionId}?api_key=${this.apiKey}`;
+      console.log('[TMDB] Fetching collection details:', collectionId);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Get collection details failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Collection has', data.parts?.length || 0, 'movies');
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting collection details:', error);
       return null;
     }
   }
