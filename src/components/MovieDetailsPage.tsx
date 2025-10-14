@@ -13,7 +13,8 @@ import {
   ExternalLink,
   MessageSquare,
   Eye,
-  Film
+  Film,
+  Heart
 } from 'lucide-react';
 import { Movie } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
