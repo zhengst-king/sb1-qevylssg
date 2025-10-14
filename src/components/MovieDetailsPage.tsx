@@ -22,6 +22,7 @@ import { MovieCastSection } from './MovieCastSection';
 import { MovieRecommendations } from './MovieRecommendations';
 import { tmdbService, TMDBMovieDetails } from '../lib/tmdb';
 import WatchProvidersDisplay from './WatchProvidersDisplay';
+import { favoriteFranchisesService } from '../services/favoriteFranchisesService';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -41,7 +42,9 @@ export function MovieDetailsPage({
   const [isUpdating, setIsUpdating] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  
+  const [isFranchiseFavorite, setIsFranchiseFavorite] = useState(false);
+  const [togglingFranchiseFavorite, setTogglingFranchiseFavorite] = useState(false);
+
   // Local state for immediate UI updates
   const [localRating, setLocalRating] = useState<number | null>(movie.user_rating || null);
   const [localStatus, setLocalStatus] = useState<Movie['status']>(movie.status);
@@ -84,6 +87,19 @@ export function MovieDetailsPage({
 
     fetchTMDBData();
   }, [movie.imdb_id]);
+
+  // Check if franchise is favorited
+  useEffect(() => {
+    const checkFranchiseFavorite = async () => {
+      if (tmdbData?.belongs_to_collection) {
+        const isFav = await favoriteFranchisesService.isFavorite(
+          tmdbData.belongs_to_collection.id
+        );
+        setIsFranchiseFavorite(isFav);
+      }
+    };
+    checkFranchiseFavorite();
+  }, [tmdbData?.belongs_to_collection]);
 
   const handleStatusChange = async (status: Movie['status']) => {
     setLocalStatus(status);
@@ -149,6 +165,36 @@ export function MovieDetailsPage({
       case 'Watched': return 'bg-green-100 text-green-800';
       case 'To Watch Again': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleToggleFranchiseFavorite = async () => {
+    if (!tmdbData?.belongs_to_collection || togglingFranchiseFavorite) return;
+
+    setTogglingFranchiseFavorite(true);
+    try {
+      if (isFranchiseFavorite) {
+        const success = await favoriteFranchisesService.removeFavorite(
+          tmdbData.belongs_to_collection.id
+        );
+        if (success) {
+          setIsFranchiseFavorite(false);
+        }
+      } else {
+        const added = await favoriteFranchisesService.addFavorite({
+          tmdb_collection_id: tmdbData.belongs_to_collection.id,
+          collection_name: tmdbData.belongs_to_collection.name,
+          poster_path: tmdbData.belongs_to_collection.poster_path || undefined,
+          backdrop_path: tmdbData.belongs_to_collection.backdrop_path || undefined
+        });
+        if (added) {
+          setIsFranchiseFavorite(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling franchise favorite:', error);
+    } finally {
+      setTogglingFranchiseFavorite(false);
     }
   };
 
