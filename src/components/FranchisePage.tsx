@@ -5,7 +5,6 @@ import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
 import { CollectionDetailModal } from './CollectionDetailModal';
-import { Plus } from 'lucide-react';
 import { MovieSearchModal } from './MovieSearchModal';
 
 export function FranchisePage() {
