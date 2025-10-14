@@ -129,6 +129,22 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
                 <span>New2Me</span>
               </button>
 
+              {/* Franchises */}
+              <button
+                onClick={() => onPageChange('franchises')}
+                disabled={!isAuthenticated}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
+                  currentPage === 'franchises'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : isAuthenticated 
+                      ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                      : 'text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                <Film className="h-4 w-4" />
+                <span>Franchises</span>
+              </button>
+
               {/* My Stars */}
               <button
                 onClick={() => onPageChange('my-stars')}
