@@ -15,6 +15,7 @@ import { MyTagsPage } from './components/MyTagsPage';
 import { CalendarsPage } from './components/CalendarsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
 import { useAuth } from './hooks/useAuth';
+import { FranchisePage } from './components/FranchisePage';
 
 // Updated PageType with new pages
 type PageType = 
@@ -23,6 +24,7 @@ type PageType =
   | 'tv-series' 
   | 'collections' 
   | 'new2me'
+  | 'franchises'
   | 'my-stars'
   | 'characters' 
   | 'my-spots'
@@ -67,6 +69,7 @@ function App() {
       'tv-series', 
       'collections', 
       'new2me',
+      'franchises',
       'my-stars',
       'my-spots',
       'my-tags',
@@ -112,6 +115,7 @@ function App() {
         {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
         {currentPage === 'collections' && <MyCollectionsPage />}
         {currentPage === 'new2me' && <SmartRecommendationsContainer />}
+        {currentPage === 'franchises' && <FranchisePage />}
         {currentPage === 'my-stars' && <MyStarsPage />}
         {currentPage === 'characters' && <CharactersPage />}
         {currentPage === 'my-spots' && <MySpotsPage />}
