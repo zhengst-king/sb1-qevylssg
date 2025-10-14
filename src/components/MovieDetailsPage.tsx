@@ -21,7 +21,7 @@ import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDa
 import { MovieCastSection } from './MovieCastSection';
 import { MovieRecommendations } from './MovieRecommendations';
 import { tmdbService, TMDBMovieDetails } from '../lib/tmdb';
-import { WatchProvidersDisplay } from './WatchProvidersDisplay';
+import WatchProvidersDisplay from './WatchProvidersDisplay';
 
 interface MovieDetailsPageProps {
   movie: Movie;
