@@ -20,6 +20,18 @@ export function FranchisePage() {
     loadFavorites();
   }, []);
 
+  // Add Esc key handler for closing Collection Detail Modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && selectedCollection) {
+        setSelectedCollection(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => document.removeEventListener('keydown', handleEscKey);
+  }, [selectedCollection]);
+
   const loadFavorites = async () => {
     setLoading(true);
     const data = await favoriteFranchisesService.getAllFavorites();
@@ -86,18 +98,12 @@ export function FranchisePage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-2">
-            <Film className="h-8 w-8 text-purple-600" />
-            <h1 className="text-3xl font-bold text-slate-900">My Franchises</h1>
-          </div>
-          <p className="text-slate-600">
-            Track and explore your favorite movie collections and franchises
-          </p>
-        </div>
-
-        {/* Action Buttons Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-end">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center space-x-3">
+              <Film className="h-8 w-8 text-purple-600" />
+              <h1 className="text-3xl font-bold text-slate-900">My Franchises</h1>
+            </div>
+            
             {/* Add Franchise Button */}
             <button
               onClick={() => setShowSearchModal(true)}
@@ -107,64 +113,63 @@ export function FranchisePage() {
               <span>Add Franchise</span>
             </button>
           </div>
+          <p className="text-slate-600">
+            Track and explore your favorite movie collections and franchises
+          </p>
         </div>
 
         {/* Favorites Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">
-            My Favorite Franchises ({favorites.length})
-          </h2>
-
-          {favorites.length === 0 ? (
-            <div className="text-center py-12">
+        {favorites.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12">
+            <div className="text-center">
               <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-600 mb-2">No favorite franchises yet</p>
               <p className="text-sm text-slate-500">
                 Click "Add Franchise" above to search for and add your favorite movie collections
               </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {favorites.map((franchise) => (
-                <div
-                  key={franchise.id}
-                  className="group relative bg-slate-50 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                >
-                  <div onClick={() => handleCollectionClick(franchise)}>
-                    {franchise.poster_path ? (
-                      <img
-                        src={tmdbService.getImageUrl(franchise.poster_path, 'w342')}
-                        alt={franchise.collection_name}
-                        className="w-full h-64 object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-64 bg-slate-200 flex items-center justify-center">
-                        <Film className="h-16 w-16 text-slate-400" />
-                      </div>
-                    )}
-                    <div className="p-3">
-                      <h4 className="font-semibold text-slate-900 text-sm line-clamp-2">
-                        {franchise.collection_name}
-                      </h4>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {favorites.map((franchise) => (
+              <div
+                key={franchise.id}
+                className="group relative rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+              >
+                <div onClick={() => handleCollectionClick(franchise)}>
+                  {franchise.poster_path ? (
+                    <img
+                      src={tmdbService.getImageUrl(franchise.poster_path, 'w342')}
+                      alt={franchise.collection_name}
+                      className="w-full h-64 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-slate-200 flex items-center justify-center">
+                      <Film className="h-16 w-16 text-slate-400" />
                     </div>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                    <h4 className="font-semibold text-white text-sm line-clamp-2">
+                      {franchise.collection_name}
+                    </h4>
                   </div>
-
-                  {/* Remove Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleFavorite(franchise);
-                    }}
-                    className="absolute top-2 right-2 p-2 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors backdrop-blur-sm"
-                    title="Remove from favorites"
-                  >
-                    <Heart className="h-5 w-5 fill-current" />
-                  </button>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                {/* Remove Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFavorite(franchise);
+                  }}
+                  className="absolute top-2 right-2 p-2 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors backdrop-blur-sm"
+                  title="Remove from favorites"
+                >
+                  <Heart className="h-5 w-5 fill-current" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Collection Detail Modal */}
