@@ -177,6 +177,12 @@ export interface TMDBMovieDetails {
   status: string;
   release_date: string;
   runtime: number | null;
+  belongs_to_collection?: {
+    id: number;
+    name: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+  } | null;
   recommendations?: TMDBMovieRecommendationsResponse;
   similar?: TMDBMovieRecommendationsResponse;
   'watch/providers'?: WatchProvidersData;
