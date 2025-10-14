@@ -721,7 +721,5 @@ class TMDBService {
   }
 }
 
-
-
 // Export singleton instance
 export const tmdbService = new TMDBService(TMDB_API_KEY);
