@@ -328,7 +328,7 @@ export function MovieDetailsPage({
                   <Globe className="h-4 w-4" />
                   <div>
                     <span className="font-medium">Website:</span>{' '}
-                    
+                    <a
                       href={movie.website}
                       target="_blank"
                       rel="noopener noreferrer"
