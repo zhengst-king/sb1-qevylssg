@@ -179,6 +179,7 @@ export interface TMDBMovieDetails {
   runtime: number | null;
   recommendations?: TMDBMovieRecommendationsResponse;
   similar?: TMDBMovieRecommendationsResponse;
+  'watch/providers'?: WatchProvidersData;
 }
 
 interface CachedTMDBData {
@@ -690,7 +691,7 @@ class TMDBService {
    */
   private async getMovieDetails(tmdbId: number): Promise<TMDBMovieDetails | null> {
     try {
-      const url = `${this.baseUrl}/movie/${tmdbId}?api_key=${this.apiKey}&append_to_response=recommendations,similar`;
+      const url = `${this.baseUrl}/movie/${tmdbId}?api_key=${this.apiKey}&append_to_response=recommendations,similar,watch/providers`;
       console.log('[TMDB] Fetching movie URL:', url);
     
       const response = await fetch(url);
@@ -704,6 +705,7 @@ class TMDBService {
       console.log('[TMDB] Movie API Response received');
       console.log('[TMDB] Movie Recommendations:', data.recommendations ? `${data.recommendations.results?.length} items` : 'No recommendations');
       console.log('[TMDB] Similar Movies:', data.similar ? `${data.similar.results?.length} items` : 'No similar');
+      console.log('[TMDB] Watch Providers:', data['watch/providers'] ? 'Available' : 'Not available');
     
       return data;
     } catch (error) {
