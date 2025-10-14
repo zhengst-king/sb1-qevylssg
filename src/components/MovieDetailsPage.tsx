@@ -363,8 +363,26 @@ export function MovieDetailsPage({
               {tmdbData?.belongs_to_collection && (
                 <div className="flex items-center space-x-2 text-slate-600 text-sm">
                   <Film className="h-4 w-4" />
-                  <div>
-                    <span className="font-medium">Franchise:</span> {tmdbData.belongs_to_collection.name}
+                  <div className="flex items-center space-x-2">
+                    <span>
+                      <span className="font-medium">Franchise:</span> {tmdbData.belongs_to_collection.name}
+                    </span>
+                    <button
+                      onClick={handleToggleFranchiseFavorite}
+                      disabled={togglingFranchiseFavorite}
+                      className={`flex-shrink-0 transition-colors disabled:opacity-50 ${
+                        isFranchiseFavorite
+                          ? 'text-purple-600 hover:text-purple-700'
+                          : 'text-slate-400 hover:text-purple-600'
+                      }`}
+                      title={isFranchiseFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      {togglingFranchiseFavorite ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      ) : (
+                        <Heart className={`h-4 w-4 ${isFranchiseFavorite ? 'fill-current' : ''}`} />
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
