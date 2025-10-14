@@ -1,6 +1,7 @@
 // src/components/FranchisePage.tsx
 import React, { useState, useEffect } from 'react';
-import { Film, Heart, Search, X, Trash2 } from 'lucide-react';
+import { Film, Heart, Plus } from 'lucide-react';
+import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
 import { CollectionDetailModal } from './CollectionDetailModal';
@@ -70,9 +71,8 @@ export function FranchisePage() {
     setShowSearchModal(true);
   };
 
-  const handleFranchiseAdded = () => {
-    refetch();
-    setShowSearchModal(false);
+  const handleFranchiseAdded = async (collection: TMDBCollectionSearchResult) => {
+    await handleToggleFavorite(collection);
   };
 
   if (loading) {
