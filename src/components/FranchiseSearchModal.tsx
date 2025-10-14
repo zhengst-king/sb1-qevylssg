@@ -1,5 +1,5 @@
 // src/components/FranchiseSearchModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Search, Film, Heart } from 'lucide-react';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 
@@ -21,6 +21,23 @@ export function FranchiseSearchModal({
   const [searching, setSearching] = useState(false);
 
   if (!isOpen) return null;
+
+  // Add Esc key handler
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -49,7 +66,7 @@ export function FranchiseSearchModal({
 
   const handleAddFranchise = (collection: TMDBCollectionSearchResult) => {
     onFranchiseAdded(collection);
-    clearSearch();
+    // Don't clear search - allow multiple selections
   };
 
   const handleClose = () => {
@@ -57,8 +74,18 @@ export function FranchiseSearchModal({
     onClose();
   };
 
+  // Handle click outside modal
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
