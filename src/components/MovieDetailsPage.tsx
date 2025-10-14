@@ -21,6 +21,7 @@ import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDa
 import { MovieCastSection } from './MovieCastSection';
 import { MovieRecommendations } from './MovieRecommendations';
 import { tmdbService, TMDBMovieDetails } from '../lib/tmdb';
+import { WatchProvidersDisplay } from './WatchProvidersDisplay';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -424,7 +425,17 @@ export function MovieDetailsPage({
               similar={tmdbData.similar}
             />
           </div>
-        )}        
+        )}
+
+        {/* ✅ NEW: WATCH PROVIDERS SECTION - ADD THIS ENTIRE BLOCK */}
+        {tmdbData && tmdbData['watch/providers'] && (
+          <div className="max-w-6xl mx-auto px-6 pb-6">
+            <WatchProvidersDisplay 
+              watchProviders={tmdbData['watch/providers']}
+              title={movie.title}
+            />
+          </div>
+        )}
       </div>
 
       {/* Review Modal */}
