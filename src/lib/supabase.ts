@@ -83,7 +83,7 @@ export interface Movie {
   actors?: string;
   imdb_score?: number;
   imdb_url?: string;
-  status: 'To Watch' | 'Watching' | 'Watched' | 'To Watch Again';
+  status: 'To Watch' | 'Watching' | 'Watched' | 'To Watch Again' | 'Upcoming';
   user_rating?: number;
   poster_url?: string;
   imdb_id?: string;
