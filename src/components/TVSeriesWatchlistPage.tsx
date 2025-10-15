@@ -302,6 +302,7 @@ export function TVSeriesWatchlistPage() {
       paused: baseFiltered.filter(m => m.status === 'Paused').length,
       watched: baseFiltered.filter(m => m.status === 'Watched').length,
       toWatchAgain: baseFiltered.filter(m => m.status === 'To Watch Again').length,
+      upcoming: baseFiltered.filter(m => m.status === 'Upcoming').length,
     };
   }, [movies, filters]);
 
@@ -692,7 +693,7 @@ export function TVSeriesWatchlistPage() {
         {/* Statistics Cards / Filter Buttons */}
         {movies.length > 0 && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
               <button
                 onClick={() => handleStatusFilter('All')}
                 className={`p-4 rounded-lg border transition-all duration-200 text-left ${
@@ -727,6 +728,18 @@ export function TVSeriesWatchlistPage() {
               >
                 <div className="text-2xl font-bold text-yellow-700">{movieCounts.watching}</div>
                 <div className="text-sm text-yellow-600">Watching</div>
+              </button>
+
+              <button
+                onClick={() => handleStatusFilter('Upcoming')}
+                className={`p-4 rounded-lg border transition-all duration-200 text-left ${
+                  filters.status === 'Upcoming'
+                    ? 'bg-orange-100 border-orange-400 ring-2 ring-orange-500'
+                    : 'bg-orange-50 border-orange-200 hover:bg-orange-100 hover:border-orange-300'
+                }`}
+              >
+                <div className="text-2xl font-bold text-orange-700">{movieCounts.upcoming}</div>
+                <div className="text-sm text-orange-600">Upcoming</div>
               </button>
 
               <button
