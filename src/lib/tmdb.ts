@@ -230,6 +230,103 @@ export interface TMDBCollectionSearchResponse {
   total_results: number;
 }
 
+export interface TMDBMovieSearchResult {
+  adult: boolean;
+  backdrop_path: string | null;
+  genre_ids: number[];
+  id: number;
+  original_language: string;
+  original_title: string;
+  overview: string;
+  popularity: number;
+  poster_path: string | null;
+  release_date: string;
+  title: string;
+  video: boolean;
+  vote_average: number;
+  vote_count: number;
+}
+
+export interface TMDBTVSearchResult {
+  adult: boolean;
+  backdrop_path: string | null;
+  genre_ids: number[];
+  id: number;
+  origin_country: string[];
+  original_language: string;
+  original_name: string;
+  overview: string;
+  popularity: number;
+  poster_path: string | null;
+  first_air_date: string;
+  name: string;
+  vote_average: number;
+  vote_count: number;
+}
+
+export interface TMDBMovieSearchResponse {
+  page: number;
+  results: TMDBMovieSearchResult[];
+  total_pages: number;
+  total_results: number;
+}
+
+export interface TMDBTVSearchResponse {
+  page: number;
+  results: TMDBTVSearchResult[];
+  total_pages: number;
+  total_results: number;
+}
+
+export interface TMDBMovieDetailsFull extends TMDBMovieDetails {
+  genres: Array<{ id: number; name: string }>;
+  production_countries: Array<{ iso_3166_1: string; name: string }>;
+  production_companies: Array<{ id: number; name: string; logo_path: string | null; origin_country: string }>;
+  spoken_languages: Array<{ iso_639_1: string; english_name: string; name: string }>;
+  original_language: string;
+  tagline: string;
+  budget: number;
+  revenue: number;
+  vote_average: number;
+  vote_count: number;
+  popularity: number;
+  credits?: {
+    cast: Array<{
+      id: number;
+      name: string;
+      character: string;
+      order: number;
+      profile_path: string | null;
+    }>;
+    crew: Array<{
+      id: number;
+      name: string;
+      job: string;
+      department: string;
+      profile_path: string | null;
+    }>;
+  };
+  external_ids?: {
+    imdb_id: string;
+    facebook_id: string | null;
+    instagram_id: string | null;
+    twitter_id: string | null;
+  };
+}
+
+export interface TMDBTVDetailsFull extends TMDBTVSeriesDetails {
+  genres: Array<{ id: number; name: string }>;
+  production_countries: Array<{ iso_3166_1: string; name: string }>;
+  spoken_languages: Array<{ iso_639_1: string; english_name: string; name: string }>;
+  original_language: string;
+  tagline: string;
+  vote_average: number;
+  vote_count: number;
+  popularity: number;
+  number_of_seasons: number;
+  number_of_episodes: number;
+}
+
 interface CachedTMDBData {
   imdb_id: string;
   tmdb_id: number;
