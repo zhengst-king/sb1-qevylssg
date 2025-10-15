@@ -307,6 +307,26 @@ export function FilterPanel({
             </div>
           </div>
 
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => updateFilters({
+                ...filters,
+                status: e.target.value as FilterState['status']
+              })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="All">All Status</option>
+              <option value="To Watch">To Watch</option>
+              <option value="Watching">Watching</option>
+              <option value="Watched">Watched</option>
+              <option value="To Watch Again">To Watch Again</option>
+              <option value="Upcoming">Upcoming</option>
+            </select>
+          </div>
+
           {/* Genres */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-3">Genres</label>
