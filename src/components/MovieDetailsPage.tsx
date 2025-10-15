@@ -434,6 +434,7 @@ export function MovieDetailsPage({
                   <option value="Watching">Watching</option>
                   <option value="Watched">Watched</option>
                   <option value="To Watch Again">To Watch Again</option>
+                  <option value="Upcoming">Upcoming</option>
                 </select>
                 {movie.status_updated_at && (
                   <span className="text-xs text-slate-400">
