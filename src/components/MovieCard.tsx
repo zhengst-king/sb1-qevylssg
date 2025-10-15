@@ -68,7 +68,25 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
         actors: movie.Actors !== 'N/A' ? movie.Actors : undefined,
         imdb_score: movie.imdbRating !== 'N/A' ? parseFloat(movie.imdbRating) : undefined,
         imdb_url: imdbUrl || '',
-        status: 'To Watch',
+        status: (() => {
+          // Determine if movie/series is upcoming based on release date
+          if (movie.Released && movie.Released !== 'N/A') {
+            try {
+              const releaseDate = new Date(movie.Released);
+              const today = new Date();
+      
+              // If release date is in the future, mark as Upcoming
+              if (releaseDate > today) {
+                return 'Upcoming';
+              }
+            } catch (error) {
+              console.warn('[MovieCard] Could not parse release date:', movie.Released);
+            }
+          }
+  
+          // Default to 'To Watch' for released or unknown release dates
+          return 'To Watch';
+        })(),
         poster_url: posterUrl,
         imdb_id: movie.imdbID,
         metascore: movie.Metascore !== 'N/A' ? parseInt(movie.Metascore) : undefined,
