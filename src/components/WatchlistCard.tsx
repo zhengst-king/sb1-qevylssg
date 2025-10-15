@@ -159,13 +159,6 @@ export function WatchlistCard({
               <Trash2 className="h-3 w-3" />
             </button>
           </div>
-
-          {/* Hover Overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-white text-xs font-medium">
-              View Details
-            </div>
-          </div>
         </div>
 
         {/* Content Below Poster - Clean like TV Cards */}
