@@ -62,9 +62,9 @@ export function WatchlistCard({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (window.confirm('Are you sure you want to remove this movie from your watchlist?')) {
-      await onDelete(movie.id!);
+      onDelete(movie.id!);
     }
   };
 
