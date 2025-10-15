@@ -138,6 +138,13 @@ export function EnhancedTVSeriesCard({
           </button>
         </div>
 
+        {/* Hover Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center pointer-events-none">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-white text-xs font-medium">
+            View Details
+          </div>
+        </div>
+
         {/* Episode Loading Indicator */}
         {episodeStatus.isBeingFetched && (
           <div className="absolute top-1.5 left-1/2 transform -translate-x-1/2">
