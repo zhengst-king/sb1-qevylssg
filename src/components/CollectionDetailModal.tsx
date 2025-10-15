@@ -43,14 +43,17 @@ export function CollectionDetailModal({
     setAddingMovies(prev => new Set([...prev, movie.id]));
     
     try {
+      // Fetch full movie details from TMDB to get IMDb ID
+      const fullDetails = await tmdbService.getMovieDetailsFull(movie.id);
+      
       // Add movie with available data from collection
-      // The backend will enrich it with additional details
       const newMovie: Partial<Movie> = {
         title: movie.title,
         year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
         genre: undefined, // Will be fetched by backend
         poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
         imdb_score: movie.vote_average,
+        imdb_id: fullDetails?.external_ids?.imdb_id || undefined, // Get IMDb ID from TMDB
         status: 'To Watch',
         plot: movie.overview
       };
@@ -163,14 +166,12 @@ export function CollectionDetailModal({
                                 {isAdding ? (
                                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                                 ) : (
-                                  <Heart
-                                    className={`h-5 w-5 ${inWatchlist ? 'fill-current' : ''}`}
-                                  />
+                                  <Heart className={`h-5 w-5 ${inWatchlist ? 'fill-current' : ''}`} />
                                 )}
                               </button>
                             </div>
 
-                            <div className="flex items-center space-x-4 text-sm text-slate-600">
+                            <div className="flex items-center space-x-4 text-sm text-slate-600 mb-2">
                               {movie.release_date && (
                                 <div className="flex items-center space-x-1">
                                   <Calendar className="h-4 w-4" />
@@ -179,16 +180,14 @@ export function CollectionDetailModal({
                               )}
                               {movie.vote_average > 0 && (
                                 <div className="flex items-center space-x-1">
-                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
                                   <span>{movie.vote_average.toFixed(1)}</span>
                                 </div>
                               )}
                             </div>
 
                             {movie.overview && (
-                              <p className="mt-2 text-sm text-slate-600 line-clamp-3">
-                                {movie.overview}
-                              </p>
+                              <p className="text-sm text-slate-600 line-clamp-3">{movie.overview}</p>
                             )}
                           </div>
                         </div>
@@ -198,8 +197,8 @@ export function CollectionDetailModal({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-slate-600">Failed to load collection details</p>
+              <div className="p-6 text-center text-slate-600">
+                Failed to load collection details
               </div>
             )}
           </div>
