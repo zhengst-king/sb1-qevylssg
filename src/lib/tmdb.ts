@@ -919,6 +919,139 @@ class TMDBService {
       return null;
     }
   }
+
+  /**
+   * Search for movies by query string
+   */
+  async searchMovies(query: string, page: number = 1): Promise<TMDBMovieSearchResponse | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodedQuery}&page=${page}&include_adult=false`;
+      console.log('[TMDB] Searching movies:', query);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Search movies failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Found', data.results?.length || 0, 'movies');
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error searching movies:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Search for TV series by query string
+   */
+  async searchTV(query: string, page: number = 1): Promise<TMDBTVSearchResponse | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = `${this.baseUrl}/search/tv?api_key=${this.apiKey}&query=${encodedQuery}&page=${page}&include_adult=false`;
+      console.log('[TMDB] Searching TV series:', query);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Search TV failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Found', data.results?.length || 0, 'TV series');
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error searching TV series:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get full movie details with credits and external IDs
+   */
+  async getMovieDetailsFull(tmdbId: number): Promise<TMDBMovieDetailsFull | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const url = `${this.baseUrl}/movie/${tmdbId}?api_key=${this.apiKey}&append_to_response=credits,external_ids,watch/providers`;
+      console.log('[TMDB] Fetching full movie details:', tmdbId);
+      
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Get full movie details failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Full movie details received');
+      console.log('[TMDB] IMDb ID:', data.external_ids?.imdb_id);
+      console.log('[TMDB] Credits:', data.credits ? `${data.credits.cast?.length} cast, ${data.credits.crew?.length} crew` : 'No credits');
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting full movie details:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get full TV series details with credits and external IDs
+   */
+  async getTVDetailsFull(tmdbId: number): Promise<TMDBTVDetailsFull | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=credits,external_ids,watch/providers`;
+      console.log('[TMDB] Fetching full TV details:', tmdbId);
+      
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Get full TV details failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log('[TMDB] Full TV details received');
+      console.log('[TMDB] IMDb ID:', data.external_ids?.imdb_id);
+      console.log('[TMDB] Credits:', data.credits ? `${data.credits.cast?.length} cast, ${data.credits.crew?.length} crew` : 'No credits');
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting full TV details:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get TMDB image URL from path
+   */
+  getImageUrl(path: string, size: 'w500' | 'w780' | 'original' = 'w500'): string {
+    return `${TMDB_IMAGE_BASE_URL}/${size}${path}`;
+  }
 }
 
 // Export singleton instance
