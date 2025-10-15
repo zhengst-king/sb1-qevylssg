@@ -1,13 +1,16 @@
 // src/components/MovieSearchModal.tsx
+// UPDATED VERSION - Uses TMDB instead of OMDB for better upcoming movie coverage
+
 import React, { useState } from 'react';
 import { Search, X, Film, AlertCircle } from 'lucide-react';
-import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
+import { TMDBAdapter } from '../lib/tmdbAdapter';
+import { OMDBMovieDetails } from '../lib/omdb';
 import { MovieCard } from './MovieCard';
 
 interface MovieSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onMovieAdded?: () => void; // NEW: Optional callback for when movie is added
+  onMovieAdded?: () => void;
 }
 
 export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchModalProps) {
@@ -26,113 +29,100 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
     setHasSearched(true);
 
     try {
-      console.log('[MovieSearchModal] Searching for:', query);
-      const searchResults = await omdbApi.searchMovies(query);
+      console.log('[MovieSearchModal] Searching TMDB for:', query);
       
-      if (searchResults.Response === 'False') {
-        throw new Error(searchResults.Error || 'No results found');
+      // Use TMDB adapter to search both movies and TV series
+      const results = await TMDBAdapter.searchAll(query);
+      
+      if (results.length === 0) {
+        setError('No movies or TV series found for your search.');
+      } else {
+        setMovies(results);
+        console.log('[MovieSearchModal] Found', results.length, 'results from TMDB');
       }
-
-      // Fetch detailed information for each movie
-      const searchItems = searchResults.Search || [];
-      const detailedMovies: OMDBMovieDetails[] = [];
-      
-      for (const item of searchItems) {
-        try {
-          const details = await omdbApi.getMovieDetails(item.imdbID);
-          if (details.Response === 'True') {
-            detailedMovies.push(details);
-          }
-        } catch (error) {
-          console.warn(`[MovieSearchModal] Failed to fetch details for ${item.Title}:`, error);
-          // Skip this movie if we can't get details
-        }
-      }
-      
-      setMovies(detailedMovies);
-      console.log('[MovieSearchModal] Found', detailedMovies.length, 'detailed movies');
     } catch (err) {
       console.error('[MovieSearchModal] Search error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'An error occurred while searching. Please try again.';
       setError(errorMessage);
-      setMovies([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch();
-  };
-
-  const clearSearch = () => {
-    setQuery('');
-    setMovies([]);
-    setHasSearched(false);
-    setError(null);
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   const handleClose = () => {
-    clearSearch();
+    setQuery('');
+    setMovies([]);
+    setError(null);
+    setHasSearched(false);
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Search Movies</h2>
-            <p className="text-sm text-slate-600 mt-1">Search and add movies to your collection</p>
-          </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-          >
-            <X className="h-5 w-5 text-slate-500" />
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={handleClose}
+      />
 
-        {/* Search Form */}
-        <div className="p-6 border-b border-slate-200 bg-white">
-          <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
-              </div>
-              
+      {/* Modal */}
+      <div className="fixed inset-4 md:inset-10 lg:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header with Search */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex-shrink-0">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white">Search Movies & TV Series</h2>
+            <button
+              onClick={handleClose}
+              className="text-white hover:text-gray-200 transition-colors p-2 rounded-lg hover:bg-white/10"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex space-x-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for movies and TV series..."
-                className="block w-full pl-10 pr-12 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm text-slate-900 placeholder-slate-500 transition-all duration-200"
-                disabled={loading}
+                onKeyPress={handleKeyPress}
+                placeholder="Search by title (e.g., Avatar, The Last of Us)..."
+                className="w-full pl-12 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                autoFocus
               />
-              
-              {query && (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              )}
             </div>
-            
             <button
               type="submit"
-              disabled={!query.trim() || loading}
-              className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
+              onClick={handleSearch}
+              disabled={loading || !query.trim()}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                loading || !query.trim()
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-white text-blue-600 hover:bg-gray-50 shadow-lg hover:shadow-xl'
+              }`}
             >
               {loading ? 'Searching...' : 'Search Movies & TV Series'}
             </button>
           </form>
+
+          {/* Powered by TMDB Badge */}
+          <div className="mt-3 flex items-center justify-end">
+            <span className="text-white/80 text-sm">
+              Powered by The Movie Database (TMDB)
+            </span>
+          </div>
         </div>
 
         {/* Content Area */}
@@ -151,7 +141,8 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
           {loading && (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-slate-600">Searching for movies...</p>
+              <p className="text-slate-600">Searching TMDB for movies and TV series...</p>
+              <p className="text-slate-500 text-sm mt-2">Including upcoming releases</p>
             </div>
           )}
 
@@ -167,16 +158,19 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
           {/* Search Results */}
           {movies.length > 0 && (
             <div className="p-6 space-y-6">
-              <div className="text-sm text-slate-600 mb-4">
-                Found {movies.length} result{movies.length === 1 ? '' : 's'} for "{query}"
+              <div className="text-sm text-slate-600 mb-4 flex items-center justify-between">
+                <span>Found {movies.length} result{movies.length === 1 ? '' : 's'} for "{query}"</span>
+                <span className="text-xs text-slate-500">
+                  ✓ Includes upcoming releases
+                </span>
               </div>
               
-              {movies.map((movie) => (
+              {movies.map((movie, index) => (
                 <MovieCard
-                  key={movie.imdbID}
+                  key={movie.imdbID || `${movie.Title}-${index}`}
                   movie={movie}
                   posterUrl={movie.Poster !== 'N/A' ? movie.Poster : null}
-                  imdbUrl={movie.imdbID ? `https://www.imdb.com/title/${movie.imdbID}/` : null}
+                  imdbUrl={movie.imdbID && movie.imdbID !== 'N/A' ? `https://www.imdb.com/title/${movie.imdbID}/` : null}
                   onMovieAdded={onMovieAdded}
                 />
               ))}
@@ -189,6 +183,11 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
               <Search className="h-16 w-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 text-lg">Search for movies and TV series</p>
               <p className="text-slate-400">Enter a title above to get started</p>
+              <div className="mt-6 space-y-2 text-sm text-slate-500">
+                <p>✓ Search includes upcoming and unreleased titles</p>
+                <p>✓ Both movies and TV series</p>
+                <p>✓ Comprehensive movie database</p>
+              </div>
             </div>
           )}
         </div>
