@@ -11,8 +11,7 @@ import {
   Tag,
   Calendar,
   BarChart3,
-  Settings, 
-  User,
+  Settings,
   Layers
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -41,7 +40,7 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
   const { isAuthenticated } = useAuth();
 
   return (
-    <nav className="bg-slate-800 shadow-lg border-b border-slate-700">
+    <nav className="sticky top-0 z-50 bg-slate-800 shadow-lg border-b border-slate-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -224,43 +223,22 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
               >
                 <BarChart3 className="h-5 w-5" />
               </button>
-
-              {/* Settings */}
-              <button
-                onClick={() => onPageChange('settings')}
-                disabled={!isAuthenticated}
-                className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'settings'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : isAuthenticated 
-                      ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                      : 'text-slate-500 cursor-not-allowed'
-                }`}
-                title="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
             </div>
           </div>
 
-          {/* Sign In / User Button */}
+          {/* Settings Button - Moved to right side */}
           <div className="flex items-center">
-            {isAuthenticated ? (
-              <button
-                onClick={() => onPageChange('settings')}
-                className="p-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                title="Profile"
-              >
-                <User className="h-5 w-5" />
-              </button>
-            ) : (
-              <button
-                onClick={onSignInClick}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Sign In
-              </button>
-            )}
+            <button
+              onClick={() => isAuthenticated ? onPageChange('settings') : onSignInClick()}
+              className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                currentPage === 'settings'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+              title={isAuthenticated ? "Settings" : "Sign in to access settings"}
+            >
+              <Settings className="h-5 w-5" />
+            </button>
           </div>
 
           {/* Mobile menu button placeholder */}
