@@ -344,6 +344,7 @@ export function EnhancedEpisodesBrowserPage({
       case 'Paused': return 'bg-orange-100 text-orange-800';
       case 'Watched': return 'bg-green-100 text-green-800';
       case 'To Watch Again': return 'bg-purple-100 text-purple-800';
+      case 'Upcoming': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
