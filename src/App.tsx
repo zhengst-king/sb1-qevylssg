@@ -10,14 +10,13 @@ import { SettingsPage } from './components/SettingsPage';
 import { SmartRecommendationsContainer } from './components/SmartRecommendationsContainer';
 import { MyStarsPage } from './components/MyStarsPage';
 import { CharactersPage } from './components/CharactersPage';
-import { MySpotsPage } from './components/MySpotsPage';
 import { MyTagsPage } from './components/MyTagsPage';
 import { CalendarsPage } from './components/CalendarsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
 import { useAuth } from './hooks/useAuth';
 import { FranchisePage } from './components/FranchisePage';
 
-// Updated PageType with new pages
+// Updated PageType with 'my-spots' removed
 type PageType = 
   | 'search' 
   | 'movies' 
@@ -27,7 +26,6 @@ type PageType =
   | 'franchises'
   | 'my-stars'
   | 'characters' 
-  | 'my-spots'
   | 'my-tags'
   | 'calendars'
   | 'analytics'
@@ -49,86 +47,83 @@ function App() {
         
         if (result.success) {
           console.log('✅ Episode discovery system initialized successfully!');
-          console.log('🔄 Background job processor is now running');
+          console.log(`📊 Processed ${result.seriesProcessed || 0} TV series`);
+          console.log(`🎬 Discovered ${result.episodesDiscovered || 0} episodes`);
         } else {
-          console.error('❌ Episode discovery system failed to initialize:', result.message);
-          console.error('🚨 Episode discovery will not work until this is fixed');
+          console.warn('⚠️ Episode system initialization had issues:', result.message);
         }
       } catch (error) {
-        console.error('💥 Critical error initializing episode system:', error);
+        console.error('❌ Failed to initialize episode system:', error);
       }
     };
 
-    initializeEpisodeSystem();
-  }, []); // Empty dependency array to run only once on mount
+    // Run initialization after a short delay to avoid blocking initial render
+    const timer = setTimeout(initializeEpisodeSystem, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handlePageChange = (page: PageType) => {
-    // Redirect to sign in for protected pages
-    const protectedPages: PageType[] = [
-      'movies', 
-      'tv-series', 
-      'collections', 
-      'new2me',
-      'franchises',
-      'my-stars',
-      'my-spots',
-      'my-tags',
-      'calendars',
-      'analytics',
-      'settings'
-    ];
-    
-    if (!isAuthenticated && protectedPages.includes(page)) {
+    if (!isAuthenticated && page !== 'search') {
       setShowAuthModal(true);
       return;
     }
     setCurrentPage(page);
   };
 
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'search':
+        return <SearchPage />;
+      case 'movies':
+        return <MovieWatchlistPage />;
+      case 'tv-series':
+        return <TVSeriesWatchlistPage />;
+      case 'collections':
+        return <MyCollectionsPage />;
+      case 'new2me':
+        return <SmartRecommendationsContainer />;
+      case 'franchises':
+        return <FranchisePage />;
+      case 'my-stars':
+        return <MyStarsPage />;
+      case 'characters':
+        return <CharactersPage />;
+      case 'my-tags':
+        return <MyTagsPage />;
+      case 'calendars':
+        return <CalendarsPage />;
+      case 'analytics':
+        return <AnalyticsPage />;
+      case 'settings':
+        return <SettingsPage />;
+      default:
+        return <SearchPage />;
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sticky Navigation */}
-      <div className="sticky top-0 z-50">
-        <Navigation 
-          currentPage={currentPage} 
-          onPageChange={handlePageChange}
-          onSignInClick={() => setShowAuthModal(true)}
-        />
-      </div>
-      
-      {/* Main Content Container with top padding for sticky nav */}
-      <div className="pt-4">
-        {/* Main Page Routing */}
-        {currentPage === 'search' && <SearchPage />}
-        {currentPage === 'movies' && <MovieWatchlistPage />}
-        {currentPage === 'tv-series' && <TVSeriesWatchlistPage />}
-        {currentPage === 'collections' && <MyCollectionsPage />}
-        {currentPage === 'new2me' && <SmartRecommendationsContainer />}
-        {currentPage === 'franchises' && <FranchisePage />}
-        {currentPage === 'my-stars' && <MyStarsPage />}
-        {currentPage === 'characters' && <CharactersPage />}
-        {currentPage === 'my-spots' && <MySpotsPage />}
-        {currentPage === 'my-tags' && <MyTagsPage />}
-        {currentPage === 'calendars' && <CalendarsPage />}
-        {currentPage === 'analytics' && <AnalyticsPage />}
-        {currentPage === 'settings' && <SettingsPage />}
-      </div>
-      
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <Navigation 
+        currentPage={currentPage} 
+        onPageChange={handlePageChange}
+        onSignInClick={() => setShowAuthModal(true)}
       />
+      
+      <main>
+        {renderPage()}
+      </main>
+
+      {showAuthModal && (
+        <AuthModal onClose={() => setShowAuthModal(false)} />
+      )}
     </div>
   );
 }
