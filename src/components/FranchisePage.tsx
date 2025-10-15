@@ -155,16 +155,30 @@ export function FranchisePage() {
                   </div>
                 </div>
 
-                {/* Remove Button */}
+                {/* Top Right: TMDB Link */}
+                <a
+                  href={`https://www.themoviedb.org/collection/${franchise.tmdb_collection_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute top-2 right-2 flex items-center justify-center bg-green-500 hover:bg-green-600 text-white font-medium p-1.5 rounded text-xs transition-colors duration-200 shadow-sm"
+                  onClick={(e) => e.stopPropagation()}
+                  title="View on TMDB"
+                >
+                  <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.2819 9.8211a.9961.9961 0 0 0-.9069-.5593H19.67V4.0434c0-.3978-.2486-.7559-.6223-.8956a.9983.9983 0 0 0-1.0281.2642L11.8131 9.617a1.0006 1.0006 0 0 0 0 1.4142l6.2135 6.2135a.9996.9996 0 0 0 1.0281.2642c.3737-.1397.6223-.4978.6223-.8956v-5.2184h1.7051a.9984.9984 0 0 0 .9069-.5593c.2368-.4729.2368-1.0407 0-1.5136z"/>
+                  </svg>
+                </a>
+
+                {/* Bottom Right: Favorite Button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleToggleFavorite(franchise);
                   }}
-                  className="absolute top-2 right-2 p-2 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors backdrop-blur-sm"
+                  className="absolute bottom-2 right-2 p-2 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors backdrop-blur-sm shadow-sm"
                   title="Remove from favorites"
                 >
-                  <Heart className="h-5 w-5 fill-current" />
+                  <Heart className="h-4 w-4 fill-current" />
                 </button>
               </div>
             ))}
