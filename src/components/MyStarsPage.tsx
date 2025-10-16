@@ -6,6 +6,8 @@ import { tmdbService } from '../lib/tmdb';
 import { favoriteCrewService, FavoriteCrewMember } from '../services/favoriteCrewService';
 import { Film, Camera, Music, Palette, Wand2, Sparkles, Clapperboard } from 'lucide-react';
 import { PersonDetailsModal } from './PersonDetailsModal';
+import { MovieDetailsPage } from './MovieDetailsPage';
+import { Movie } from '../lib/supabase';
 
 type MainTab = 'actors' | 'crew';
 type CrewSubTab = 'director' | 'creator' | 'producer' | 'executive-producer' | 'cinematographer' | 'editor' | 'music' | 'production-design' | 'costume-design' | 'vfx' | 'sfx' | 'choreographer';
@@ -31,6 +33,8 @@ export function MyStarsPage() {
   const [mainTab, setMainTab] = useState<MainTab>('actors');
   const [crewSubTab, setCrewSubTab] = useState<CrewSubTab>('director');
   const [favoriteCrew, setFavoriteCrew] = useState<FavoriteCrewMember[]>([]);
+  const [showMovieDetailsModal, setShowMovieDetailsModal] = useState(false);
+  const [selectedMovieForDetails, setSelectedMovieForDetails] = useState<Movie | null>(null);
 
   useEffect(() => {
     loadFavorites();
@@ -329,11 +333,37 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
           personName={favorite.actor_name}
           personType="cast"
           onClose={() => setShowModal(false)}
-          onOpenMovieDetails={(movie) => {
-            setShowModal(false);
-            // Open movie details - you'll need to add state for this
-            // For now, we'll just close the person modal
-          }}
+          {/* Movie Details Modal */}
+          {showMovieDetailsModal && selectedMovieForDetails && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50" 
+                onClick={() => setShowMovieDetailsModal(false)}
+              />
+              <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                <MovieDetailsPage 
+                  movie={selectedMovieForDetails} 
+                  onBack={() => {
+                    setShowMovieDetailsModal(false);
+                    setSelectedMovieForDetails(null);
+                  }}
+                  onUpdateStatus={async (id, status) => {
+                    // Handle status update
+                  }}
+                  onUpdateRating={async (id, rating) => {
+                    // Handle rating update
+                  }}
+                  onUpdateMovie={async (id, updates) => {
+                    // Handle movie update
+                  }}
+                  onDelete={async (id) => {
+                    setShowMovieDetailsModal(false);
+                    setSelectedMovieForDetails(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         />
       )}
     </>
@@ -424,11 +454,37 @@ function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
           personName={crew.name}
           personType="crew"
           onClose={() => setShowModal(false)}
-          onOpenMovieDetails={(movie) => {
-            setShowModal(false);
-            // Open movie details - you'll need to add state for this
-            // For now, we'll just close the person modal
-          }}
+          {/* Movie Details Modal */}
+          {showMovieDetailsModal && selectedMovieForDetails && (
+            <div className="fixed inset-0 z-50 overflow-hidden">
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50" 
+                onClick={() => setShowMovieDetailsModal(false)}
+              />
+              <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                <MovieDetailsPage 
+                  movie={selectedMovieForDetails} 
+                  onBack={() => {
+                    setShowMovieDetailsModal(false);
+                    setSelectedMovieForDetails(null);
+                  }}
+                  onUpdateStatus={async (id, status) => {
+                    // Handle status update
+                  }}
+                  onUpdateRating={async (id, rating) => {
+                    // Handle rating update
+                  }}
+                  onUpdateMovie={async (id, updates) => {
+                    // Handle movie update
+                  }}
+                  onDelete={async (id) => {
+                    setShowMovieDetailsModal(false);
+                    setSelectedMovieForDetails(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         />
       )}
     </>
