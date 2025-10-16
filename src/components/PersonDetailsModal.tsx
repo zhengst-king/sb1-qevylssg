@@ -294,7 +294,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
             {/* Links */}
             <div className="flex flex-wrap gap-4 mt-4">
               {personDetails.homepage && (
-                
+                <a
                   href={personDetails.homepage}
                   target="_blank"
                   rel="noopener noreferrer"
