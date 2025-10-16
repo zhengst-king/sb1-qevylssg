@@ -36,6 +36,12 @@ export function MyStarsPage() {
   const [showMovieDetailsModal, setShowMovieDetailsModal] = useState(false);
   const [selectedMovieForDetails, setSelectedMovieForDetails] = useState<Movie | null>(null);
 
+  const handleOpenMovieDetails = (movie: Movie) => {
+    console.log('[MyStarsPage] handleOpenMovieDetails called with:', movie);
+    setSelectedMovieForDetails(movie);
+    setShowMovieDetailsModal(true);
+  };
+
   useEffect(() => {
     loadFavorites();
   }, []);
@@ -159,6 +165,7 @@ export function MyStarsPage() {
                 key={favorite.id}
                 favorite={favorite}
                 onRemove={handleRemove}
+                onOpenMovieDetails={handleOpenMovieDetails}
               />
             ))}
           </div>
@@ -234,6 +241,7 @@ export function MyStarsPage() {
                     key={crew.id}
                     crew={crew}
                     onRemove={handleRemoveCrew}
+                    onOpenMovieDetails={handleOpenMovieDetails}
                   />
                 ))}
               </div>
@@ -276,6 +284,7 @@ export function MyStarsPage() {
 interface FavoriteActorCardProps {
   favorite: FavoriteActor;
   onRemove: (actorId: number) => void;
+  onOpenMovieDetails: (movie: Movie) => void;
 }
 
 function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
@@ -360,11 +369,9 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
           personType="cast"
           onClose={() => setShowModal(false)}
           onOpenMovieDetails={(movie) => {
-            console.log('[MyStarsPage] onOpenMovieDetails called with movie:', movie);
+            console.log('[FavoriteActorCard] Closing actor modal, opening movie modal');
             setShowModal(false);
-            setSelectedMovieForDetails(movie);
-            setShowMovieDetailsModal(true);
-            console.log('[MyStarsPage] Movie details modal should now be visible');
+            handleOpenMovieDetails(movie);
           }}
         />
       )}
@@ -377,6 +384,7 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
 interface FavoriteCrewCardProps {
   crew: FavoriteCrewMember;
   onRemove: (crewId: number) => void;
+  onOpenMovieDetails: (movie: Movie) => void;
 }
 
 function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
@@ -457,11 +465,8 @@ function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
           personType="crew"
           onClose={() => setShowModal(false)}
           onOpenMovieDetails={(movie) => {
-            console.log('[MyStarsPage] onOpenMovieDetails called with movie:', movie);
             setShowModal(false);
-            setSelectedMovieForDetails(movie);
-            setShowMovieDetailsModal(true);
-            console.log('[MyStarsPage] Movie details modal should now be visible');
+            onOpenMovieDetails(movie);
           }}
         />
       )}
