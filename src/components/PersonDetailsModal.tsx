@@ -1,6 +1,6 @@
 // src/components/PersonDetailsModal.tsx
 import React, { useEffect, useState } from 'react';
-import { X, User, Calendar, MapPin, Globe, ExternalLink, Film, Star } from 'lucide-react';
+import { X, User, Calendar, MapPin, Globe, ExternalLink, Film, Star, Heart, Plus } from 'lucide-react';
 import { tmdbCastService, TMDBPersonDetails } from '../services/tmdbCastService';
 import { tmdbService } from '../lib/tmdb';
 
@@ -24,10 +24,12 @@ interface CreditItem {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
+  vote_count?: number;
   media_type: string;
   character?: string;
   job?: string;
   department?: string;
+  credit_id?: string;
 }
 
 type FilmographyTab = 'known-for' | 'credits';
@@ -119,7 +121,22 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
       ? personCredits.cast 
       : personCredits.crew;
     
-    // Sort by popularity and return top 12
+    // For crew "Known For", deduplicate by title ID
+    if (personType === 'crew') {
+      const uniqueCredits = new Map<number, CreditItem>();
+      relevantCredits.forEach(credit => {
+        if (!uniqueCredits.has(credit.id) || 
+            (uniqueCredits.get(credit.id)!.vote_average || 0) < (credit.vote_average || 0)) {
+          uniqueCredits.set(credit.id, credit);
+        }
+      });
+      
+      return Array.from(uniqueCredits.values())
+        .sort((a, b) => (b.vote_average * 10 + (b.vote_count || 0) / 1000) - (a.vote_average * 10 + (a.vote_count || 0) / 1000))
+        .slice(0, 12);
+    }
+    
+    // For cast, show normally
     return relevantCredits
       .sort((a, b) => (b.vote_average * 10 + (b.vote_count || 0) / 1000) - (a.vote_average * 10 + (a.vote_count || 0) / 1000))
       .slice(0, 12);
@@ -134,9 +151,18 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
       relevantCredits = personCredits.cast;
     } else {
       // For crew, filter by department if not 'all'
-      relevantCredits = crewDepartment === 'all'
-        ? personCredits.crew
-        : personCredits.crew.filter(credit => credit.department === crewDepartment);
+      if (crewDepartment === 'all') {
+        // Deduplicate by title ID when showing all departments
+        const uniqueCredits = new Map<number, CreditItem>();
+        personCredits.crew.forEach(credit => {
+          if (!uniqueCredits.has(credit.id)) {
+            uniqueCredits.set(credit.id, credit);
+          }
+        });
+        relevantCredits = Array.from(uniqueCredits.values());
+      } else {
+        relevantCredits = personCredits.crew.filter(credit => credit.department === crewDepartment);
+      }
     }
     
     // Sort by release date (most recent first)
@@ -175,47 +201,15 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
   }
 
   const age = calculateAge(personDetails.birthday, personDetails.deathday);
-  const profileUrl = personDetails.profile_path
-    ? tmdbCastService.getProfileImageUrl(personDetails.profile_path, 'h632')
-    : null;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto">
         {/* Header with Close Button */}
-        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-2xl font-bold text-slate-900">{personDetails.name}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-6 w-6 text-slate-600" />
-          </button>
-        </div>
-
-        <div className="p-6">
-          {/* Title Bar: Name, Age, Gender */}
-          <div className="flex items-start space-x-6 mb-6 pb-6 border-b border-slate-200">
-            {/* Profile Image */}
-            <div className="flex-shrink-0">
-              {profileUrl ? (
-                <img
-                  src={profileUrl}
-                  alt={personDetails.name}
-                  className="w-32 h-48 object-cover rounded-lg shadow-md"
-                />
-              ) : (
-                <div className="w-32 h-48 bg-slate-200 rounded-lg flex items-center justify-center">
-                  <User className="h-16 w-16 text-slate-400" />
-                </div>
-              )}
-            </div>
-
-            {/* Name and Basic Info */}
+        <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 z-10">
+          <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">{personDetails.name}</h1>
-              
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">{personDetails.name}</h2>
               <div className="flex flex-wrap gap-4 text-sm text-slate-600">
                 {age && (
                   <div className="flex items-center space-x-2">
@@ -237,8 +231,18 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                 )}
               </div>
             </div>
+            
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors ml-4"
+              aria-label="Close"
+            >
+              <X className="h-6 w-6 text-slate-600" />
+            </button>
           </div>
+        </div>
 
+        <div className="p-6">
           {/* Basic Info Section */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Biography & Background</h3>
@@ -394,8 +398,13 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
 
             {/* Credits Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {displayCredits.map((credit) => (
-                <CreditCard key={`${credit.id}-${credit.credit_id}`} credit={credit} personType={personType} />
+              {displayCredits.map((credit, index) => (
+                <CreditCard 
+                  key={`${credit.id}-${credit.credit_id || index}`} 
+                  credit={credit} 
+                  personType={personType}
+                  showJob={personType === 'crew' && crewDepartment !== 'all'}
+                />
               ))}
             </div>
 
@@ -422,9 +431,12 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
 interface CreditCardProps {
   credit: CreditItem;
   personType: 'cast' | 'crew';
+  showJob?: boolean;
 }
 
-function CreditCard({ credit, personType }: CreditCardProps) {
+function CreditCard({ credit, personType, showJob = false }: CreditCardProps) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  
   const posterUrl = credit.poster_path
     ? tmdbService.getImageUrl(credit.poster_path, 'w342')
     : null;
@@ -439,12 +451,22 @@ function CreditCard({ credit, personType }: CreditCardProps) {
     ? `https://www.themoviedb.org/tv/${credit.id}`
     : `https://www.themoviedb.org/movie/${credit.id}`;
 
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // TODO: Implement add to watchlist functionality
+    // This will need to integrate with your existing watchlist services
+    console.log('Add to watchlist:', title, mediaType);
+    setIsFavorite(!isFavorite);
+  };
+
   return (
     <a
       href={tmdbUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="group"
+      className="group relative"
     >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
         {/* Poster */}
@@ -461,6 +483,19 @@ function CreditCard({ credit, personType }: CreditCardProps) {
             </div>
           )}
 
+          {/* Favorite Button */}
+          <button
+            onClick={handleToggleFavorite}
+            className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
+            title={isFavorite ? 'Remove from watchlist' : 'Add to watchlist'}
+          >
+            <Plus
+              className={`h-4 w-4 transition-colors ${
+                isFavorite ? 'fill-purple-500 text-purple-500 rotate-45' : 'text-slate-600 hover:text-purple-500'
+              }`}
+            />
+          </button>
+
           {/* Rating Badge */}
           {rating && parseFloat(rating) > 0 && (
             <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
@@ -472,7 +507,7 @@ function CreditCard({ credit, personType }: CreditCardProps) {
           )}
 
           {/* Media Type Badge */}
-          <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
+          <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
             {mediaType}
           </div>
         </div>
@@ -491,7 +526,7 @@ function CreditCard({ credit, personType }: CreditCardProps) {
             <p className="text-xs text-slate-600 line-clamp-1">as {credit.character}</p>
           )}
 
-          {personType === 'crew' && credit.job && (
+          {personType === 'crew' && showJob && credit.job && (
             <p className="text-xs text-slate-600 line-clamp-1">{credit.job}</p>
           )}
         </div>
