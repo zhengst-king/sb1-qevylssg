@@ -333,37 +333,6 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
           personName={favorite.actor_name}
           personType="cast"
           onClose={() => setShowModal(false)}
-          {/* Movie Details Modal */}
-          {showMovieDetailsModal && selectedMovieForDetails && (
-            <div className="fixed inset-0 z-50 overflow-hidden">
-              <div 
-                className="fixed inset-0 bg-black bg-opacity-50" 
-                onClick={() => setShowMovieDetailsModal(false)}
-              />
-              <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-                <MovieDetailsPage 
-                  movie={selectedMovieForDetails} 
-                  onBack={() => {
-                    setShowMovieDetailsModal(false);
-                    setSelectedMovieForDetails(null);
-                  }}
-                  onUpdateStatus={async (id, status) => {
-                    // Handle status update
-                  }}
-                  onUpdateRating={async (id, rating) => {
-                    // Handle rating update
-                  }}
-                  onUpdateMovie={async (id, updates) => {
-                    // Handle movie update
-                  }}
-                  onDelete={async (id) => {
-                    setShowMovieDetailsModal(false);
-                    setSelectedMovieForDetails(null);
-                  }}
-                />
-              </div>
-            </div>
-          )}
         />
       )}
     </>
