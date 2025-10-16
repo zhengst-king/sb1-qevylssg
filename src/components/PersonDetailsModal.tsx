@@ -366,7 +366,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
             {/* Links */}
             <div className="flex flex-wrap gap-4 mt-4">
               {personDetails.homepage && (
-                
+                <a
                   href={personDetails.homepage}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -379,7 +379,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
               )}
 
               {personDetails.imdb_id && (
-                
+                <a
                   href={`https://www.imdb.com/name/${personDetails.imdb_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -391,7 +391,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                 </a>
               )}
 
-              
+              <a
                 href={`https://www.themoviedb.org/person/${tmdbPersonId}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -600,7 +600,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
     : `https://www.themoviedb.org/movie/${credit.id}`;
 
   return (
-    
+    <a
       href={isInWatchlist ? '#' : tmdbUrl}
       target={isInWatchlist ? undefined : "_blank"}
       rel={isInWatchlist ? undefined : "noopener noreferrer"}
