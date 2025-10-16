@@ -814,7 +814,10 @@ export function EnhancedEpisodesBrowserPage({
 
             {tmdbData?.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
-                <SeriesCastDisplay credits={tmdbData.credits} />
+                <SeriesCastDisplay 
+                  credits={tmdbData.credits} 
+                  createdBy={tmdbData.created_by}
+                />
               </div>
             )}
 
