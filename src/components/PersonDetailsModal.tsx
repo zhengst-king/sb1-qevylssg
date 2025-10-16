@@ -1,13 +1,15 @@
 // src/components/PersonDetailsModal.tsx
 import React, { useEffect, useState } from 'react';
-import { X, User, Calendar, MapPin, Globe, ExternalLink, Film, Star, Heart, Plus } from 'lucide-react';
+import { X, User, Calendar, Globe, ExternalLink, Film, Star, Plus, ArrowLeft } from 'lucide-react';
 import { tmdbCastService, TMDBPersonDetails } from '../services/tmdbCastService';
 import { tmdbService } from '../lib/tmdb';
+import { supabase } from '../lib/supabase';
+import { Movie } from '../lib/supabase';
 
 interface PersonDetailsModalProps {
   tmdbPersonId: number;
   personName: string;
-  personType: 'cast' | 'crew'; // Determines which credits to show
+  personType: 'cast' | 'crew';
   onClose: () => void;
 }
 
@@ -42,15 +44,76 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
   const [filmographyTab, setFilmographyTab] = useState<FilmographyTab>('known-for');
   const [crewDepartment, setCrewDepartment] = useState<CrewDepartment>('all');
   const [showAllCredits, setShowAllCredits] = useState(false);
+  const [watchlistTitles, setWatchlistTitles] = useState<Set<number>>(new Set());
+  const [selectedMovieForDetails, setSelectedMovieForDetails] = useState<Movie | null>(null);
 
   useEffect(() => {
     fetchPersonData();
+    loadWatchlistTitles();
   }, [tmdbPersonId]);
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  const loadWatchlistTitles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('movies')
+        .select('imdb_id')
+        .eq('user_id', user.id);
+
+      if (data) {
+        // Create a set of TMDB IDs from IMDb IDs
+        const tmdbIds = new Set<number>();
+        
+        for (const movie of data) {
+          if (movie.imdb_id) {
+            // Try to get TMDB ID from IMDb ID
+            const tmdbId = await getTMDBIdFromIMDbId(movie.imdb_id);
+            if (tmdbId) {
+              tmdbIds.add(tmdbId);
+            }
+          }
+        }
+        
+        setWatchlistTitles(tmdbIds);
+      }
+    } catch (error) {
+      console.error('Error loading watchlist:', error);
+    }
+  };
+
+  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
+    try {
+      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+      const response = await fetch(
+        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      return data.movie_results?.[0]?.id || data.tv_results?.[0]?.id || null;
+    } catch (error) {
+      return null;
+    }
+  };
 
   const fetchPersonData = async () => {
     setLoading(true);
     try {
-      // Fetch person details and credits
       const [details, credits] = await Promise.all([
         fetchPersonDetails(),
         fetchPersonCredits()
@@ -136,7 +199,6 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
         .slice(0, 12);
     }
     
-    // For cast, show normally
     return relevantCredits
       .sort((a, b) => (b.vote_average * 10 + (b.vote_count || 0) / 1000) - (a.vote_average * 10 + (a.vote_count || 0) / 1000))
       .slice(0, 12);
@@ -150,9 +212,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
     if (personType === 'cast') {
       relevantCredits = personCredits.cast;
     } else {
-      // For crew, filter by department if not 'all'
       if (crewDepartment === 'all') {
-        // Deduplicate by title ID when showing all departments
         const uniqueCredits = new Map<number, CreditItem>();
         personCredits.crew.forEach(credit => {
           if (!uniqueCredits.has(credit.id)) {
@@ -165,7 +225,6 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
       }
     }
     
-    // Sort by release date (most recent first)
     return relevantCredits.sort((a, b) => {
       const dateA = a.release_date || a.first_air_date || '';
       const dateB = b.release_date || b.first_air_date || '';
@@ -178,6 +237,12 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
     
     const departments = new Set(personCredits.crew.map(credit => credit.department).filter(Boolean));
     return ['all', ...Array.from(departments).sort()] as CrewDepartment[];
+  };
+
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
   };
 
   const displayCredits = filmographyTab === 'known-for' 
@@ -203,42 +268,45 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
   const age = calculateAge(personDetails.birthday, personDetails.deathday);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto">
-        {/* Header with Close Button */}
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+      onClick={handleBackgroundClick}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 z-10">
           <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">{personDetails.name}</h2>
-              <div className="flex flex-wrap gap-4 text-sm text-slate-600">
-                {age && (
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{age} years old</span>
-                  </div>
-                )}
-                
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4" />
-                  <span>{getGenderLabel(personDetails.gender)}</span>
-                </div>
-
-                {personDetails.known_for_department && (
-                  <div className="flex items-center space-x-2">
-                    <Film className="h-4 w-4" />
-                    <span>{personDetails.known_for_department}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors ml-4"
-              aria-label="Close"
+              className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <X className="h-6 w-6 text-slate-600" />
+              <ArrowLeft className="h-5 w-5" />
+              <span className="font-medium">Back to Stars</span>
             </button>
+          </div>
+          
+          <div className="mt-4">
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">{personDetails.name}</h2>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+              {age && (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>{age} years old</span>
+                </div>
+              )}
+              
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4" />
+                <span>{getGenderLabel(personDetails.gender)}</span>
+              </div>
+
+              {personDetails.known_for_department && (
+                <div className="flex items-center space-x-2">
+                  <Film className="h-4 w-4" />
+                  <span>{personDetails.known_for_department}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -298,7 +366,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
             {/* Links */}
             <div className="flex flex-wrap gap-4 mt-4">
               {personDetails.homepage && (
-                <a
+                
                   href={personDetails.homepage}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -311,7 +379,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
               )}
 
               {personDetails.imdb_id && (
-                <a
+                
                   href={`https://www.imdb.com/name/${personDetails.imdb_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -323,7 +391,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                 </a>
               )}
 
-              <a
+              
                 href={`https://www.themoviedb.org/person/${tmdbPersonId}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -374,7 +442,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
               </button>
             </div>
 
-            {/* Crew Department Filter (only for crew credits tab) */}
+            {/* Crew Department Filter */}
             {personType === 'crew' && filmographyTab === 'credits' && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {getUniqueDepartments().map((dept) => (
@@ -404,6 +472,11 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                   credit={credit} 
                   personType={personType}
                   showJob={personType === 'crew' && crewDepartment !== 'all'}
+                  isInWatchlist={watchlistTitles.has(credit.id)}
+                  onToggleWatchlist={() => {
+                    // Will be implemented in CreditCard
+                  }}
+                  onWatchlistUpdate={loadWatchlistTitles}
                 />
               ))}
             </div>
@@ -432,10 +505,13 @@ interface CreditCardProps {
   credit: CreditItem;
   personType: 'cast' | 'crew';
   showJob?: boolean;
+  isInWatchlist: boolean;
+  onToggleWatchlist: () => void;
+  onWatchlistUpdate: () => void;
 }
 
-function CreditCard({ credit, personType, showJob = false }: CreditCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
+function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate }: CreditCardProps) {
+  const [isAdding, setIsAdding] = useState(false);
   
   const posterUrl = credit.poster_path
     ? tmdbService.getImageUrl(credit.poster_path, 'w342')
@@ -445,28 +521,91 @@ function CreditCard({ credit, personType, showJob = false }: CreditCardProps) {
   const year = credit.release_date || credit.first_air_date;
   const displayYear = year ? new Date(year).getFullYear() : '';
   const rating = credit.vote_average ? credit.vote_average.toFixed(1) : null;
-  const mediaType = credit.media_type === 'tv' ? 'TV' : 'Movie';
+  const mediaType = credit.media_type === 'tv' ? 'series' : 'movie';
+
+  const handleToggleWatchlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isAdding) return;
+    
+    setIsAdding(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Please sign in to add titles to your watchlist.');
+        return;
+      }
+
+      if (isInWatchlist) {
+        // Remove from watchlist
+        const { error } = await supabase
+          .from('movies')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('title', title)
+          .eq('media_type', mediaType);
+
+        if (error) throw error;
+      } else {
+        // Add to watchlist
+        // First get IMDb ID from TMDB
+        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+        const detailsUrl = mediaType === 'series'
+          ? `https://api.themoviedb.org/3/tv/${credit.id}?api_key=${apiKey}&append_to_response=external_ids`
+          : `https://api.themoviedb.org/3/movie/${credit.id}?api_key=${apiKey}&append_to_response=external_ids`;
+        
+        const response = await fetch(detailsUrl);
+        const details = await response.json();
+        
+        const movieData = {
+          user_id: user.id,
+          media_type: mediaType,
+          title: title,
+          year: displayYear ? parseInt(displayYear.toString()) : undefined,
+          imdb_score: credit.vote_average || undefined,
+          imdb_id: details.external_ids?.imdb_id || undefined,
+          status: 'To Watch' as const,
+          poster_url: posterUrl || undefined
+        };
+
+        const { error } = await supabase
+          .from('movies')
+          .insert(movieData);
+
+        if (error) throw error;
+      }
+      
+      // Refresh watchlist
+      onWatchlistUpdate();
+    } catch (error) {
+      console.error('Error toggling watchlist:', error);
+      alert('Failed to update watchlist. Please try again.');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isInWatchlist) {
+      e.preventDefault();
+      // TODO: Open movie details modal
+      console.log('Open details for:', title);
+    }
+  };
 
   const tmdbUrl = credit.media_type === 'tv'
     ? `https://www.themoviedb.org/tv/${credit.id}`
     : `https://www.themoviedb.org/movie/${credit.id}`;
 
-  const handleToggleFavorite = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // TODO: Implement add to watchlist functionality
-    // This will need to integrate with your existing watchlist services
-    console.log('Add to watchlist:', title, mediaType);
-    setIsFavorite(!isFavorite);
-  };
-
   return (
-    <a
-      href={tmdbUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative"
+    
+      href={isInWatchlist ? '#' : tmdbUrl}
+      target={isInWatchlist ? undefined : "_blank"}
+      rel={isInWatchlist ? undefined : "noopener noreferrer"}
+      onClick={handleCardClick}
+      className="group relative block"
     >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
         {/* Poster */}
@@ -483,17 +622,28 @@ function CreditCard({ credit, personType, showJob = false }: CreditCardProps) {
             </div>
           )}
 
-          {/* Favorite Button */}
+          {/* Watchlist Button */}
           <button
-            onClick={handleToggleFavorite}
-            className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
-            title={isFavorite ? 'Remove from watchlist' : 'Add to watchlist'}
+            onClick={handleToggleWatchlist}
+            disabled={isAdding}
+            className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
+              isInWatchlist 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-white/90 hover:bg-white'
+            }`}
+            title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
           >
-            <Plus
-              className={`h-4 w-4 transition-colors ${
-                isFavorite ? 'fill-purple-500 text-purple-500 rotate-45' : 'text-slate-600 hover:text-purple-500'
-              }`}
-            />
+            {isAdding ? (
+              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <X
+                className={`h-4 w-4 transition-all ${
+                  isInWatchlist 
+                    ? 'text-white rotate-0' 
+                    : 'text-slate-600 hover:text-purple-500 rotate-45'
+                }`}
+              />
+            )}
           </button>
 
           {/* Rating Badge */}
@@ -508,7 +658,7 @@ function CreditCard({ credit, personType, showJob = false }: CreditCardProps) {
 
           {/* Media Type Badge */}
           <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
-            {mediaType}
+            {credit.media_type === 'tv' ? 'TV' : 'Movie'}
           </div>
         </div>
 
