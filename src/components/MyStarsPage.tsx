@@ -287,7 +287,7 @@ interface FavoriteActorCardProps {
   onOpenMovieDetails: (movie: Movie) => void;
 }
 
-function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
+function FavoriteActorCard({ favorite, onRemove, onOpenMovieDetails }: FavoriteActorCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const profileUrl = favorite.profile_path
@@ -387,7 +387,7 @@ interface FavoriteCrewCardProps {
   onOpenMovieDetails: (movie: Movie) => void;
 }
 
-function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
+function FavoriteCrewCard({ crew, onRemove, onOpenMovieDetails }: FavoriteCrewCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const profileUrl = crew.profile_path
