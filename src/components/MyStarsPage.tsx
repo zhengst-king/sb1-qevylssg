@@ -360,9 +360,11 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
           personType="cast"
           onClose={() => setShowModal(false)}
           onOpenMovieDetails={(movie) => {
+            console.log('[MyStarsPage] onOpenMovieDetails called with movie:', movie);
             setShowModal(false);
             setSelectedMovieForDetails(movie);
             setShowMovieDetailsModal(true);
+            console.log('[MyStarsPage] Movie details modal should now be visible');
           }}
         />
       )}
@@ -455,9 +457,11 @@ function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
           personType="crew"
           onClose={() => setShowModal(false)}
           onOpenMovieDetails={(movie) => {
+            console.log('[MyStarsPage] onOpenMovieDetails called with movie:', movie);
             setShowModal(false);
             setSelectedMovieForDetails(movie);
             setShowMovieDetailsModal(true);
+            console.log('[MyStarsPage] Movie details modal should now be visible');
           }}
         />
       )}
