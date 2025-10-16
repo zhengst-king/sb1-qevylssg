@@ -600,11 +600,19 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
   const handleCardClick = async (e: React.MouseEvent) => {
     if (isInWatchlist && onOpenMovieDetails) {
       e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('[PersonDetailsModal] Clicked watchlist title:', title, mediaType);
       
       // Fetch the movie from database to get full details
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          console.log('[PersonDetailsModal] No user found');
+          return;
+        }
+
+        console.log('[PersonDetailsModal] Fetching movie:', { title, mediaType, userId: user.id });
 
         const { data: movie, error } = await supabase
           .from('movies')
@@ -614,11 +622,24 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           .eq('media_type', mediaType)
           .single();
 
-        if (movie && !error) {
+        console.log('[PersonDetailsModal] Query result:', { movie, error });
+
+        if (error) {
+          console.error('[PersonDetailsModal] Error fetching movie:', error);
+          alert(`Could not find movie in watchlist: ${error.message}`);
+          return;
+        }
+
+        if (movie) {
+          console.log('[PersonDetailsModal] Opening movie details modal for:', movie.title);
           onOpenMovieDetails(movie);
+        } else {
+          console.log('[PersonDetailsModal] No movie found in database');
+          alert('Could not find this movie in your watchlist.');
         }
       } catch (error) {
-        console.error('Error fetching movie details:', error);
+        console.error('[PersonDetailsModal] Error in handleCardClick:', error);
+        alert('An error occurred while trying to open movie details.');
       }
     }
   };
