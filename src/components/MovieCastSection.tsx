@@ -43,11 +43,15 @@ export function MovieCastSection({
   const [favoriteActorIds, setFavoriteActorIds] = useState<Set<number>>(new Set());
   const [favoriteCrewIds, setFavoriteCrewIds] = useState<Set<number>>(new Set());
 
-  // Load favorite actors
+  // Load favorite actors and crew
   useEffect(() => {
     const loadFavorites = async () => {
-      const favorites = await favoriteActorsService.getAllFavorites();
-      setFavoriteActorIds(new Set(favorites.map(f => f.actor_id)));
+      const [actorFavorites, crewFavorites] = await Promise.all([
+        favoriteActorsService.getAllFavorites(),
+        favoriteCrewService.getFavoriteCrew()
+      ]);
+      setFavoriteActorIds(new Set(actorFavorites.map(f => f.actor_id)));
+      setFavoriteCrewIds(new Set(crewFavorites.map(f => f.tmdb_person_id)));
     };
     loadFavorites();
   }, []);
