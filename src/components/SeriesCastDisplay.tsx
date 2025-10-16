@@ -9,6 +9,7 @@ import { favoriteCharactersService } from '../services/favoriteCharactersService
 
 interface SeriesCastDisplayProps {
   credits: TMDBSeriesCredits;
+  createdBy?: Array<{ id: number; name: string; profile_path: string | null }>;
   className?: string;
 }
 
@@ -30,7 +31,7 @@ const crewJobMapping: Record<CrewSubTab, { jobs: string[]; label: string; icon: 
   'choreographer': { jobs: ['Choreographer'], label: 'Choreographer', icon: Users }
 };
 
-export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplayProps) {
+export function SeriesCastDisplay({ credits, createdBy = [], className = '' }: SeriesCastDisplayProps) {
   const [mainTab, setMainTab] = useState<MainTab>('cast');
   const [crewSubTab, setCrewSubTab] = useState<CrewSubTab>('director');
   const [showAllCast, setShowAllCast] = useState(false);
@@ -105,6 +106,25 @@ export function SeriesCastDisplay({ credits, className = '' }: SeriesCastDisplay
   // Get crew members by job
   const getCrewByJob = (subTab: CrewSubTab): TMDBCrewMember[] => {
     const mapping = crewJobMapping[subTab];
+    
+    // Special handling for creators - use created_by data
+    if (subTab === 'creator' && createdBy.length > 0) {
+      // Convert created_by to crew member format
+      return createdBy.map(creator => ({
+        id: creator.id,
+        name: creator.name,
+        profile_path: creator.profile_path,
+        job: 'Creator',
+        department: 'Writing',
+        credit_id: `creator-${creator.id}`,
+        adult: false,
+        gender: 0,
+        known_for_department: 'Writing',
+        original_name: creator.name,
+        popularity: 0
+      }));
+    }
+    
     if (!credits.crew) return [];
     
     return credits.crew
