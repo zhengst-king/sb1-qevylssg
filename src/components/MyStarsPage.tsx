@@ -249,10 +249,10 @@ interface FavoriteActorCardProps {
 
 function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const profileUrl = favorite.profile_path
     ? tmdbService.getProfileImageUrl(favorite.profile_path, 'w185')
     : null;
-  const tmdbPersonUrl = `https://www.themoviedb.org/person/${favorite.actor_id}`;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -266,57 +266,71 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
     await onRemove(favorite.actor_id);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowModal(true);
+  };
+
   return (
-    <a
-      href={tmdbPersonUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative"
-    >
-      <div className={`bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
-        isDeleting ? 'opacity-50' : ''
-      }`}>
-        {/* Profile Image */}
-        <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
-          {profileUrl ? (
-            <img
-              src={profileUrl}
-              alt={favorite.actor_name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <User className="h-12 w-12 text-slate-400" />
-            </div>
-          )}
+    <>
+      <div
+        onClick={handleCardClick}
+        className="group relative cursor-pointer"
+      >
+        <div className={`bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
+          isDeleting ? 'opacity-50' : ''
+        }`}>
+          {/* Profile Image */}
+          <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+            {profileUrl ? (
+              <img
+                src={profileUrl}
+                alt={favorite.actor_name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <User className="h-12 w-12 text-slate-400" />
+              </div>
+            )}
 
-          {/* Delete Button - Appears on hover */}
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-lg"
-            title="Remove from favorites"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+            {/* Delete Button - Appears on hover */}
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-lg z-10"
+              title="Remove from favorites"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
 
-        {/* Actor Info */}
-        <div className="p-3">
-          <p className="font-medium text-sm text-slate-900 truncate">
-            {favorite.actor_name}
-          </p>
-          {favorite.character_name && (
-            <p className="text-xs text-slate-500 truncate">
-              as {favorite.character_name}
+          {/* Actor Info */}
+          <div className="p-3">
+            <p className="font-medium text-sm text-slate-900 truncate">
+              {favorite.actor_name}
             </p>
-          )}
-          <p className="text-xs text-slate-400 mt-1">
-            Added {new Date(favorite.added_at).toLocaleDateString()}
-          </p>
+            {favorite.character_name && (
+              <p className="text-xs text-slate-500 truncate">
+                as {favorite.character_name}
+              </p>
+            )}
+            <p className="text-xs text-slate-400 mt-1">
+              Added {new Date(favorite.added_at).toLocaleDateString()}
+            </p>
+          </div>
         </div>
       </div>
-    </a>
+
+      {showModal && (
+        <PersonDetailsModal
+          tmdbPersonId={favorite.actor_id}
+          personName={favorite.actor_name}
+          personType="cast"
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -329,10 +343,10 @@ interface FavoriteCrewCardProps {
 
 function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const profileUrl = crew.profile_path
     ? tmdbService.getProfileImageUrl(crew.profile_path, 'w185')
     : null;
-  const tmdbPersonUrl = `https://www.themoviedb.org/person/${crew.tmdb_person_id}`;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -346,54 +360,66 @@ function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
     await onRemove(crew.tmdb_person_id);
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowModal(true);
+  };
+
   return (
-    <a
-      href={tmdbPersonUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative"
-    >
-      <div className={`bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
-        isDeleting ? 'opacity-50' : ''
-      }`}>
-        {/* Profile Image */}
-        <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
-          {profileUrl ? (
-            <img
-              src={profileUrl}
-              alt={crew.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <User className="h-12 w-12 text-slate-400" />
-            </div>
-          )}
+    <>
+      <div
+        onClick={handleCardClick}
+        className="group relative cursor-pointer"
+      >
+        <div className={`bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
+          isDeleting ? 'opacity-50' : ''
+        }`}>
+          {/* Profile Image */}
+          <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+            {profileUrl ? (
+              <img
+                src={profileUrl}
+                alt={crew.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <User className="h-12 w-12 text-slate-400" />
+              </div>
+            )}
 
-          {/* Delete Button */}
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-lg"
-            title="Remove from favorites"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+            {/* Delete Button - Appears on hover */}
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-lg z-10"
+              title="Remove from favorites"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
 
-        {/* Crew Info */}
-        <div className="p-3">
-          <p className="font-medium text-sm text-slate-900 truncate">
-            {crew.name}
-          </p>
-          <p className="text-xs text-slate-500 truncate">
-            {crew.job}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Added {new Date(crew.created_at!).toLocaleDateString()}
-          </p>
+          {/* Crew Info */}
+          <div className="p-3">
+            <p className="font-medium text-sm text-slate-900 truncate">
+              {crew.name}
+            </p>
+            <p className="text-xs text-slate-500 truncate">{crew.job}</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Added {new Date(crew.created_at || '').toLocaleDateString()}
+            </p>
+          </div>
         </div>
       </div>
-    </a>
+
+      {showModal && (
+        <PersonDetailsModal
+          tmdbPersonId={crew.tmdb_person_id}
+          personName={crew.name}
+          personType="crew"
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
   );
 }
