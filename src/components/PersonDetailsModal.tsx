@@ -307,7 +307,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
               )}
 
               {personDetails.imdb_id && (
-                
+                <a
                   href={`https://www.imdb.com/name/${personDetails.imdb_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -319,7 +319,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                 </a>
               )}
 
-              
+              <a
                 href={`https://www.themoviedb.org/person/${tmdbPersonId}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -440,7 +440,7 @@ function CreditCard({ credit, personType }: CreditCardProps) {
     : `https://www.themoviedb.org/movie/${credit.id}`;
 
   return (
-    
+    <a
       href={tmdbUrl}
       target="_blank"
       rel="noopener noreferrer"
