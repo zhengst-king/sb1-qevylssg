@@ -13,6 +13,14 @@ interface PersonDetailsModalProps {
   onClose: () => void;
 }
 
+interface PersonDetailsModalProps {
+  tmdbPersonId: number;
+  personName: string;
+  personType: 'cast' | 'crew';
+  onClose: () => void;
+  onOpenMovieDetails?: (movie: Movie) => void; // Add this line
+}
+
 interface PersonCredits {
   cast: CreditItem[];
   crew: CreditItem[];
@@ -37,7 +45,7 @@ interface CreditItem {
 type FilmographyTab = 'known-for' | 'credits';
 type CrewDepartment = 'all' | 'Directing' | 'Writing' | 'Production' | 'Camera' | 'Editing' | 'Sound' | 'Art' | 'Costume & Make-Up' | 'Visual Effects';
 
-export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClose }: PersonDetailsModalProps) {
+export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClose, onOpenMovieDetails }: PersonDetailsModalProps) {
   const [personDetails, setPersonDetails] = useState<TMDBPersonDetails | null>(null);
   const [personCredits, setPersonCredits] = useState<PersonCredits | null>(null);
   const [loading, setLoading] = useState(true);
@@ -275,15 +283,13 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
       <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 z-10">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={onClose}
-              className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-medium">Back to Stars</span>
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium mb-4"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span>Back to Stars</span>
+          </button>
           
           <div className="mt-4">
             <h2 className="text-2xl font-bold text-slate-900 mb-2">{personDetails.name}</h2>
@@ -477,6 +483,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                     // Will be implemented in CreditCard
                   }}
                   onWatchlistUpdate={loadWatchlistTitles}
+                  onOpenMovieDetails={onOpenMovieDetails}
                 />
               ))}
             </div>
@@ -508,9 +515,10 @@ interface CreditCardProps {
   isInWatchlist: boolean;
   onToggleWatchlist: () => void;
   onWatchlistUpdate: () => void;
+  onOpenMovieDetails?: (movie: Movie) => void;
 }
 
-function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate }: CreditCardProps) {
+function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails }: CreditCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   
   const posterUrl = credit.poster_path
@@ -587,11 +595,29 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
     }
   };
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    if (isInWatchlist) {
+  const handleCardClick = async (e: React.MouseEvent) => {
+    if (isInWatchlist && onOpenMovieDetails) {
       e.preventDefault();
-      // TODO: Open movie details modal
-      console.log('Open details for:', title);
+      
+      // Fetch the movie from database to get full details
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: movie, error } = await supabase
+          .from('movies')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('title', title)
+          .eq('media_type', mediaType)
+          .single();
+
+        if (movie && !error) {
+          onOpenMovieDetails(movie);
+        }
+      } catch (error) {
+        console.error('Error fetching movie details:', error);
+      }
     }
   };
 
