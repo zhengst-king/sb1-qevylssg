@@ -286,30 +286,33 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
           <div className="flex items-center space-x-4">
             <button
               onClick={onClose}
-              className="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
               <span>Back to Stars</span>
             </button>
-            
-            <h2 className="text-2xl font-bold text-slate-900">{personDetails.name}</h2>
+
+            <div className="flex items-center space-x-3">
+              <User className="h-6 w-6 text-purple-600" />
+              <h1 className="text-2xl font-bold text-slate-900">{personDetails.name}</h1>
+            </div>
             
             {age && (
-              <div className="flex items-center space-x-2 text-slate-600">
-                <Calendar className="h-5 w-5" />
-                <span className="text-lg">{age} years old</span>
+              <div className="flex items-center space-x-1 text-slate-600">
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm">{age} years old</span>
               </div>
             )}
             
-            <div className="flex items-center space-x-2 text-slate-600">
-              <User className="h-5 w-5" />
-              <span className="text-lg">{getGenderLabel(personDetails.gender)}</span>
+            <div className="flex items-center space-x-1 text-slate-600">
+              <User className="h-4 w-4" />
+              <span className="text-sm">{getGenderLabel(personDetails.gender)}</span>
             </div>
 
             {personDetails.known_for_department && (
-              <div className="flex items-center space-x-2 text-slate-600">
-                <Film className="h-5 w-5" />
-                <span className="text-lg">{personDetails.known_for_department}</span>
+              <div className="flex items-center space-x-1 text-slate-600">
+                <Film className="h-4 w-4" />
+                <span className="text-sm">{personDetails.known_for_department}</span>
               </div>
             )}
           </div>
