@@ -329,6 +329,11 @@ function FavoriteActorCard({ favorite, onRemove }: FavoriteActorCardProps) {
           personName={favorite.actor_name}
           personType="cast"
           onClose={() => setShowModal(false)}
+          onOpenMovieDetails={(movie) => {
+            setShowModal(false);
+            // Open movie details - you'll need to add state for this
+            // For now, we'll just close the person modal
+          }}
         />
       )}
     </>
@@ -419,6 +424,11 @@ function FavoriteCrewCard({ crew, onRemove }: FavoriteCrewCardProps) {
           personName={crew.name}
           personType="crew"
           onClose={() => setShowModal(false)}
+          onOpenMovieDetails={(movie) => {
+            setShowModal(false);
+            // Open movie details - you'll need to add state for this
+            // For now, we'll just close the person modal
+          }}
         />
       )}
     </>
