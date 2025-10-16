@@ -283,36 +283,39 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
       <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 z-10">
-          <button
-            onClick={onClose}
-            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium mb-4"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span>Back to Stars</span>
-          </button>
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span>Back to Stars</span>
+            </button>
+            
+            <h2 className="text-2xl font-bold text-slate-900">{personDetails.name}</h2>
+            
+            <div className="w-[140px]"></div> {/* Spacer for centering */}
+          </div>
           
-          <div className="mt-4">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">{personDetails.name}</h2>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-600">
-              {age && (
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>{age} years old</span>
-                </div>
-              )}
-              
+          <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+            {age && (
               <div className="flex items-center space-x-2">
-                <User className="h-4 w-4" />
-                <span>{getGenderLabel(personDetails.gender)}</span>
+                <Calendar className="h-4 w-4" />
+                <span>{age} years old</span>
               </div>
-
-              {personDetails.known_for_department && (
-                <div className="flex items-center space-x-2">
-                  <Film className="h-4 w-4" />
-                  <span>{personDetails.known_for_department}</span>
-                </div>
-              )}
+            )}
+            
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4" />
+              <span>{getGenderLabel(personDetails.gender)}</span>
             </div>
+
+            {personDetails.known_for_department && (
+              <div className="flex items-center space-x-2">
+                <Film className="h-4 w-4" />
+                <span>{personDetails.known_for_department}</span>
+              </div>
+            )}
           </div>
         </div>
 
