@@ -5,6 +5,7 @@ import { favoriteActorsService, FavoriteActor } from '../services/favoriteActors
 import { tmdbService } from '../lib/tmdb';
 import { favoriteCrewService, FavoriteCrewMember } from '../services/favoriteCrewService';
 import { Film, Camera, Music, Palette, Wand2, Sparkles, Clapperboard } from 'lucide-react';
+import { PersonDetailsModal } from './PersonDetailsModal';
 
 type MainTab = 'actors' | 'crew';
 type CrewSubTab = 'director' | 'creator' | 'producer' | 'executive-producer' | 'cinematographer' | 'editor' | 'music' | 'production-design' | 'costume-design' | 'vfx' | 'sfx' | 'choreographer';
