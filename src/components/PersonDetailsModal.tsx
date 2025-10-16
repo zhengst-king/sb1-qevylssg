@@ -628,23 +628,172 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
     : `https://www.themoviedb.org/movie/${credit.id}`;
 
   // If in watchlist, use div with onClick; otherwise use link
-  const CardWrapper = isInWatchlist ? 'div' : 'a';
-  const wrapperProps = isInWatchlist
-    ? {
-        onClick: handleCardClick,
-        className: "group relative block cursor-pointer"
-      }
-    : {
-        href: tmdbUrl,
-        target: "_blank" as const,
-        rel: "noopener noreferrer",
-        className: "group relative block"
-      };
+  if (isInWatchlist) {
+    return (
+      <div
+        onClick={handleCardClick}
+        className="group relative block cursor-pointer"
+      >
+        <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+          {/* Poster */}
+          <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+            {posterUrl ? (
+              <img
+                src={posterUrl}
+                alt={title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Film className="h-12 w-12 text-slate-400" />
+              </div>
+            )}
 
-  return (
-    <CardWrapper {...wrapperProps as any}>
-      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+            {/* Watchlist Button */}
+            <button
+              onClick={handleToggleWatchlist}
+              disabled={isAdding}
+              className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
+                isInWatchlist 
+                  ? 'bg-red-500 hover:bg-red-600' 
+                  : 'bg-white/90 hover:bg-white'
+              }`}
+              title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+            >
+              {isAdding ? (
+                <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <X
+                  className={`h-4 w-4 transition-all ${
+                    isInWatchlist 
+                      ? 'text-white rotate-0' 
+                      : 'text-slate-600 hover:text-purple-500 rotate-45'
+                  }`}
+                />
+              )}
+            </button>
+
+            {/* Rating Badge */}
+            {rating && parseFloat(rating) > 0 && (
+              <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                <div className="flex items-center space-x-1">
+                  <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                  <span className="text-white text-xs font-semibold">{rating}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Media Type Badge */}
+            <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
+              {credit.media_type === 'tv' ? 'TV' : 'Movie'}
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="p-3">
+            <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
+              {title}
+            </h3>
+            
+            {displayYear && (
+              <p className="text-xs text-slate-500 mb-1">{displayYear}</p>
+            )}
+
+            {personType === 'cast' && credit.character && (
+              <p className="text-xs text-slate-600 line-clamp-1">as {credit.character}</p>
+            )}
+
+            {personType === 'crew' && showJob && credit.job && (
+              <p className="text-xs text-slate-600 line-clamp-1">{credit.job}</p>
+            )}
+          </div>
+        </div>
       </div>
-    </CardWrapper>
+    );
+  }
+
+  // Not in watchlist - use regular link
+  return (
+    <a
+      href={tmdbUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative block"
+    >
+      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+        {/* Poster */}
+        <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Film className="h-12 w-12 text-slate-400" />
+            </div>
+          )}
+
+          {/* Watchlist Button */}
+          <button
+            onClick={handleToggleWatchlist}
+            disabled={isAdding}
+            className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
+              isInWatchlist 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-white/90 hover:bg-white'
+            }`}
+            title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+          >
+            {isAdding ? (
+              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <X
+                className={`h-4 w-4 transition-all ${
+                  isInWatchlist 
+                    ? 'text-white rotate-0' 
+                    : 'text-slate-600 hover:text-purple-500 rotate-45'
+                }`}
+              />
+            )}
+          </button>
+
+          {/* Rating Badge */}
+          {rating && parseFloat(rating) > 0 && (
+            <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+              <div className="flex items-center space-x-1">
+                <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                <span className="text-white text-xs font-semibold">{rating}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Media Type Badge */}
+          <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
+            {credit.media_type === 'tv' ? 'TV' : 'Movie'}
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="p-3">
+          <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
+            {title}
+          </h3>
+          
+          {displayYear && (
+            <p className="text-xs text-slate-500 mb-1">{displayYear}</p>
+          )}
+
+          {personType === 'cast' && credit.character && (
+            <p className="text-xs text-slate-600 line-clamp-1">as {credit.character}</p>
+          )}
+
+          {personType === 'crew' && showJob && credit.job && (
+            <p className="text-xs text-slate-600 line-clamp-1">{credit.job}</p>
+          )}
+        </div>
+      </div>
+    </a>
   );
 }
