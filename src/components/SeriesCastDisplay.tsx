@@ -1,6 +1,6 @@
 // src/components/SeriesCastDisplay.tsx
 import React, { useState, useEffect } from 'react';
-import { Users, User, Heart, Film, Camera, Music, Palette, Wand2, Sparkles, Clapperboard } from 'lucide-react';
+import { Users, User, Heart, Film, Camera, Music, Palette, Wand2, Sparkles, Clapperboard, Info } from 'lucide-react';
 import { TMDBSeriesCredits, TMDBCastMember, TMDBCrewMember } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 import { favoriteActorsService } from '../services/favoriteActorsService';
@@ -39,7 +39,11 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
   const [showAllCast, setShowAllCast] = useState(false);
   const [favoriteActorIds, setFavoriteActorIds] = useState<Set<number>>(new Set());
   const [favoriteCrewIds, setFavoriteCrewIds] = useState<Set<number>>(new Set());
-  const [aggregatedDirectors, setAggregatedDirectors] = useState<TMDBCrewMember[]>([]);
+  cconst [aggregatedDirectors, setAggregatedDirectors] = useState<Array<{
+    name: string;
+    episodeCount: number;
+    episodes: Array<{season: number; episode: number}>;
+  }>>([]);
   const [loadingDirectors, setLoadingDirectors] = useState(false);
 
   // Load favorite actors and crew
@@ -62,8 +66,10 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
       
       setLoadingDirectors(true);
       try {
-        const directors = await tmdbCastService.getSeriesDirectors(seriesImdbId);
+        // Read from OMDb cache - NO API CALLS!
+        const directors = await tmdbCastService.getSeriesDirectorsFromOMDb(seriesImdbId);
         setAggregatedDirectors(directors);
+        console.log(`[SeriesCastDisplay] Loaded ${directors.length} directors from OMDb cache`);
       } catch (error) {
         console.error('[SeriesCastDisplay] Error fetching directors:', error);
       } finally {
@@ -127,7 +133,7 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
   const hasMoreCast = sortedCast.length > 12;
 
   // Get crew members by job
-  const getCrewByJob = (subTab: CrewSubTab): TMDBCrewMember[] => {
+  const getCrewByJob = (subTab: CrewSubTab): any[] => {
     const mapping = crewJobMapping[subTab];
     
     // Special handling for creators - use created_by data
@@ -148,8 +154,22 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
     }
     
     // Special handling for directors - use aggregated directors from all episodes
-    if (subTab === 'director' && aggregatedDirectors.length > 0) {
-      return aggregatedDirectors;
+    if (subTab === 'director') {
+      return aggregatedDirectors.map((director, index) => ({
+        id: index, // Use index as ID since OMDb doesn't provide person IDs
+        name: director.name,
+        episodeCount: director.episodeCount,
+        episodes: director.episodes,
+        profile_path: null, // OMDb doesn't provide photos
+        job: 'Director',
+        department: 'Directing',
+        credit_id: `director-${index}`,
+        adult: false,
+        gender: 0,
+        known_for_department: 'Directing',
+        original_name: director.name,
+        popularity: 0
+      }));
     }
     
     if (!credits.crew) return [];
@@ -260,46 +280,92 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
 
           {/* Crew Members Grid */}
           {currentCrewMembers.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {currentCrewMembers.map((crewMember) => {
-                const isFavorite = favoriteCrewIds.has(crewMember.id);
-                
-                return (
-                  <div key={`${crewMember.id}-${crewMember.credit_id}`} className="relative group">
-                    {/* Favorite Button */}
-                    <button
-                      onClick={() => handleToggleFavoriteCrew(crewMember)}
-                      className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
-                      title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Heart
-                        className={`h-4 w-4 transition-colors ${
-                          isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 hover:text-red-500'
-                        }`}
-                      />
-                    </button>
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {currentCrewMembers.map((crewMember) => {
+                  const isFavorite = favoriteCrewIds.has(crewMember.id);
+                  const isDirector = crewSubTab === 'director';
+                  
+                  return (
+                    <div key={`${crewMember.id}-${crewMember.credit_id}`} className="relative group">
+                      {/* Only show favorite button for non-OMDb directors (those with real TMDB IDs) */}
+                      {!isDirector && (
+                        <button
+                          onClick={() => handleToggleFavoriteCrew(crewMember)}
+                          className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
+                          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <Heart
+                            className={`h-4 w-4 transition-colors ${
+                              isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 hover:text-red-500'
+                            }`}
+                          />
+                        </button>
+                      )}
 
-                    {crewMember.profile_path ? (
-                      <img
-                        src={tmdbService.getProfileImageUrl(crewMember.profile_path, 'w185')}
-                        alt={crewMember.name}
-                        className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
-                      />
-                    ) : (
-                      <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
-                        <User className="h-12 w-12 text-slate-400" />
-                      </div>
-                    )}
-                    <p className="text-sm font-medium text-slate-900 line-clamp-2">{crewMember.name}</p>
-                    <p className="text-xs text-slate-500 line-clamp-1">{crewMember.job}</p>
+                      {/* Avatar - use placeholder for OMDb directors */}
+                      {crewMember.profile_path ? (
+                        <img
+                          src={tmdbService.getProfileImageUrl(crewMember.profile_path, 'w185')}
+                          alt={crewMember.name}
+                          className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+                        />
+                      ) : (
+                        <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
+                          <Film className="h-12 w-12 text-slate-400" />
+                        </div>
+                      )}
+                      
+                      {/* Name */}
+                      <p className="text-sm font-medium text-slate-900 line-clamp-2">
+                        {crewMember.name}
+                      </p>
+                      
+                      {/* Job title */}
+                      <p className="text-xs text-slate-500 line-clamp-1">
+                        {crewMember.job}
+                      </p>
+                      
+                      {/* Show episode count for directors */}
+                      {isDirector && crewMember.episodeCount && (
+                        <div className="mt-2 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium inline-block">
+                          {crewMember.episodeCount} {crewMember.episodeCount === 1 ? 'ep' : 'eps'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Info banner for directors */}
+              {crewSubTab === 'director' && (
+                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-900 mb-1">
+                        Director Information from Episode Cache
+                      </p>
+                      <p className="text-blue-700">
+                        Showing directors from {aggregatedDirectors.reduce((sum, d) => sum + d.episodeCount, 0)} cached episodes. 
+                        Browse more episodes to discover additional directors.
+                      </p>
+                    </div>
                   </div>
-                );
-              })}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-12">
               <User className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-600">No {crewJobMapping[crewSubTab].label} information available</p>
+              <p className="text-slate-600">
+                {loadingDirectors 
+                  ? 'Loading directors...' 
+                  : crewSubTab === 'director'
+                    ? 'No director information available yet. Directors will appear as you browse episodes.'
+                    : `No ${crewJobMapping[crewSubTab].label} information available`
+                }
+              </p>
             </div>
           )}
         </div>
