@@ -307,40 +307,6 @@ class ServerSideEpisodeService {
     }
   }
 
-  // PRIVATE HELPER METHODS
-
-  /**
-   * Get series metadata from database
-   */
-  private async getSeriesMetadata(seriesImdbId: string): Promise<SeriesMetadata | null> {
-    try {
-      const { data: metadata, error } = await supabase
-        .from('series_episode_counts')
-        .select('*')
-        .eq('imdb_id', seriesImdbId)
-        .single();
-
-      if (error || !metadata) {
-        return null;
-      }
-
-      return {
-        imdb_id: metadata.imdb_id,
-        series_title: metadata.series_title,
-        total_seasons: metadata.total_seasons || 0,
-        total_episodes: metadata.total_episodes || 0,
-        imdb_rating: metadata.imdb_rating,
-        calculated_ttl_days: metadata.calculated_ttl_days,
-        fully_discovered: metadata.fully_discovered || false,
-        last_discovery_attempt: metadata.last_discovery_attempt ? new Date(metadata.last_discovery_attempt) : undefined
-      };
-
-    } catch (error) {
-      console.error('[ServerSideEpisodes] Error getting series metadata:', error);
-      return null;
-    }
-  }
-
   /**
    * Check if cache is still valid based on smart TTL
    */
@@ -401,30 +367,6 @@ class ServerSideEpisodeService {
 
     } catch (error) {
       console.warn('[ServerSideEpisodes] Error updating access time:', error);
-    }
-  }
-
-  /**
-   * Clear cache for a specific series
-   */
-  private async clearSeriesCache(seriesImdbId: string): Promise<void> {
-    try {
-      // Delete episodes
-      await supabase
-        .from('episodes_cache')
-        .delete()
-        .eq('imdb_id', seriesImdbId);
-
-      // Delete series metadata
-      await supabase
-        .from('series_episode_counts')
-        .delete()
-        .eq('imdb_id', seriesImdbId);
-
-      console.log(`[ServerSideEpisodes] Cleared cache for series ${seriesImdbId}`);
-
-    } catch (error) {
-      console.error('[ServerSideEpisodes] Error clearing series cache:', error);
     }
   }
 
