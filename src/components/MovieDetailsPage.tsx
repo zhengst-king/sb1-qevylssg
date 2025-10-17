@@ -32,6 +32,7 @@ interface MovieDetailsPageProps {
   onUpdateRating?: (id: string, rating: number | null) => void;
   onUpdateMovie?: (id: string, updates: Partial<Movie>) => void;
   onViewRecommendation?: (movie: Movie) => void;
+  onMovieAddedToWatchlist?: () => void;
 }
 
 export function MovieDetailsPage({ 
@@ -40,7 +41,8 @@ export function MovieDetailsPage({
   onUpdateStatus, 
   onUpdateRating, 
   onUpdateMovie,
-  onViewRecommendation
+  onViewRecommendation,
+  onMovieAddedToWatchlist
 }: MovieDetailsPageProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
@@ -524,6 +526,7 @@ export function MovieDetailsPage({
               recommendations={tmdbData.recommendations}
               similar={tmdbData.similar}
               onMovieDetailsClick={handleRecommendationClick}
+              onMovieAddedToWatchlist={onMovieAddedToWatchlist}
             />
           </div>
         )}
