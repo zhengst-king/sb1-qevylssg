@@ -229,6 +229,7 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
               const mapping = crewJobMapping[subTab];
               const Icon = mapping.icon;
               const count = getCrewByJob(subTab).length;
+              const isLoading = subTab === 'director' && loadingDirectors;
               
               return (
                 <button
@@ -242,13 +243,15 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
                 >
                   <Icon className="h-4 w-4" />
                   <span>{mapping.label}</span>
-                  {count > 0 && (
+                  {isLoading ? (
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : count > 0 ? (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       crewSubTab === subTab ? 'bg-purple-700' : 'bg-slate-200'
                     }`}>
                       {count}
                     </span>
-                  )}
+                  ) : null}
                 </button>
               );
             })}
