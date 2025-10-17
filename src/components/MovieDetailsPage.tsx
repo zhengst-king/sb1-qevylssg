@@ -31,6 +31,7 @@ interface MovieDetailsPageProps {
   onUpdateStatus?: (id: string, status: Movie['status']) => void;
   onUpdateRating?: (id: string, rating: number | null) => void;
   onUpdateMovie?: (id: string, updates: Partial<Movie>) => void;
+  onViewRecommendation?: (movie: Movie) => void;
 }
 
 export function MovieDetailsPage({ 
@@ -38,7 +39,8 @@ export function MovieDetailsPage({
   onBack, 
   onUpdateStatus, 
   onUpdateRating, 
-  onUpdateMovie
+  onUpdateMovie,
+  onViewRecommendation
 }: MovieDetailsPageProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [dateWatchedError, setDateWatchedError] = useState<string | null>(null);
@@ -52,6 +54,12 @@ export function MovieDetailsPage({
   const [localReview, setLocalReview] = useState<string | null>(movie.user_review || null);
   const [localDateWatched, setLocalDateWatched] = useState<string | null>(movie.date_watched || null);
   const [tmdbData, setTmdbData] = useState<TMDBMovieDetails | null>(null);
+
+  const handleRecommendationClick = (clickedMovie: Movie) => {
+    if (onViewRecommendation) {
+      onViewRecommendation(clickedMovie);
+    }
+  };
 
   // Update local state when movie prop changes
   useEffect(() => {
@@ -513,9 +521,8 @@ export function MovieDetailsPage({
         {tmdbData && (
           <div className="max-w-6xl mx-auto px-6 pb-6">
             <MovieRecommendations 
-              recommendations={tmdbDetails?.recommendations}
-              similar={tmdbDetails?.similar}
-              className="mt-6"
+              recommendations={tmdbData.recommendations}
+              similar={tmdbData.similar}
               onMovieDetailsClick={handleRecommendationClick}
             />
           </div>
