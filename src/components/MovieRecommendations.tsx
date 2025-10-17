@@ -13,13 +13,15 @@ interface MovieRecommendationsProps {
   similar?: TMDBMovieRecommendationsResponse;
   className?: string;
   onMovieDetailsClick?: (movie: Movie) => void;
+  onMovieAddedToWatchlist?: () => void;
 }
 
 export function MovieRecommendations({ 
   recommendations, 
   similar, 
   className = '',
-  onMovieDetailsClick
+  onMovieDetailsClick,
+  onMovieAddedToWatchlist
 }: MovieRecommendationsProps) {
   const [activeTab, setActiveTab] = useState<'recommendations' | 'similar'>('recommendations');
   const [watchlistTitles, setWatchlistTitles] = useState<Set<number>>(new Set());
@@ -141,6 +143,7 @@ export function MovieRecommendations({
             isInWatchlist={watchlistTitles.has(item.id)}
             onWatchlistUpdate={loadWatchlistTitles}
             onMovieDetailsClick={onMovieDetailsClick}
+            onMovieAddedToWatchlist={onMovieAddedToWatchlist}
           />
         ))}
       </div>
@@ -171,9 +174,10 @@ interface RecommendationCardProps {
   isInWatchlist: boolean;
   onWatchlistUpdate: () => void;
   onMovieDetailsClick?: (movie: Movie) => void;
+  onMovieAddedToWatchlist?: () => void;
 }
 
-function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDetailsClick }: RecommendationCardProps) {
+function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDetailsClick, onMovieAddedToWatchlist }: RecommendationCardProps) {
   const [isAdding, setIsAdding] = useState(false);
 
   const posterUrl = item.poster_path 
@@ -237,6 +241,12 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
           .insert(movieData);
 
         if (error) throw error;
+
+        // Refresh both local watchlist AND parent page
+        onWatchlistUpdate();
+        if (onMovieAddedToWatchlist) {
+          onMovieAddedToWatchlist();
+        }
       }
       
       // Refresh watchlist
