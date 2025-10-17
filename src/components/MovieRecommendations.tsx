@@ -175,7 +175,7 @@ function RecommendationCard({ item, onMovieDetailsClick }: RecommendationCardPro
   };
 
   return (
-    
+    <a
       href={inWatchlist ? undefined : tmdbUrl}
       target={inWatchlist ? undefined : "_blank"}
       rel={inWatchlist ? undefined : "noopener noreferrer"}
