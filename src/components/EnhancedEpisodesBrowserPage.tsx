@@ -817,6 +817,7 @@ export function EnhancedEpisodesBrowserPage({
                 <SeriesCastDisplay 
                   credits={tmdbData.credits} 
                   createdBy={tmdbData.created_by}
+                  seriesImdbId={series.imdb_id}
                 />
               </div>
             )}
