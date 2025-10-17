@@ -45,6 +45,8 @@ interface EnhancedEpisodesBrowserPageProps {
   onUpdateStatus?: (id: string, status: Movie['status']) => void;
   onUpdateRating?: (id: string, rating: number | null) => void;
   onUpdateMovie?: (id: string, updates: Partial<Movie>) => void;
+  onViewRecommendation?: (series: Movie) => void;
+  onSeriesAddedToWatchlist?: () => void;
 }
 
 interface Episode extends OMDBEpisodeDetails {
@@ -61,7 +63,9 @@ export function EnhancedEpisodesBrowserPage({
   onBack, 
   onUpdateStatus, 
   onUpdateRating, 
-  onUpdateMovie 
+  onUpdateMovie,
+  onViewRecommendation,
+  onSeriesAddedToWatchlist
 }: EnhancedEpisodesBrowserPageProps) {
   const [currentSeason, setCurrentSeason] = useState(1);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -80,7 +84,7 @@ export function EnhancedEpisodesBrowserPage({
   const [localStatus, setLocalStatus] = useState<Movie['status']>(series.status);
   const [localReview, setLocalReview] = useState<string | null>(series.user_review || null);
   const [localDateWatched, setLocalDateWatched] = useState<string | null>(series.date_watched || null);
-  
+
   // Dynamic season management
   const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
   const [totalSeasons, setTotalSeasons] = useState(0);
@@ -97,7 +101,14 @@ export function EnhancedEpisodesBrowserPage({
   });
 
   const [debugTmdbData, setDebugTmdbData] = useState<any>(null);
-
+  
+  // Add this handler function after your state declarations
+  const handleRecommendationClick = (clickedSeries: Movie) => {
+    if (onViewRecommendation) {
+      onViewRecommendation(clickedSeries);
+    }
+  };
+  
   // Update local state when series prop changes
   useEffect(() => {
     setLocalRating(series.user_rating || null);
@@ -827,6 +838,8 @@ export function EnhancedEpisodesBrowserPage({
                 <SeriesRecommendations 
                   recommendations={tmdbData.recommendations}
                   similar={tmdbData.similar}
+                  onSeriesDetailsClick={handleRecommendationClick}
+                  onSeriesAddedToWatchlist={onSeriesAddedToWatchlist}
                 />
               </div>
             )}
