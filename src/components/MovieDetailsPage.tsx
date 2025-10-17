@@ -24,6 +24,7 @@ import { MovieRecommendations } from './MovieRecommendations';
 import { tmdbService, TMDBMovieDetails } from '../lib/tmdb';
 import WatchProvidersDisplay from './WatchProvidersDisplay';
 import { favoriteFranchisesService } from '../services/favoriteFranchisesService';
+import { PersonDetailsModal } from './PersonDetailsModal';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -56,6 +57,11 @@ export function MovieDetailsPage({
   const [localReview, setLocalReview] = useState<string | null>(movie.user_review || null);
   const [localDateWatched, setLocalDateWatched] = useState<string | null>(movie.date_watched || null);
   const [tmdbData, setTmdbData] = useState<TMDBMovieDetails | null>(null);
+
+  const [showPersonDetailsModal, setShowPersonDetailsModal] = useState(false);
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedPersonName, setSelectedPersonName] = useState<string>('');
+  const [selectedPersonType, setSelectedPersonType] = useState<'cast' | 'crew'>('cast');
 
   const handleRecommendationClick = (clickedMovie: Movie) => {
     if (onViewRecommendation) {
