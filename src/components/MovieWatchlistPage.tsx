@@ -836,6 +836,7 @@ export function MovieWatchlistPage() {
                 onUpdateRating={handleUpdateRating}
                 onUpdateMovie={handleUpdateMovie}
                 onDelete={handleDeleteMovie}
+                onViewRecommendation={(movie) => setSelectedMovie(movie)}
               />
             </div>
           </div>
