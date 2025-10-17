@@ -551,7 +551,7 @@ export function EnhancedEpisodesBrowserPage({
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-auto">
-          <div className="max-w-6xl mx-auto px-4 py-8 pb-24">
+          <div className="max-w-6xl mx-auto px-4 py-8 pb-32">
             
             {/* Series Information Header - NEW 2-COLUMN LAYOUT */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
@@ -868,7 +868,7 @@ export function EnhancedEpisodesBrowserPage({
 
             {/* Episodes Grid */}
             {!loading && !error && episodes.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24">
                 {episodes.map((episode) => (
                   <div key={`${episode.season}-${episode.episode}`} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
                     
