@@ -117,6 +117,7 @@ interface RecommendationCardProps {
 function RecommendationCard({ item, onMovieDetailsClick }: RecommendationCardProps) {
   const { movies, addMovie, isMovieInWatchlist } = useMovies('movie');
   const [isAdding, setIsAdding] = useState(false);
+  const [locallyAdded, setLocallyAdded] = useState(false); // Track if we just added it
 
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
@@ -129,9 +130,9 @@ function RecommendationCard({ item, onMovieDetailsClick }: RecommendationCardPro
   // Get IMDb ID from external_ids if available
   const imdbId = item.external_ids?.imdb_id;
   
-  // Check if movie is in watchlist
-  const inWatchlist = imdbId ? isMovieInWatchlist(imdbId) : false;
-  const movieInWatchlist = inWatchlist ? movies.find(m => m.imdb_id === imdbId) : null;
+  // Check if movie is in watchlist (either from database or just added locally)
+  const inWatchlist = locallyAdded || (imdbId ? isMovieInWatchlist(imdbId) : false);
+  const movieInWatchlist = inWatchlist && !locallyAdded ? movies.find(m => m.imdb_id === imdbId) : null;
 
   // Handle adding to watchlist
   const handleToggleWatchlist = async (e: React.MouseEvent) => {
@@ -157,7 +158,12 @@ function RecommendationCard({ item, onMovieDetailsClick }: RecommendationCardPro
         media_type: 'movie'
       };
 
-      await addMovie(newMovie);
+      const addedMovie = await addMovie(newMovie);
+      
+      // Mark as locally added immediately for instant UI update
+      if (addedMovie) {
+        setLocallyAdded(true);
+      }
     } catch (error) {
       console.error('Error adding movie to watchlist:', error);
     } finally {
@@ -167,7 +173,7 @@ function RecommendationCard({ item, onMovieDetailsClick }: RecommendationCardPro
 
   // Handle card click - navigate to details if in watchlist, otherwise open TMDB
   const handleCardClick = (e: React.MouseEvent) => {
-    if (inWatchlist && movieInWatchlist && onMovieDetailsClick) {
+    if (movieInWatchlist && onMovieDetailsClick) {
       e.preventDefault();
       onMovieDetailsClick(movieInWatchlist);
     }
