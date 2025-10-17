@@ -152,7 +152,7 @@ export function SeriesRecommendations({
       <div className="mt-4 pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between text-xs text-slate-400">
           <span>Recommendations from TMDB</span>
-          
+          <a
             href="https://www.themoviedb.org/"
             target="_blank"
             rel="noopener noreferrer"
@@ -369,7 +369,7 @@ function RecommendationCard({
 
   // Not in watchlist - use regular link
   return (
-    
+    <a
       href={tmdbUrl}
       target="_blank"
       rel="noopener noreferrer"
