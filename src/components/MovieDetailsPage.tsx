@@ -513,8 +513,10 @@ export function MovieDetailsPage({
         {tmdbData && (
           <div className="max-w-6xl mx-auto px-6 pb-6">
             <MovieRecommendations 
-              recommendations={tmdbData.recommendations}
-              similar={tmdbData.similar}
+              recommendations={tmdbDetails?.recommendations}
+              similar={tmdbDetails?.similar}
+              className="mt-6"
+              onMovieDetailsClick={handleRecommendationClick}
             />
           </div>
         )}
