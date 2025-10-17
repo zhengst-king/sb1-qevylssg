@@ -110,7 +110,7 @@ export function MovieDetailsPage({
       }
     };
     checkFranchiseFavorite();
-  }, [tmdbData?.belongs_to_collection]);
+  }, [tmdbData?.belongs_to_collection?.id]);
 
   const handleStatusChange = async (status: Movie['status']) => {
     setLocalStatus(status);
