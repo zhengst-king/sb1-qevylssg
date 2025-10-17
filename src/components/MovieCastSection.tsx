@@ -218,6 +218,7 @@ export function MovieCastSection({
                 castMember={castMember}
                 favoriteActorIds={favoriteActorIds}
                 onToggleFavoriteActor={handleToggleFavoriteActor}
+                onOpenPersonDetails={onOpenPersonDetails}
               />
             ))}
           </div>
