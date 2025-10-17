@@ -12,12 +12,14 @@ interface MovieRecommendationsProps {
   recommendations?: TMDBMovieRecommendationsResponse;
   similar?: TMDBMovieRecommendationsResponse;
   className?: string;
+  onMovieDetailsClick?: (movie: Movie) => void; // Add this prop
 }
 
 export function MovieRecommendations({ 
   recommendations, 
   similar, 
-  className = '' 
+  className = '',
+  onMovieDetailsClick // Add this
 }: MovieRecommendationsProps) {
   const [activeTab, setActiveTab] = useState<'recommendations' | 'similar'>('recommendations');
 
