@@ -213,55 +213,78 @@ class TMDBCastService {
   }
 
   /**
-   * Get all directors who have directed episodes of a series
-   * Aggregates directors from episode_cast_cache
+   * Get directors aggregated from OMDb episode cache
+   * NO API CALLS - uses existing episodes_cache table
    */
-  async getSeriesDirectors(imdbId: string): Promise<TMDBCrewMember[]> {
+  async getSeriesDirectorsFromOMDb(imdbId: string): Promise<Array<{
+    name: string;
+    episodeCount: number;
+    episodes: Array<{season: number; episode: number}>;
+  }>> {
     try {
-      console.log(`[TMDBCast] Fetching all directors for series ${imdbId}`);
-
-      // Query all cached episodes for this series
+      console.log(`[TMDBCast] Aggregating directors from OMDb cache for ${imdbId}`);
+      
+      // Query episodes_cache table for all episodes of this series
       const { data, error } = await supabase
-        .from('episode_cast_cache')
-        .select('crew_data')
+        .from('episodes_cache')
+        .select('director, season_number, episode_number')
         .eq('imdb_id', imdbId)
-        .eq('fetch_success', true);
-
+        .not('director', 'is', null)
+        .not('director', 'eq', 'N/A');
+      
       if (error) {
-        console.error('[TMDBCast] Error fetching episode crew data:', error);
+        console.error('[TMDBCast] Error fetching from episodes_cache:', error);
         return [];
       }
-
+      
       if (!data || data.length === 0) {
         console.log('[TMDBCast] No cached episodes found for series');
         return [];
       }
-
-      // Collect all directors from all episodes
-      const directorMap = new Map<number, TMDBCrewMember>();
-
+      
+      console.log(`[TMDBCast] Found ${data.length} cached episodes with director data`);
+      
+      // Map directors to their episodes
+      const directorMap = new Map<string, Array<{season: number; episode: number}>>();
+      
       data.forEach(episode => {
-        if (episode.crew_data && Array.isArray(episode.crew_data)) {
-          const directors = episode.crew_data.filter(
-            (crew: TMDBCrewMember) => crew.job === 'Director'
-          );
-          
-          directors.forEach((director: TMDBCrewMember) => {
-            // Use director's TMDB ID as key to avoid duplicates
-            if (!directorMap.has(director.id)) {
-              directorMap.set(director.id, director);
+        if (episode.director && episode.director !== 'N/A') {
+          // OMDb returns comma-separated director names
+          const directors = episode.director.split(',').map(d => d.trim());
+          directors.forEach(directorName => {
+            if (directorName) {
+              if (!directorMap.has(directorName)) {
+                directorMap.set(directorName, []);
+              }
+              directorMap.get(directorName)!.push({
+                season: episode.season_number,
+                episode: episode.episode_number
+              });
             }
           });
         }
       });
-
-      const uniqueDirectors = Array.from(directorMap.values());
-      console.log(`[TMDBCast] Found ${uniqueDirectors.length} unique directors from ${data.length} episodes`);
-
-      // Sort by name
-      return uniqueDirectors.sort((a, b) => a.name.localeCompare(b.name));
+      
+      // Convert to array with episode counts
+      const directors = Array.from(directorMap.entries())
+        .map(([name, episodes]) => ({
+          name,
+          episodeCount: episodes.length,
+          episodes
+        }))
+        .sort((a, b) => {
+          // Sort by episode count (descending), then by name
+          if (b.episodeCount !== a.episodeCount) {
+            return b.episodeCount - a.episodeCount;
+          }
+          return a.name.localeCompare(b.name);
+        });
+      
+      console.log(`[TMDBCast] Found ${directors.length} unique directors from ${data.length} episodes`);
+      
+      return directors;
     } catch (error) {
-      console.error('[TMDBCast] Error getting series directors:', error);
+      console.error('[TMDBCast] Error aggregating directors from OMDb:', error);
       return [];
     }
   }
