@@ -432,6 +432,7 @@ export function MovieWatchlistPage() {
   const handleCloseDetails = () => {
     setShowDetailsModal(false);
     setSelectedMovie(null);
+    refetch();
   };
 
   const handleModalBackgroundClick = (e: React.MouseEvent) => {
@@ -837,7 +838,7 @@ export function MovieWatchlistPage() {
                 onUpdateMovie={handleUpdateMovie}
                 onDelete={handleDeleteMovie}
                 onViewRecommendation={(movie) => setSelectedMovie(movie)}
-                onMovieAddedToWatchlist={refetch} 
+                onMovieAddedToWatchlist={undefined} 
               />
             </div>
           </div>
