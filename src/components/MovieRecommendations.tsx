@@ -2,9 +2,11 @@
 // Component to display TMDB movie recommendations and similar titles
 
 import React, { useState } from 'react';
-import { ThumbsUp, Sparkles, ExternalLink, Star, Film } from 'lucide-react';
+import { ThumbsUp, Sparkles, ExternalLink, Star, Film, Plus, X } from 'lucide-react';
 import { TMDBMovieRecommendationsResponse } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
+import { useMovies } from '../hooks/useMovies';
+import { Movie } from '../lib/supabase';
 
 interface MovieRecommendationsProps {
   recommendations?: TMDBMovieRecommendationsResponse;
@@ -99,13 +101,17 @@ export function MovieRecommendations({
   );
 }
 
-// ==================== RECOMMENDATION CARD ====================
+// ==================== ENHANCED RECOMMENDATION CARD ====================
 
 interface RecommendationCardProps {
   item: any; // TMDBMovieRecommendation type
+  onMovieDetailsClick?: (movie: Movie) => void;
 }
 
-function RecommendationCard({ item }: RecommendationCardProps) {
+function RecommendationCard({ item, onMovieDetailsClick }: RecommendationCardProps) {
+  const { movies, addMovie, isMovieInWatchlist } = useMovies('movie');
+  const [isAdding, setIsAdding] = useState(false);
+
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
     : null;
@@ -114,12 +120,61 @@ function RecommendationCard({ item }: RecommendationCardProps) {
   const year = item.release_date ? new Date(item.release_date).getFullYear() : '';
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
 
+  // Get IMDb ID from external_ids if available
+  const imdbId = item.external_ids?.imdb_id;
+  
+  // Check if movie is in watchlist
+  const inWatchlist = imdbId ? isMovieInWatchlist(imdbId) : false;
+  const movieInWatchlist = inWatchlist ? movies.find(m => m.imdb_id === imdbId) : null;
+
+  // Handle adding to watchlist
+  const handleToggleWatchlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (inWatchlist || isAdding) return;
+
+    setIsAdding(true);
+    try {
+      // Fetch full movie details to get IMDb ID if we don't have it
+      const fullDetails = await tmdbService.getMovieDetailsFull(item.id);
+      
+      const newMovie: Partial<Movie> = {
+        title: item.title,
+        year: year ? parseInt(year.toString()) : undefined,
+        genre: item.genre_ids ? undefined : undefined, // Will be fetched by backend
+        poster_url: posterUrl || undefined,
+        imdb_score: item.vote_average,
+        imdb_id: fullDetails?.external_ids?.imdb_id || undefined,
+        status: 'To Watch',
+        plot: item.overview,
+        media_type: 'movie'
+      };
+
+      await addMovie(newMovie);
+    } catch (error) {
+      console.error('Error adding movie to watchlist:', error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  // Handle card click - navigate to details if in watchlist, otherwise open TMDB
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (inWatchlist && movieInWatchlist && onMovieDetailsClick) {
+      e.preventDefault();
+      onMovieDetailsClick(movieInWatchlist);
+    }
+    // Otherwise, let the <a> tag handle navigation to TMDB
+  };
+
   return (
-    <a
-      href={tmdbUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group"
+    
+      href={inWatchlist ? undefined : tmdbUrl}
+      target={inWatchlist ? undefined : "_blank"}
+      rel={inWatchlist ? undefined : "noopener noreferrer"}
+      onClick={handleCardClick}
+      className="group block cursor-pointer"
     >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
         {/* Poster Image */}
@@ -131,25 +186,49 @@ function RecommendationCard({ item }: RecommendationCardProps) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-slate-400">
-              <Film className="h-12 w-12" />
+            <div className="w-full h-full flex items-center justify-center">
+              <Film className="h-12 w-12 text-slate-400" />
             </div>
           )}
-          
+
           {/* Rating Badge */}
           {rating && (
-            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-md flex items-center space-x-1">
-              <Star className="h-3 w-3 text-yellow-400 fill-current" />
-              <span className="text-xs text-white font-medium">{rating}</span>
+            <div className="absolute top-2 left-2 bg-black/75 text-white text-xs font-bold px-2 py-1 rounded flex items-center space-x-1 backdrop-blur-sm">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              <span>{rating}</span>
             </div>
           )}
+
+          {/* Watchlist Button */}
+          <button
+            onClick={handleToggleWatchlist}
+            disabled={isAdding || inWatchlist}
+            className={`absolute bottom-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
+              inWatchlist 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-white/90 hover:bg-white'
+            }`}
+            title={inWatchlist ? 'In your watchlist' : 'Add to watchlist'}
+          >
+            {isAdding ? (
+              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <X
+                className={`h-4 w-4 transition-all ${
+                  inWatchlist 
+                    ? 'text-white rotate-0' 
+                    : 'text-slate-700 rotate-45'
+                }`}
+              />
+            )}
+          </button>
         </div>
 
-        {/* Movie Info */}
-        <div className="p-2">
-          <h4 className="text-sm font-medium text-slate-900 line-clamp-2 mb-1 group-hover:text-purple-600 transition-colors">
+        {/* Info */}
+        <div className="p-3">
+          <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
             {item.title}
-          </h4>
+          </h3>
           {year && (
             <p className="text-xs text-slate-500">{year}</p>
           )}
