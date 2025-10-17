@@ -69,6 +69,13 @@ export function MovieDetailsPage({
     }
   };
 
+  const handleOpenPersonDetails = (tmdbPersonId: number, personName: string, personType: 'cast' | 'crew') => {
+    setSelectedPersonId(tmdbPersonId);
+    setSelectedPersonName(personName);
+    setSelectedPersonType(personType);
+    setShowPersonDetailsModal(true);
+  };
+
   // Update local state when movie prop changes
   useEffect(() => {
     setLocalRating(movie.user_rating || null);
@@ -522,7 +529,10 @@ export function MovieDetailsPage({
 
         {/* ✅ ADD THE MOVIE CAST SECTION HERE - BELOW User Actions Section */}
         <div className="max-w-6xl mx-auto px-6 pb-4">
-          <MovieCastSection imdbId={movie.imdb_id} />
+          <MovieCastSection 
+            imdbId={movie.imdb_id} 
+            onOpenPersonDetails={handleOpenPersonDetails}
+          />
         </div>
 
         {/* ✅ NEW: MOVIE RECOMMENDATIONS SECTION */}
