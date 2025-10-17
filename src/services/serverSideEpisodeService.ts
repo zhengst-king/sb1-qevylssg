@@ -503,89 +503,75 @@ class ServerSideEpisodeService {
    * COMPLETE IMPLEMENTATION: Discover and cache episodes for a series
    */
   private async discoverSeriesEpisodes(seriesImdbId: string, seriesTitle: string): Promise<void> {
-    console.log(`[ServerSideEpisodes] Starting episode discovery for ${seriesTitle}`);
+    console.log(`[ServerSideEpisodes] 🚀 Starting discovery for ${seriesTitle}`);
     
-    const maxSeasonsToTry = 30; // Increased limit for long-running series
-    const maxConsecutiveEmptySeasons = 3; // Stop after 3 consecutive empty seasons
+    const maxSeasonsToTry = 30;
+    const maxConsecutiveEmptySeasons = 3;
     let totalSeasons = 0;
     let totalEpisodes = 0;
     let consecutiveEmptySeasons = 0;
     
-    // Season-by-season discovery
-    for (let seasonNum = 1; seasonNum <= maxSeasonsToTry; seasonNum++) {
-      try {
-        console.log(`[ServerSideEpisodes] Discovering Season ${seasonNum} of ${seriesTitle}...`);
+    try {
+      // Discover season by season
+      for (let seasonNum = 1; seasonNum <= maxSeasonsToTry; seasonNum++) {
+        console.log(`[ServerSideEpisodes] Discovering Season ${seasonNum}...`);
         
-        // Use OMDb API to discover episodes for this season
         const episodeData = await omdbApi.discoverSeasonEpisodes(
           seriesImdbId,
           seasonNum,
           {
-            maxEpisodes: 50, // Allow up to 50 episodes per season
+            maxEpisodes: 50,
             maxConsecutiveFailures: 5,
             onProgress: (found, tried) => {
-              console.log(`[ServerSideEpisodes] Season ${seasonNum} progress: ${found} episodes found (tried ${tried})`);
+              console.log(`  Progress: ${found} episodes found (${tried} tried)`);
             }
           }
         );
 
         if (episodeData.length > 0) {
-          // Found episodes! Reset empty counter
           consecutiveEmptySeasons = 0;
           totalSeasons = seasonNum;
           totalEpisodes += episodeData.length;
+          console.log(`  ✓ Season ${seasonNum}: ${episodeData.length} episodes`);
 
-          console.log(`[ServerSideEpisodes] ✓ Season ${seasonNum}: ${episodeData.length} episodes`);
-
-          // Cache each episode in the database
+          // Cache each episode
           for (const episode of episodeData) {
             await this.cacheEpisode(seriesImdbId, seasonNum, episode);
           }
 
-          // Small delay between seasons to respect rate limits
+          // Rate limit delay
           await new Promise(resolve => setTimeout(resolve, 500));
         } else {
-          // No episodes found for this season
           consecutiveEmptySeasons++;
-          console.log(`[ServerSideEpisodes] ✗ Season ${seasonNum} empty (${consecutiveEmptySeasons}/${maxConsecutiveEmptySeasons} consecutive)`);
-
+          console.log(`  ✗ Season ${seasonNum} empty (${consecutiveEmptySeasons}/${maxConsecutiveEmptySeasons})`);
+          
           if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
-            console.log(`[ServerSideEpisodes] Stopping after ${consecutiveEmptySeasons} consecutive empty seasons`);
+            console.log(`  Stopping after ${consecutiveEmptySeasons} empty seasons`);
             break;
           }
         }
-
-      } catch (error) {
-        console.error(`[ServerSideEpisodes] Error discovering Season ${seasonNum}:`, error);
-        
-        // Check if it's an API limit error
-        if (error instanceof Error && error.message.includes('limit')) {
-          console.error('[ServerSideEpisodes] API limit reached, stopping discovery');
-          throw error; // Re-throw to mark job as failed
-        }
-        
-        consecutiveEmptySeasons++;
-        if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
-          break;
-        }
       }
+
+      // Update metadata
+      await supabase
+        .from('series_episode_counts')
+        .upsert({
+          imdb_id: seriesImdbId,
+          series_title: seriesTitle,
+          total_seasons: totalSeasons,
+          total_episodes: totalEpisodes,
+          fully_discovered: true,
+          last_discovery_attempt: new Date().toISOString()
+        }, {
+          onConflict: 'imdb_id'
+        });
+
+      console.log(`[ServerSideEpisodes] ✅ Complete: ${totalSeasons} seasons, ${totalEpisodes} episodes`);
+      
+    } catch (error) {
+      console.error(`[ServerSideEpisodes] ❌ Discovery failed:`, error);
+      throw error;
     }
-
-    // Update series metadata in database
-    await supabase
-      .from('series_episode_counts')
-      .upsert({
-        imdb_id: seriesImdbId,
-        series_title: seriesTitle,
-        total_seasons: totalSeasons,
-        total_episodes: totalEpisodes,
-        fully_discovered: true,
-        last_discovery_attempt: new Date().toISOString()
-      }, {
-        onConflict: 'imdb_id'
-      });
-
-    console.log(`[ServerSideEpisodes] ✓ Discovery complete for ${seriesTitle}: ${totalSeasons} seasons, ${totalEpisodes} episodes`);
   }
 
   /**
