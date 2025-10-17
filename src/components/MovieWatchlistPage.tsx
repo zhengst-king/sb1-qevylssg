@@ -837,6 +837,7 @@ export function MovieWatchlistPage() {
                 onUpdateMovie={handleUpdateMovie}
                 onDelete={handleDeleteMovie}
                 onViewRecommendation={(movie) => setSelectedMovie(movie)}
+                onMovieAddedToWatchlist={refetch} 
               />
             </div>
           </div>
