@@ -571,15 +571,17 @@ export function MovieDetailsPage({
 
       {/* Person Details Modal */}
       {showPersonDetailsModal && selectedPersonId && (
-        <PersonDetailsModal
-          tmdbPersonId={selectedPersonId}
-          personName={selectedPersonName}
-          personType={selectedPersonType}
-          onClose={() => {
-            setShowPersonDetailsModal(false);
-            setSelectedPersonId(null);
-          }}
-        />
+        <div className="fixed inset-0 z-[60]"> 
+          <PersonDetailsModal
+            tmdbPersonId={selectedPersonId}
+            personName={selectedPersonName}
+            personType={selectedPersonType}
+            onClose={() => {
+              setShowPersonDetailsModal(false);
+              setSelectedPersonId(null);
+            }}
+          />
+        </div>
       )}
     </div>
   );
