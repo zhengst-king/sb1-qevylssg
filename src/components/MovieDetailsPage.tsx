@@ -568,6 +568,19 @@ export function MovieDetailsPage({
           movieTitle={movie.title}
         />
       )}
+
+      {/* Person Details Modal */}
+      {showPersonDetailsModal && selectedPersonId && (
+        <PersonDetailsModal
+          tmdbPersonId={selectedPersonId}
+          personName={selectedPersonName}
+          personType={selectedPersonType}
+          onClose={() => {
+            setShowPersonDetailsModal(false);
+            setSelectedPersonId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
