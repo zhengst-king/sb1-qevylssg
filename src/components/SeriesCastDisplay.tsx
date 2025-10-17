@@ -39,7 +39,7 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
   const [showAllCast, setShowAllCast] = useState(false);
   const [favoriteActorIds, setFavoriteActorIds] = useState<Set<number>>(new Set());
   const [favoriteCrewIds, setFavoriteCrewIds] = useState<Set<number>>(new Set());
-  cconst [aggregatedDirectors, setAggregatedDirectors] = useState<Array<{
+  const [aggregatedDirectors, setAggregatedDirectors] = useState<Array<{
     name: string;
     episodeCount: number;
     episodes: Array<{season: number; episode: number}>;
