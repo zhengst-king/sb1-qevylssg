@@ -97,7 +97,7 @@ export function MovieDetailsPage({
     };
 
     fetchTMDBData();
-  }, [movie.imdb_id]);
+  }, [movie.imdb_id, movie.id]);
 
   // Check if franchise is favorited
   useEffect(() => {
