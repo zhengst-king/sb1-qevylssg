@@ -32,8 +32,8 @@ const crewJobMapping: Record<CrewSubTab, { jobs: string[]; label: string; icon: 
 
 export function MovieCastSection({
   imdbId,
-  className = ''
-  onOpenPersonDetails,
+  className = '',
+  onOpenPersonDetails
 }: MovieCastSectionProps) {
   const [credits, setCredits] = useState<TMDBMovieCredits | null>(null);
   const [loading, setLoading] = useState(true);
