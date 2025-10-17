@@ -659,22 +659,6 @@ class ServerSideEpisodeService {
   }
 
   /**
-   * Update episode access time for cache management
-   */
-  private async updateEpisodeAccessTime(seriesImdbId: string, seasonNumber: number): Promise<void> {
-    try {
-      await supabase.rpc('update_episodes_cache_access', {
-        p_imdb_id: seriesImdbId,
-        p_season_number: seasonNumber,
-        p_episode_number: 1 // Update first episode of season as proxy
-      });
-    } catch (error) {
-      // Non-critical error, just log it
-      console.debug('[ServerSideEpisodes] Could not update access time:', error);
-    }
-  }
-
-  /**
    * Get all series that need discovery
    */
   async getPendingDiscoveries(): Promise<Array<{imdb_id: string; series_title: string}>> {
