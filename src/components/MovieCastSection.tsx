@@ -33,6 +33,7 @@ const crewJobMapping: Record<CrewSubTab, { jobs: string[]; label: string; icon: 
 export function MovieCastSection({
   imdbId,
   className = ''
+  onOpenPersonDetails
 }: MovieCastSectionProps) {
   const [credits, setCredits] = useState<TMDBMovieCredits | null>(null);
   const [loading, setLoading] = useState(true);
@@ -318,15 +319,21 @@ export function MovieCastSection({
   );
 }
 
-// ==================== CAST MEMBER CARD ====================
+// =========== ENHANCED CAST MEMBER CARD ====================
 
 interface CastMemberCardProps {
   castMember: TMDBCastMember;
   favoriteActorIds: Set<number>;
   onToggleFavoriteActor: (castMember: TMDBCastMember) => void;
+  onOpenPersonDetails?: (tmdbPersonId: number, personName: string, personType: 'cast' | 'crew') => void; // ✅ ADD THIS
 }
 
-function CastMemberCard({ castMember, favoriteActorIds, onToggleFavoriteActor }: CastMemberCardProps) {
+function CastMemberCard({ 
+  castMember, 
+  favoriteActorIds, 
+  onToggleFavoriteActor,
+  onOpenPersonDetails // ✅ ADD THIS
+}: CastMemberCardProps) {
   const [isFavoriteCharacter, setIsFavoriteCharacter] = useState(false);
   const [isLoadingCharacter, setIsLoadingCharacter] = useState(false);
   const isFavoriteActor = favoriteActorIds.has(castMember.id);
@@ -366,11 +373,29 @@ function CastMemberCard({ castMember, favoriteActorIds, onToggleFavoriteActor }:
     setIsLoadingCharacter(false);
   };
 
+  const handleCardClick = () => {
+    if (isFavoriteActor && onOpenPersonDetails) {
+      onOpenPersonDetails(castMember.id, castMember.name, 'cast');
+    }
+  };
+
+  const tmdbPersonUrl = `https://www.themoviedb.org/person/${castMember.id}`;
+
+  // Wrapper component - use <a> for non-favorites, <div> for favorites
+  const CardWrapper = isFavoriteActor ? 'div' : 'a';
+  const cardProps = isFavoriteActor 
+    ? { onClick: handleCardClick, className: "relative group cursor-pointer block" }
+    : { href: tmdbPersonUrl, target: "_blank", rel: "noopener noreferrer", className: "relative group block" };
+
   return (
-    <div className="relative group">
+    <CardWrapper {...cardProps}>
       {/* Actor Favorite Button */}
       <button
-        onClick={() => onToggleFavoriteActor(castMember)}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleFavoriteActor(castMember);
+        }}
         className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
         title={isFavoriteActor ? 'Remove actor from favorites' : 'Add actor to favorites'}
       >
@@ -385,7 +410,7 @@ function CastMemberCard({ castMember, favoriteActorIds, onToggleFavoriteActor }:
         <img
           src={tmdbService.getProfileImageUrl(castMember.profile_path, 'w185')}
           alt={castMember.name}
-          className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+          className="w-full aspect-[2/3] object-cover rounded-lg mb-2 group-hover:scale-105 transition-transform duration-300"
         />
       ) : (
         <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
@@ -394,27 +419,30 @@ function CastMemberCard({ castMember, favoriteActorIds, onToggleFavoriteActor }:
       )}
       
       <p className="text-sm font-medium text-slate-900 line-clamp-2">{castMember.name}</p>
-      
-      {/* Character name with favorite button */}
       {castMember.character && (
-        <div className="flex items-center justify-between mt-1">
-          <p className="text-xs text-slate-500 line-clamp-1 flex-1">
-            {castMember.character}
+        <div className="flex items-start space-x-1 mt-1">
+          <p className="text-xs text-slate-500 line-clamp-2 flex-1">
+            as {castMember.character}
           </p>
+          {/* Character Favorite Button */}
           <button
             onClick={handleToggleFavoriteCharacter}
             disabled={isLoadingCharacter}
-            className={`ml-1 p-1 rounded-full transition-all flex-shrink-0 ${
-              isFavoriteCharacter
-                ? 'bg-purple-500 text-white hover:bg-purple-600'
-                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-purple-500'
-            } ${isLoadingCharacter ? 'opacity-50 cursor-wait' : ''}`}
+            className="flex-shrink-0 p-0.5 hover:bg-slate-100 rounded transition-colors"
             title={isFavoriteCharacter ? 'Remove character from favorites' : 'Add character to favorites'}
           >
-            <Heart className={`h-3 w-3 ${isFavoriteCharacter ? 'fill-current' : ''}`} />
+            {isLoadingCharacter ? (
+              <div className="h-3 w-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Heart
+                className={`h-3 w-3 transition-colors ${
+                  isFavoriteCharacter ? 'fill-pink-500 text-pink-500' : 'text-slate-300 hover:text-pink-500'
+                }`}
+              />
+            )}
           </button>
         </div>
       )}
-    </div>
+    </CardWrapper>
   );
 }
