@@ -1,27 +1,88 @@
 // src/components/SeriesRecommendations.tsx
-// Component to display TMDB recommendations and similar titles
+// Component to display TMDB recommendations and similar titles for TV series
 
-import React, { useState } from 'react';
-import { ThumbsUp, Sparkles, ExternalLink, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ThumbsUp, Sparkles, ExternalLink, Star, Film, X, Tv } from 'lucide-react';
 import { TMDBRecommendationsResponse } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
+import { supabase } from '../lib/supabase';
+import { Movie } from '../lib/supabase';
 
 interface SeriesRecommendationsProps {
   recommendations?: TMDBRecommendationsResponse;
   similar?: TMDBRecommendationsResponse;
   className?: string;
+  onSeriesDetailsClick?: (series: Movie) => void;
+  onSeriesAddedToWatchlist?: () => void;
 }
 
 export function SeriesRecommendations({ 
   recommendations, 
   similar, 
-  className = '' 
+  className = '',
+  onSeriesDetailsClick,
+  onSeriesAddedToWatchlist
 }: SeriesRecommendationsProps) {
   const [activeTab, setActiveTab] = useState<'recommendations' | 'similar'>('recommendations');
+  const [watchlistTitles, setWatchlistTitles] = useState<Set<number>>(new Set());
 
   // Check if we have any data to display
   const hasRecommendations = recommendations?.results && recommendations.results.length > 0;
   const hasSimilar = similar?.results && similar.results.length > 0;
+
+  // Load watchlist titles on mount
+  useEffect(() => {
+    loadWatchlistTitles();
+  }, []);
+
+  const loadWatchlistTitles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('movies')
+        .select('imdb_id')
+        .eq('user_id', user.id)
+        .eq('media_type', 'series');
+
+      if (data) {
+        // Create a set of TMDB IDs from IMDb IDs
+        const tmdbIds = new Set<number>();
+        
+        for (const series of data) {
+          if (series.imdb_id) {
+            // Try to get TMDB ID from IMDb ID
+            const tmdbId = await getTMDBIdFromIMDbId(series.imdb_id);
+            if (tmdbId) {
+              tmdbIds.add(tmdbId);
+            }
+          }
+        }
+        
+        setWatchlistTitles(tmdbIds);
+      }
+    } catch (error) {
+      console.error('Error loading watchlist:', error);
+    }
+  };
+
+  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
+    try {
+      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+      const response = await fetch(
+        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      return data.tv_results?.[0]?.id || null;
+    } catch (error) {
+      console.error('Error getting TMDB ID:', error);
+      return null;
+    }
+  };
 
   if (!hasRecommendations && !hasSimilar) {
     return null;
@@ -76,7 +137,14 @@ export function SeriesRecommendations({
       {/* Grid of Recommendations */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {displayItems.map((item) => (
-          <RecommendationCard key={item.id} item={item} />
+          <RecommendationCard 
+            key={item.id} 
+            item={item}
+            isInWatchlist={watchlistTitles.has(item.id)}
+            onWatchlistUpdate={loadWatchlistTitles}
+            onSeriesDetailsClick={onSeriesDetailsClick}
+            onSeriesAddedToWatchlist={onSeriesAddedToWatchlist}
+          />
         ))}
       </div>
 
@@ -84,7 +152,7 @@ export function SeriesRecommendations({
       <div className="mt-4 pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between text-xs text-slate-400">
           <span>Recommendations from TMDB</span>
-          <a
+          
             href="https://www.themoviedb.org/"
             target="_blank"
             rel="noopener noreferrer"
@@ -102,10 +170,22 @@ export function SeriesRecommendations({
 // ==================== RECOMMENDATION CARD ====================
 
 interface RecommendationCardProps {
-  item: any; // TMDBRecommendation type
+  item: any; // TMDBRecommendation type for TV
+  isInWatchlist: boolean;
+  onWatchlistUpdate: () => void;
+  onSeriesDetailsClick?: (series: Movie) => void;
+  onSeriesAddedToWatchlist?: () => void;
 }
 
-function RecommendationCard({ item }: RecommendationCardProps) {
+function RecommendationCard({ 
+  item, 
+  isInWatchlist, 
+  onWatchlistUpdate, 
+  onSeriesDetailsClick,
+  onSeriesAddedToWatchlist
+}: RecommendationCardProps) {
+  const [isAdding, setIsAdding] = useState(false);
+
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
     : null;
@@ -113,13 +193,187 @@ function RecommendationCard({ item }: RecommendationCardProps) {
   const tmdbUrl = `https://www.themoviedb.org/tv/${item.id}`;
   const year = item.first_air_date ? new Date(item.first_air_date).getFullYear() : '';
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
+  const title = item.name;
 
+  // Handle adding/removing from watchlist
+  const handleToggleWatchlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isAdding) return;
+    
+    setIsAdding(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Please sign in to add titles to your watchlist.');
+        return;
+      }
+
+      if (isInWatchlist) {
+        // Remove from watchlist
+        const { error } = await supabase
+          .from('movies')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('title', title)
+          .eq('media_type', 'series');
+
+        if (error) throw error;
+      } else {
+        // Add to watchlist
+        // First get IMDb ID from TMDB
+        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+        const detailsUrl = `https://api.themoviedb.org/3/tv/${item.id}?api_key=${apiKey}&append_to_response=external_ids`;
+        
+        const response = await fetch(detailsUrl);
+        const details = await response.json();
+        
+        const seriesData = {
+          user_id: user.id,
+          media_type: 'series' as const,
+          title: title,
+          year: year ? parseInt(year.toString()) : undefined,
+          imdb_score: item.vote_average || undefined,
+          imdb_id: details.external_ids?.imdb_id || undefined,
+          status: 'To Watch' as const,
+          poster_url: posterUrl || undefined,
+          plot: item.overview || undefined
+        };
+
+        const { error } = await supabase
+          .from('movies')
+          .insert(seriesData);
+
+        if (error) throw error;
+
+        // Call the callback to update parent
+        if (onSeriesAddedToWatchlist) {
+          onSeriesAddedToWatchlist();
+        }
+      }
+      
+      // Refresh watchlist
+      onWatchlistUpdate();
+    } catch (error) {
+      console.error('Error toggling watchlist:', error);
+      alert('Failed to update watchlist. Please try again.');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleCardClick = async (e: React.MouseEvent) => {
+    if (isInWatchlist && onSeriesDetailsClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('[SeriesRecommendations] Clicked watchlist title:', title);
+      
+      // Fetch the series from database to get full details
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('[SeriesRecommendations] No user found');
+          return;
+        }
+
+        console.log('[SeriesRecommendations] Fetching series:', { title, userId: user.id });
+
+        const { data: series, error } = await supabase
+          .from('movies')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('title', title)
+          .eq('media_type', 'series')
+          .single();
+
+        console.log('[SeriesRecommendations] Query result:', { series, error });
+
+        if (error) {
+          console.error('[SeriesRecommendations] Error fetching series:', error);
+          return;
+        }
+
+        if (series) {
+          console.log('[SeriesRecommendations] Opening series details modal for:', series.title);
+          onSeriesDetailsClick(series);
+        }
+      } catch (error) {
+        console.error('[SeriesRecommendations] Error in handleCardClick:', error);
+      }
+    }
+  };
+
+  // If in watchlist, use div with onClick; otherwise use link
+  if (isInWatchlist) {
+    return (
+      <div
+        onClick={handleCardClick}
+        className="group relative block cursor-pointer"
+      >
+        <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+          {/* Poster Image */}
+          <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+            {posterUrl ? (
+              <img
+                src={posterUrl}
+                alt={title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Tv className="h-12 w-12 text-slate-400" />
+              </div>
+            )}
+
+            {/* Watchlist Button */}
+            <button
+              onClick={handleToggleWatchlist}
+              disabled={isAdding}
+              className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-red-500 hover:bg-red-600"
+              title="Remove from watchlist"
+            >
+              {isAdding ? (
+                <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <X className="h-4 w-4 transition-all text-white rotate-0" />
+              )}
+            </button>
+
+            {/* Rating Badge */}
+            {rating && parseFloat(rating) > 0 && (
+              <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                <div className="flex items-center space-x-1">
+                  <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                  <span className="text-white text-xs font-semibold">{rating}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="p-3">
+            <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
+              {title}
+            </h3>
+            {year && (
+              <p className="text-xs text-slate-500">{year}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not in watchlist - use regular link
   return (
-    <a
+    
       href={tmdbUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="group"
+      className="group relative block"
     >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
         {/* Poster Image */}
@@ -127,33 +381,47 @@ function RecommendationCard({ item }: RecommendationCardProps) {
           {posterUrl ? (
             <img
               src={posterUrl}
-              alt={item.name}
+              alt={title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">
-              <Sparkles className="h-12 w-12 text-slate-400" />
+            <div className="w-full h-full flex items-center justify-center">
+              <Tv className="h-12 w-12 text-slate-400" />
             </div>
           )}
-          
+
+          {/* Watchlist Button */}
+          <button
+            onClick={handleToggleWatchlist}
+            disabled={isAdding}
+            className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-white/90 hover:bg-white"
+            title="Add to watchlist"
+          >
+            {isAdding ? (
+              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <X className="h-4 w-4 transition-all text-slate-600 hover:text-purple-500 rotate-45" />
+            )}
+          </button>
+
           {/* Rating Badge */}
-          {rating && (
-            <div className="absolute top-2 right-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded flex items-center space-x-1">
-              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-              <span className="text-xs font-semibold">{rating}</span>
+          {rating && parseFloat(rating) > 0 && (
+            <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+              <div className="flex items-center space-x-1">
+                <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                <span className="text-white text-xs font-semibold">{rating}</span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Series Info */}
-        <div className="p-2">
-          <p className="text-sm font-medium text-slate-900 truncate group-hover:text-purple-600 transition-colors" title={item.name}>
-            {item.name}
-          </p>
+        {/* Info */}
+        <div className="p-3">
+          <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
+            {title}
+          </h3>
           {year && (
-            <p className="text-xs text-slate-500">
-              {year}
-            </p>
+            <p className="text-xs text-slate-500">{year}</p>
           )}
         </div>
       </div>
