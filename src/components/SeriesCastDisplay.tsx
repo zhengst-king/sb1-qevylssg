@@ -6,6 +6,7 @@ import { tmdbService } from '../lib/tmdb';
 import { favoriteActorsService } from '../services/favoriteActorsService';
 import { favoriteCrewService } from '../services/favoriteCrewService';
 import { favoriteCharactersService } from '../services/favoriteCharactersService';
+import { tmdbCastService } from '../services/tmdbCastService';
 
 interface SeriesCastDisplayProps {
   credits: TMDBSeriesCredits;
