@@ -503,6 +503,7 @@ export function TVSeriesWatchlistPage() {
   const handleCloseEpisodes = () => {
     setShowEpisodesModal(false);
     setSelectedSeries(null);
+    refetch();
   };
 
   if (!isAuthenticated) {
@@ -867,6 +868,8 @@ export function TVSeriesWatchlistPage() {
                 onUpdateStatus={handleUpdateStatus}
                 onUpdateRating={handleUpdateRating}
                 onUpdateMovie={handleUpdateMovie}
+                onViewRecommendation={(series) => setSelectedSeries(series)}
+                onSeriesAddedToWatchlist={undefined}
               />
             </div>
           </div>
