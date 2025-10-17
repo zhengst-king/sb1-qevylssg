@@ -10,6 +10,7 @@ import { favoriteCharactersService } from '../services/favoriteCharactersService
 interface SeriesCastDisplayProps {
   credits: TMDBSeriesCredits;
   createdBy?: Array<{ id: number; name: string; profile_path: string | null }>;
+  seriesImdbId?: string;
   className?: string;
 }
 
@@ -31,12 +32,14 @@ const crewJobMapping: Record<CrewSubTab, { jobs: string[]; label: string; icon: 
   'choreographer': { jobs: ['Choreographer'], label: 'Choreographer', icon: Users }
 };
 
-export function SeriesCastDisplay({ credits, createdBy = [], className = '' }: SeriesCastDisplayProps) {
+export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, className = '' }: SeriesCastDisplayProps) {
   const [mainTab, setMainTab] = useState<MainTab>('cast');
   const [crewSubTab, setCrewSubTab] = useState<CrewSubTab>('director');
   const [showAllCast, setShowAllCast] = useState(false);
   const [favoriteActorIds, setFavoriteActorIds] = useState<Set<number>>(new Set());
   const [favoriteCrewIds, setFavoriteCrewIds] = useState<Set<number>>(new Set());
+  const [aggregatedDirectors, setAggregatedDirectors] = useState<TMDBCrewMember[]>([]);
+  const [loadingDirectors, setLoadingDirectors] = useState(false);
 
   // Load favorite actors and crew
   useEffect(() => {
@@ -50,6 +53,25 @@ export function SeriesCastDisplay({ credits, createdBy = [], className = '' }: S
     };
     loadFavorites();
   }, []);
+
+  // Fetch aggregated directors from all episodes
+  useEffect(() => {
+    const fetchDirectors = async () => {
+      if (!seriesImdbId) return;
+      
+      setLoadingDirectors(true);
+      try {
+        const directors = await tmdbCastService.getSeriesDirectors(seriesImdbId);
+        setAggregatedDirectors(directors);
+      } catch (error) {
+        console.error('[SeriesCastDisplay] Error fetching directors:', error);
+      } finally {
+        setLoadingDirectors(false);
+      }
+    };
+
+    fetchDirectors();
+  }, [seriesImdbId]);
 
   const handleToggleFavoriteActor = async (castMember: TMDBCastMember) => {
     const isFavorite = favoriteActorIds.has(castMember.id);
@@ -109,7 +131,6 @@ export function SeriesCastDisplay({ credits, createdBy = [], className = '' }: S
     
     // Special handling for creators - use created_by data
     if (subTab === 'creator' && createdBy.length > 0) {
-      // Convert created_by to crew member format
       return createdBy.map(creator => ({
         id: creator.id,
         name: creator.name,
@@ -123,6 +144,11 @@ export function SeriesCastDisplay({ credits, createdBy = [], className = '' }: S
         original_name: creator.name,
         popularity: 0
       }));
+    }
+    
+    // Special handling for directors - use aggregated directors from all episodes
+    if (subTab === 'director' && aggregatedDirectors.length > 0) {
+      return aggregatedDirectors;
     }
     
     if (!credits.crew) return [];
