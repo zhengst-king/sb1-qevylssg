@@ -213,6 +213,60 @@ class TMDBCastService {
   }
 
   /**
+   * Get all directors who have directed episodes of a series
+   * Aggregates directors from episode_cast_cache
+   */
+  async getSeriesDirectors(imdbId: string): Promise<TMDBCrewMember[]> {
+    try {
+      console.log(`[TMDBCast] Fetching all directors for series ${imdbId}`);
+
+      // Query all cached episodes for this series
+      const { data, error } = await supabase
+        .from('episode_cast_cache')
+        .select('crew_data')
+        .eq('imdb_id', imdbId)
+        .eq('fetch_success', true);
+
+      if (error) {
+        console.error('[TMDBCast] Error fetching episode crew data:', error);
+        return [];
+      }
+
+      if (!data || data.length === 0) {
+        console.log('[TMDBCast] No cached episodes found for series');
+        return [];
+      }
+
+      // Collect all directors from all episodes
+      const directorMap = new Map<number, TMDBCrewMember>();
+
+      data.forEach(episode => {
+        if (episode.crew_data && Array.isArray(episode.crew_data)) {
+          const directors = episode.crew_data.filter(
+            (crew: TMDBCrewMember) => crew.job === 'Director'
+          );
+          
+          directors.forEach((director: TMDBCrewMember) => {
+            // Use director's TMDB ID as key to avoid duplicates
+            if (!directorMap.has(director.id)) {
+              directorMap.set(director.id, director);
+            }
+          });
+        }
+      });
+
+      const uniqueDirectors = Array.from(directorMap.values());
+      console.log(`[TMDBCast] Found ${uniqueDirectors.length} unique directors from ${data.length} episodes`);
+
+      // Sort by name
+      return uniqueDirectors.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+      console.error('[TMDBCast] Error getting series directors:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get movie credits (cast & crew) with caching
    */
   async getMovieCredits(imdbId: string): Promise<TMDBMovieCredits | null> {
