@@ -80,7 +80,11 @@ export function MovieRecommendations({
       {/* Grid of Recommendations */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {displayItems.map((item) => (
-          <RecommendationCard key={item.id} item={item} />
+          <RecommendationCard 
+            key={item.id} 
+            item={item}
+            onMovieDetailsClick={onMovieDetailsClick} // Pass it down
+          />
         ))}
       </div>
 
