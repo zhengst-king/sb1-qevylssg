@@ -275,12 +275,29 @@ export function MovieCastSection({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {currentCrewMembers.map((crewMember) => {
                 const isFavorite = favoriteCrewIds.has(crewMember.id);
+                const tmdbPersonUrl = `https://www.themoviedb.org/person/${crewMember.id}`;
+                
+                const handleCrewCardClick = () => {
+                  if (isFavorite && onOpenPersonDetails) {
+                    onOpenPersonDetails(crewMember.id, crewMember.name, 'crew');
+                  }
+                };
+
+                // ✅ Use <a> for non-favorites, <div> for favorites
+                const CrewCardWrapper = isFavorite ? 'div' : 'a';
+                const crewCardProps = isFavorite 
+                  ? { onClick: handleCrewCardClick, className: "relative group cursor-pointer block" }
+                  : { href: tmdbPersonUrl, target: "_blank", rel: "noopener noreferrer", className: "relative group block" };
                 
                 return (
-                  <div key={`${crewMember.id}-${crewMember.credit_id}`} className="relative group">
+                  <CrewCardWrapper key={`${crewMember.id}-${crewMember.credit_id}`} {...crewCardProps}>
                     {/* Favorite Button */}
                     <button
-                      onClick={() => handleToggleFavoriteCrew(crewMember)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleToggleFavoriteCrew(crewMember);
+                      }}
                       className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
                       title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
@@ -295,7 +312,7 @@ export function MovieCastSection({
                       <img
                         src={tmdbService.getProfileImageUrl(crewMember.profile_path, 'w185')}
                         alt={crewMember.name}
-                        className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+                        className="w-full aspect-[2/3] object-cover rounded-lg mb-2 group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
@@ -304,7 +321,7 @@ export function MovieCastSection({
                     )}
                     <p className="text-sm font-medium text-slate-900 line-clamp-2">{crewMember.name}</p>
                     <p className="text-xs text-slate-500 line-clamp-1">{crewMember.job}</p>
-                  </div>
+                  </CrewCardWrapper>
                 );
               })}
             </div>
