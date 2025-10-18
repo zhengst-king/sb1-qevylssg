@@ -6,6 +6,7 @@ import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
 import { CollectionDetailModal } from './CollectionDetailModal';
 import { MovieDetailsPage } from './MovieDetailsPage';
+import { Movie } from '../lib/supabase';
 
 export function FranchisePage() {
   const [favorites, setFavorites] = useState<FavoriteFranchise[]>([]);
