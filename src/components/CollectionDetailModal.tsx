@@ -121,51 +121,46 @@ export function CollectionDetailModal({
   };
 
   const handleCardClick = async (e: React.MouseEvent, movie: TMDBCollectionPart) => {
-    const inWatchlist = isInWatchlist(movie);
+    e.preventDefault();
+    e.stopPropagation();
     
-    if (inWatchlist && onMovieDetailsClick) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      console.log('[CollectionDetailModal] Clicked watchlist title:', movie.title);
-      
-      // Fetch the movie from database to get full details
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          console.log('[CollectionDetailModal] No user found');
-          return;
-        }
-
-        console.log('[CollectionDetailModal] Fetching movie:', { title: movie.title, userId: user.id });
-
-        const { data: dbMovie, error } = await supabase
-          .from('movies')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('title', movie.title)
-          .eq('media_type', 'movie')
-          .single();
-
-        console.log('[CollectionDetailModal] Query result:', { dbMovie, error });
-
-        if (error) {
-          console.error('[CollectionDetailModal] Error fetching movie:', error);
-          alert(`Could not find movie in watchlist: ${error.message}`);
-          return;
-        }
-
-        if (dbMovie) {
-          console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
-          onMovieDetailsClick(dbMovie);
-        } else {
-          console.log('[CollectionDetailModal] No movie found in database');
-          alert('Could not find this movie in your watchlist.');
-        }
-      } catch (error) {
-        console.error('[CollectionDetailModal] Error in handleCardClick:', error);
-        alert('An error occurred while trying to open movie details.');
+    if (!onMovieDetailsClick) {
+      return;
+    }
+    
+    console.log('[CollectionDetailModal] Clicked watchlist title:', movie.title);
+    
+    // Fetch the movie from database to get full details
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('[CollectionDetailModal] No user found');
+        return;
       }
+
+      console.log('[CollectionDetailModal] Fetching movie:', { title: movie.title, userId: user.id });
+
+      const { data: dbMovie, error } = await supabase
+        .from('movies')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('title', movie.title)
+        .eq('media_type', 'movie')
+        .single();
+
+      console.log('[CollectionDetailModal] Query result:', { dbMovie, error });
+
+      if (error) {
+        console.error('[CollectionDetailModal] Error fetching movie:', error);
+        return;
+      }
+
+      if (dbMovie) {
+        console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
+        onMovieDetailsClick(dbMovie);
+      }
+    } catch (error) {
+      console.error('[CollectionDetailModal] Error in handleCardClick:', error);
     }
   };
 
