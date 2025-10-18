@@ -5,6 +5,7 @@ import { tmdbCastService, TMDBPersonDetails } from '../services/tmdbCastService'
 import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
+import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 
 interface PersonDetailsModalProps {
   tmdbPersonId: number;
@@ -560,14 +561,16 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
         if (error) throw error;
       } else {
         // Add to watchlist
-        // First get IMDb ID from TMDB
         const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-        const detailsUrl = mediaType === 'series'
+        const mediaType = credit.media_type === 'tv' ? 'series' : 'movie';
+        const detailsUrl = credit.media_type === 'tv'
           ? `https://api.themoviedb.org/3/tv/${credit.id}?api_key=${apiKey}&append_to_response=external_ids`
           : `https://api.themoviedb.org/3/movie/${credit.id}?api_key=${apiKey}&append_to_response=external_ids`;
         
         const response = await fetch(detailsUrl);
         const details = await response.json();
+        
+        const imdbId = details.external_ids?.imdb_id;
         
         const movieData = {
           user_id: user.id,
@@ -575,16 +578,27 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           title: title,
           year: displayYear ? parseInt(displayYear.toString()) : undefined,
           imdb_score: credit.vote_average || undefined,
-          imdb_id: details.external_ids?.imdb_id || undefined,
+          imdb_id: imdbId || undefined,
           status: 'To Watch' as const,
           poster_url: posterUrl || undefined
         };
 
-        const { error } = await supabase
+        const { data: insertedMovie, error } = await supabase
           .from('movies')
-          .insert(movieData);
+          .insert(movieData)
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // ✅ FIX: Trigger background OMDb enrichment
+        if (imdbId && insertedMovie) {
+          console.log('[PersonDetailsModal] Triggering OMDb enrichment for:', title);
+          // Don't await - let it run in background
+          omdbEnrichmentService.enrichMovie(insertedMovie.id, imdbId).catch(err => {
+            console.error('[PersonDetailsModal] Background enrichment failed:', err);
+          });
+        }
       }
       
       // Refresh watchlist
