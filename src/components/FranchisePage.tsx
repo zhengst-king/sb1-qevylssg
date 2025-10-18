@@ -5,6 +5,7 @@ import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
 import { CollectionDetailModal } from './CollectionDetailModal';
+import { MovieDetailsPage } from './MovieDetailsPage';
 
 export function FranchisePage() {
   const [favorites, setFavorites] = useState<FavoriteFranchise[]>([]);
@@ -15,6 +16,8 @@ export function FranchisePage() {
     name: string;
   } | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [showMovieDetailsModal, setShowMovieDetailsModal] = useState(false);
 
   useEffect(() => {
     loadFavorites();
@@ -80,6 +83,38 @@ export function FranchisePage() {
 
   const handleFranchiseAdded = async (collection: TMDBCollectionSearchResult) => {
     await handleToggleFavorite(collection);
+  };
+
+  const handleMovieDetailsClick = (movie: Movie) => {
+    setSelectedMovie(movie);
+    setShowMovieDetailsModal(true);
+  };
+
+  const handleCloseMovieDetails = () => {
+    setShowMovieDetailsModal(false);
+    setSelectedMovie(null);
+  };
+
+  const handleUpdateStatus = async (id: string, status: Movie['status']) => {
+    // This will be handled by the MovieDetailsPage component
+    console.log('Update status:', id, status);
+  };
+
+  const handleUpdateRating = async (id: string, rating: number | null) => {
+    // This will be handled by the MovieDetailsPage component
+    console.log('Update rating:', id, rating);
+  };
+
+  const handleUpdateMovie = async (id: string, updates: Partial<Movie>) => {
+    // This will be handled by the MovieDetailsPage component
+    console.log('Update movie:', id, updates);
+  };
+
+  const handleDeleteMovie = async (id: string) => {
+    // This will be handled by the MovieDetailsPage component
+    console.log('Delete movie:', id);
+    setShowMovieDetailsModal(false);
+    setSelectedMovie(null);
   };
 
   if (loading) {
@@ -199,11 +234,34 @@ export function FranchisePage() {
       {/* Franchise Search Modal */}
       {showSearchModal && (
         <FranchiseSearchModal
-          isOpen={showSearchModal}
-          onClose={() => setShowSearchModal(false)}
-          onFranchiseAdded={handleFranchiseAdded}
-          favoriteIds={favoriteIds}
+          isOpen={!!selectedCollection}
+          onClose={() => setSelectedCollection(null)}
+          collectionId={selectedCollection.id}
+          collectionName={selectedCollection.name}
+          onMovieDetailsClick={handleMovieDetailsClick}
         />
+      )}
+
+      {/* Movie Details Modal */}
+      {showMovieDetailsModal && selectedMovie && (
+        <div className="fixed inset-0 z-[60] overflow-hidden">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50" 
+            onClick={handleCloseMovieDetails}
+          />
+          <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <MovieDetailsPage 
+              movie={selectedMovie} 
+              onBack={handleCloseMovieDetails}
+              onUpdateStatus={handleUpdateStatus}
+              onUpdateRating={handleUpdateRating}
+              onUpdateMovie={handleUpdateMovie}
+              onDelete={handleDeleteMovie}
+              onViewRecommendation={(movie) => setSelectedMovie(movie)}
+              onMovieAddedToWatchlist={undefined}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
