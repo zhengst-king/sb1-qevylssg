@@ -7,6 +7,7 @@ import { TMDBMovieRecommendationsResponse } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
+import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 
 interface MovieRecommendationsProps {
   recommendations?: TMDBMovieRecommendationsResponse;
@@ -217,12 +218,13 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
         if (error) throw error;
       } else {
         // Add to watchlist
-        // First get IMDb ID from TMDB
         const apiKey = import.meta.env.VITE_TMDB_API_KEY;
         const detailsUrl = `https://api.themoviedb.org/3/movie/${item.id}?api_key=${apiKey}&append_to_response=external_ids`;
         
         const response = await fetch(detailsUrl);
         const details = await response.json();
+        
+        const imdbId = details.external_ids?.imdb_id;
         
         const movieData = {
           user_id: user.id,
@@ -230,19 +232,29 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
           title: title,
           year: year ? parseInt(year.toString()) : undefined,
           imdb_score: item.vote_average || undefined,
-          imdb_id: details.external_ids?.imdb_id || undefined,
+          imdb_id: imdbId || undefined,
           status: 'To Watch' as const,
           poster_url: posterUrl || undefined,
           plot: item.overview || undefined
         };
 
-        const { error } = await supabase
+        const { data: insertedMovie, error } = await supabase
           .from('movies')
-          .insert(movieData);
+          .insert(movieData)
+          .select()
+          .single();
 
         if (error) throw error;
 
-        // Refresh both local watchlist AND parent page
+        // ✅ FIX: Trigger background OMDb enrichment
+        if (imdbId && insertedMovie) {
+          console.log('[MovieRecommendations] Triggering OMDb enrichment for:', title);
+          // Don't await - let it run in background
+          omdbEnrichmentService.enrichMovie(insertedMovie.id, imdbId).catch(err => {
+            console.error('[MovieRecommendations] Background enrichment failed:', err);
+          });
+        }
+
         onWatchlistUpdate();
         if (onMovieAddedToWatchlist) {
           onMovieAddedToWatchlist();
