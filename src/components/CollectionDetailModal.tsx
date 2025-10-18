@@ -10,18 +10,21 @@ interface CollectionDetailModalProps {
   onClose: () => void;
   collectionId: number;
   collectionName: string;
+  onMovieDetailsClick?: (movie: Movie) => void;
 }
 
 export function CollectionDetailModal({
   isOpen,
   onClose,
   collectionId,
-  collectionName
+  collectionName,
+  onMovieDetailsClick
 }: CollectionDetailModalProps) {
   const [collection, setCollection] = useState<TMDBCollection | null>(null);
   const [loading, setLoading] = useState(true);
   const { movies, addMovie } = useMovies('movie');
   const [addingMovies, setAddingMovies] = useState<Set<number>>(new Set());
+  const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
 
   // Get set of movies already in watchlist by IMDb ID
   const watchlistImdbIds = new Set(movies.map(m => m.imdb_id).filter(Boolean));
@@ -31,6 +34,48 @@ export function CollectionDetailModal({
       fetchCollectionDetails();
     }
   }, [isOpen, collectionId]);
+
+  // Load watchlist movie TMDB IDs
+  useEffect(() => {
+    loadWatchlistMovieIds();
+  }, [movies]);
+
+  const loadWatchlistMovieIds = async () => {
+    try {
+      const tmdbIds = new Set<number>();
+      
+      for (const movie of movies) {
+        if (movie.imdb_id) {
+          // Get TMDB ID from IMDb ID
+          const tmdbId = await getTMDBIdFromIMDbId(movie.imdb_id);
+          if (tmdbId) {
+            tmdbIds.add(tmdbId);
+          }
+        }
+      }
+      
+      setWatchlistMovieIds(tmdbIds);
+    } catch (error) {
+      console.error('Error loading watchlist TMDB IDs:', error);
+    }
+  };
+
+  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
+    try {
+      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+      const response = await fetch(
+        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      return data.movie_results?.[0]?.id || null;
+    } catch (error) {
+      console.error('Error getting TMDB ID:', error);
+      return null;
+    }
+  };
 
   const fetchCollectionDetails = async () => {
     setLoading(true);
