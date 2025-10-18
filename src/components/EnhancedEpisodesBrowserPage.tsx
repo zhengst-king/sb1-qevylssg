@@ -38,6 +38,7 @@ import { SeriesCastDisplay } from './SeriesCastDisplay';
 import { SeriesRecommendations } from './SeriesRecommendations';
 import WatchProvidersDisplay from './WatchProvidersDisplay';
 import { TMDBTVSeriesDetails } from '../lib/tmdb';
+import { PersonDetailsModal } from './PersonDetailsModal';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -85,6 +86,11 @@ export function EnhancedEpisodesBrowserPage({
   const [localReview, setLocalReview] = useState<string | null>(series.user_review || null);
   const [localDateWatched, setLocalDateWatched] = useState<string | null>(series.date_watched || null);
 
+  const [showPersonDetailsModal, setShowPersonDetailsModal] = useState(false);
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedPersonName, setSelectedPersonName] = useState<string>('');
+  const [selectedPersonType, setSelectedPersonType] = useState<'cast' | 'crew'>('cast');
+
   // Dynamic season management
   const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
   const [totalSeasons, setTotalSeasons] = useState(0);
@@ -107,6 +113,14 @@ export function EnhancedEpisodesBrowserPage({
     if (onViewRecommendation) {
       onViewRecommendation(clickedSeries);
     }
+  };
+
+  // Add handler function
+  const handleOpenPersonDetails = (tmdbPersonId: number, personName: string, personType: 'cast' | 'crew') => {
+    setSelectedPersonId(tmdbPersonId);
+    setSelectedPersonName(personName);
+    setSelectedPersonType(personType);
+    setShowPersonDetailsModal(true);
   };
   
   // Update local state when series prop changes
@@ -829,6 +843,7 @@ export function EnhancedEpisodesBrowserPage({
                   credits={tmdbData.credits} 
                   createdBy={tmdbData.created_by}
                   seriesImdbId={series.imdb_id}
+                  onOpenPersonDetails={handleOpenPersonDetails}
                 />
               </div>
             )}
@@ -1166,6 +1181,21 @@ export function EnhancedEpisodesBrowserPage({
           initialReview={selectedEpisode.user_review || ''}
           movieTitle={`${series.title} - S${selectedEpisode.season}E${selectedEpisode.episode}${selectedEpisode.title ? ': ' + selectedEpisode.title : ''}`}
         />
+      )}
+
+      {/* Person Details Modal */}
+      {showPersonDetailsModal && selectedPersonId && (
+        <div className="fixed inset-0 z-[60]"> {/* ✅ z-[60] to appear above episode modal */}
+          <PersonDetailsModal
+            tmdbPersonId={selectedPersonId}
+            personName={selectedPersonName}
+            personType={selectedPersonType}
+            onClose={() => {
+              setShowPersonDetailsModal(false);
+              setSelectedPersonId(null);
+            }}
+          />
+        </div>
       )}
     </>
   );
