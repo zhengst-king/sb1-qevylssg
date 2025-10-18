@@ -6,6 +6,7 @@ import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
 import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
+import { omdbApi } from '../lib/omdb';
 
 interface PersonDetailsModalProps {
   tmdbPersonId: number;
@@ -560,7 +561,6 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         if (error) throw error;
       } else {
-        // Add to watchlist
         const apiKey = import.meta.env.VITE_TMDB_API_KEY;
         const mediaType = credit.media_type === 'tv' ? 'series' : 'movie';
         const detailsUrl = credit.media_type === 'tv'
@@ -572,7 +572,20 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
         
         const imdbId = details.external_ids?.imdb_id;
         
-        const movieData = {
+        // ✅ FIX: Fetch complete OMDb data BEFORE inserting
+        let omdbDetails = null;
+        if (imdbId) {
+          try {
+            console.log('[PersonDetailsModal] Fetching OMDb data for:', title, imdbId);
+            omdbDetails = await omdbApi.getMovieDetails(imdbId);
+          } catch (omdbError) {
+            console.error('[PersonDetailsModal] OMDb fetch failed:', omdbError);
+            // Continue without OMDb data
+          }
+        }
+        
+        // Build complete movie/series data with OMDb fields
+        const movieData: any = {
           user_id: user.id,
           media_type: mediaType,
           title: title,
@@ -583,6 +596,44 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           poster_url: posterUrl || undefined
         };
 
+        // Add OMDb fields if available
+        if (omdbDetails && omdbDetails.Response === 'True') {
+          if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
+            movieData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
+          }
+          if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
+            movieData.director = omdbDetails.Director;
+          }
+          if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
+            movieData.actors = omdbDetails.Actors;
+          }
+          if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
+            movieData.country = omdbDetails.Country;
+          }
+          if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
+            movieData.language = omdbDetails.Language;
+          }
+          if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
+            movieData.box_office = omdbDetails.BoxOffice;
+          }
+          if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
+            movieData.genre = omdbDetails.Genre;
+          }
+          if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
+            movieData.production = omdbDetails.Production;
+          }
+          if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
+            movieData.writer = omdbDetails.Writer;
+          }
+          if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
+            movieData.awards = omdbDetails.Awards;
+          }
+          if (omdbDetails.Plot && omdbDetails.Plot !== 'N/A') {
+            movieData.plot = omdbDetails.Plot;
+          }
+          console.log('[PersonDetailsModal] ✅ OMDb data fetched successfully');
+        }
+
         const { data: insertedMovie, error } = await supabase
           .from('movies')
           .insert(movieData)
@@ -591,14 +642,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         if (error) throw error;
 
-        // ✅ FIX: Trigger background OMDb enrichment
-        if (imdbId && insertedMovie) {
-          console.log('[PersonDetailsModal] Triggering OMDb enrichment for:', title);
-          // Don't await - let it run in background
-          omdbEnrichmentService.enrichMovie(insertedMovie.id, imdbId).catch(err => {
-            console.error('[PersonDetailsModal] Background enrichment failed:', err);
-          });
-        }
+        console.log('[PersonDetailsModal] ✅ Movie/Series added with complete data');
       }
       
       // Refresh watchlist
