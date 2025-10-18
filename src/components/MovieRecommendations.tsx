@@ -8,6 +8,7 @@ import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
 import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
+import { omdbApi } from '../lib/omdb';
 
 interface MovieRecommendationsProps {
   recommendations?: TMDBMovieRecommendationsResponse;
@@ -217,7 +218,7 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
 
         if (error) throw error;
       } else {
-        // Add to watchlist
+        // Add to watchlist with complete OMDb data
         const apiKey = import.meta.env.VITE_TMDB_API_KEY;
         const detailsUrl = `https://api.themoviedb.org/3/movie/${item.id}?api_key=${apiKey}&append_to_response=external_ids`;
         
@@ -226,7 +227,20 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
         
         const imdbId = details.external_ids?.imdb_id;
         
-        const movieData = {
+        // ✅ FIX: Fetch complete OMDb data BEFORE inserting
+        let omdbDetails = null;
+        if (imdbId) {
+          try {
+            console.log('[MovieRecommendations] Fetching OMDb data for:', title, imdbId);
+            omdbDetails = await omdbApi.getMovieDetails(imdbId);
+          } catch (omdbError) {
+            console.error('[MovieRecommendations] OMDb fetch failed:', omdbError);
+            // Continue without OMDb data
+          }
+        }
+        
+        // Build complete movie data with OMDb fields
+        const movieData: any = {
           user_id: user.id,
           media_type: 'movie' as const,
           title: title,
@@ -238,6 +252,41 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
           plot: item.overview || undefined
         };
 
+        // Add OMDb fields if available
+        if (omdbDetails && omdbDetails.Response === 'True') {
+          if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
+            movieData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
+          }
+          if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
+            movieData.director = omdbDetails.Director;
+          }
+          if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
+            movieData.actors = omdbDetails.Actors;
+          }
+          if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
+            movieData.country = omdbDetails.Country;
+          }
+          if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
+            movieData.language = omdbDetails.Language;
+          }
+          if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
+            movieData.box_office = omdbDetails.BoxOffice;
+          }
+          if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
+            movieData.genre = omdbDetails.Genre;
+          }
+          if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
+            movieData.production = omdbDetails.Production;
+          }
+          if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
+            movieData.writer = omdbDetails.Writer;
+          }
+          if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
+            movieData.awards = omdbDetails.Awards;
+          }
+          console.log('[MovieRecommendations] ✅ OMDb data fetched successfully');
+        }
+
         const { data: insertedMovie, error } = await supabase
           .from('movies')
           .insert(movieData)
@@ -246,14 +295,7 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
 
         if (error) throw error;
 
-        // ✅ FIX: Trigger background OMDb enrichment
-        if (imdbId && insertedMovie) {
-          console.log('[MovieRecommendations] Triggering OMDb enrichment for:', title);
-          // Don't await - let it run in background
-          omdbEnrichmentService.enrichMovie(insertedMovie.id, imdbId).catch(err => {
-            console.error('[MovieRecommendations] Background enrichment failed:', err);
-          });
-        }
+        console.log('[MovieRecommendations] ✅ Movie added with complete data');
 
         onWatchlistUpdate();
         if (onMovieAddedToWatchlist) {
