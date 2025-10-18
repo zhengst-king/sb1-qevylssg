@@ -8,6 +8,7 @@ import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
 import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
+import { omdbApi } from '../lib/omdb';
 
 interface SeriesRecommendationsProps {
   recommendations?: TMDBRecommendationsResponse;
@@ -223,7 +224,7 @@ function RecommendationCard({
 
         if (error) throw error;
       } else {
-        // Add to watchlist
+        // Add to watchlist with complete OMDb data
         const apiKey = import.meta.env.VITE_TMDB_API_KEY;
         const detailsUrl = `https://api.themoviedb.org/3/tv/${item.id}?api_key=${apiKey}&append_to_response=external_ids`;
         
@@ -232,7 +233,20 @@ function RecommendationCard({
         
         const imdbId = details.external_ids?.imdb_id;
         
-        const seriesData = {
+        // ✅ FIX: Fetch complete OMDb data BEFORE inserting
+        let omdbDetails = null;
+        if (imdbId) {
+          try {
+            console.log('[SeriesRecommendations] Fetching OMDb data for:', title, imdbId);
+            omdbDetails = await omdbApi.getMovieDetails(imdbId);
+          } catch (omdbError) {
+            console.error('[SeriesRecommendations] OMDb fetch failed:', omdbError);
+            // Continue without OMDb data
+          }
+        }
+        
+        // Build complete series data with OMDb fields
+        const seriesData: any = {
           user_id: user.id,
           media_type: 'series' as const,
           title: title,
@@ -244,6 +258,35 @@ function RecommendationCard({
           plot: item.overview || undefined
         };
 
+        // Add OMDb fields if available
+        if (omdbDetails && omdbDetails.Response === 'True') {
+          if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
+            seriesData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
+          }
+          if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
+            seriesData.director = omdbDetails.Director;
+          }
+          if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
+            seriesData.actors = omdbDetails.Actors;
+          }
+          if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
+            seriesData.country = omdbDetails.Country;
+          }
+          if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
+            seriesData.language = omdbDetails.Language;
+          }
+          if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
+            seriesData.genre = omdbDetails.Genre;
+          }
+          if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
+            seriesData.writer = omdbDetails.Writer;
+          }
+          if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
+            seriesData.awards = omdbDetails.Awards;
+          }
+          console.log('[SeriesRecommendations] ✅ OMDb data fetched successfully');
+        }
+
         const { data: insertedSeries, error } = await supabase
           .from('movies')
           .insert(seriesData)
@@ -252,14 +295,7 @@ function RecommendationCard({
 
         if (error) throw error;
 
-        // ✅ FIX: Trigger background OMDb enrichment for TV series
-        if (imdbId && insertedSeries) {
-          console.log('[SeriesRecommendations] Triggering OMDb enrichment for:', title);
-          // Don't await - let it run in background
-          omdbEnrichmentService.enrichMovie(insertedSeries.id, imdbId).catch(err => {
-            console.error('[SeriesRecommendations] Background enrichment failed:', err);
-          });
-        }
+        console.log('[SeriesRecommendations] ✅ Series added with complete data');
 
         if (onSeriesAddedToWatchlist) {
           onSeriesAddedToWatchlist();
