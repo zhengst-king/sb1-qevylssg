@@ -287,13 +287,30 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
                 {currentCrewMembers.map((crewMember) => {
                   const isFavorite = favoriteCrewIds.has(crewMember.id);
                   const isDirector = crewSubTab === 'director';
+                  const tmdbPersonUrl = `https://www.themoviedb.org/person/${crewMember.id}`;
+                  
+                  const handleCrewCardClick = () => {
+                    if (isFavorite && onOpenPersonDetails) {
+                      onOpenPersonDetails(crewMember.id, crewMember.name, 'crew');
+                    }
+                  };
+
+                  // ✅ Use <a> for non-favorites, <div> for favorites
+                  const CrewCardWrapper = isFavorite ? 'div' : 'a';
+                  const crewCardProps = isFavorite 
+                    ? { onClick: handleCrewCardClick, className: "relative group cursor-pointer block" }
+                    : { href: tmdbPersonUrl, target: "_blank", rel: "noopener noreferrer", className: "relative group block" };
                   
                   return (
-                    <div key={`${crewMember.id}-${crewMember.credit_id}`} className="relative group">
+                    <CrewCardWrapper key={`${crewMember.id}-${crewMember.credit_id}`} {...crewCardProps}>
                       {/* Only show favorite button for non-OMDb directors (those with real TMDB IDs) */}
                       {!isDirector && (
                         <button
-                          onClick={() => handleToggleFavoriteCrew(crewMember)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleFavoriteCrew(crewMember);
+                          }}
                           className="absolute top-2 right-2 z-10 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-all"
                           title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                         >
@@ -310,31 +327,17 @@ export function SeriesCastDisplay({ credits, createdBy = [], seriesImdbId, class
                         <img
                           src={tmdbService.getProfileImageUrl(crewMember.profile_path, 'w185')}
                           alt={crewMember.name}
-                          className="w-full aspect-[2/3] object-cover rounded-lg mb-2"
+                          className="w-full aspect-[2/3] object-cover rounded-lg mb-2 group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         <div className="w-full aspect-[2/3] bg-slate-200 rounded-lg mb-2 flex items-center justify-center">
-                          <Film className="h-12 w-12 text-slate-400" />
+                          <User className="h-12 w-12 text-slate-400" />
                         </div>
                       )}
-                      
-                      {/* Name */}
-                      <p className="text-sm font-medium text-slate-900 line-clamp-2">
-                        {crewMember.name}
-                      </p>
-                      
-                      {/* Job title */}
-                      <p className="text-xs text-slate-500 line-clamp-1">
-                        {crewMember.job}
-                      </p>
-                      
-                      {/* Show episode count for directors */}
-                      {isDirector && crewMember.episodeCount && (
-                        <div className="mt-2 px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium inline-block">
-                          {crewMember.episodeCount} {crewMember.episodeCount === 1 ? 'ep' : 'eps'}
-                        </div>
-                      )}
-                    </div>
+
+                      <p className="text-sm font-medium text-slate-900 line-clamp-2">{crewMember.name}</p>
+                      <p className="text-xs text-slate-500 line-clamp-1">{crewMember.job}</p>
+                    </CrewCardWrapper>
                   );
                 })}
               </div>
