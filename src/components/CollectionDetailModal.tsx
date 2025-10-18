@@ -4,6 +4,7 @@ import { X, Film, Heart, Calendar, Star } from 'lucide-react';
 import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
@@ -116,11 +117,56 @@ export function CollectionDetailModal({
   };
 
   const isInWatchlist = (movie: TMDBCollectionPart): boolean => {
-    // This is a simple check - in production you'd want to match by TMDB ID
-    return movies.some(m => 
-      m.title.toLowerCase() === movie.title.toLowerCase() &&
-      m.year === parseInt(movie.release_date?.substring(0, 4) || '0')
-    );
+    return watchlistMovieIds.has(movie.id);
+  };
+
+  const handleCardClick = async (e: React.MouseEvent, movie: TMDBCollectionPart) => {
+    const inWatchlist = isInWatchlist(movie);
+    
+    if (inWatchlist && onMovieDetailsClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('[CollectionDetailModal] Clicked watchlist title:', movie.title);
+      
+      // Fetch the movie from database to get full details
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('[CollectionDetailModal] No user found');
+          return;
+        }
+
+        console.log('[CollectionDetailModal] Fetching movie:', { title: movie.title, userId: user.id });
+
+        const { data: dbMovie, error } = await supabase
+          .from('movies')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('title', movie.title)
+          .eq('media_type', 'movie')
+          .single();
+
+        console.log('[CollectionDetailModal] Query result:', { dbMovie, error });
+
+        if (error) {
+          console.error('[CollectionDetailModal] Error fetching movie:', error);
+          alert(`Could not find movie in watchlist: ${error.message}`);
+          return;
+        }
+
+        if (dbMovie) {
+          console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
+          onMovieDetailsClick(dbMovie);
+        } else {
+          console.log('[CollectionDetailModal] No movie found in database');
+          alert('Could not find this movie in your watchlist.');
+        }
+      } catch (error) {
+        console.error('[CollectionDetailModal] Error in handleCardClick:', error);
+        alert('An error occurred while trying to open movie details.');
+      }
+    }
   };
 
   if (!isOpen) return null;
