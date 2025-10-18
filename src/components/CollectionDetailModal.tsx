@@ -218,72 +218,102 @@ export function CollectionDetailModal({
                     Movies in Collection ({collection.parts?.length || 0})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {collection.parts?.map((movie) => {
-                      const inWatchlist = isInWatchlist(movie);
-                      const isAdding = addingMovies.has(movie.id);
+                    {collection.parts
+                      .sort((a, b) => {
+                        const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
+                        const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
+                        return dateA - dateB;
+                      })
+                      .map((movie) => {
+                        const inWatchlist = isInWatchlist(movie);
+                        const isAdding = addingMovies.has(movie.id);
+                        const tmdbUrl = `https://www.themoviedb.org/movie/${movie.id}`;
+                        
+                        const CardWrapper = inWatchlist ? 'div' : 'a';
+                        const wrapperProps = inWatchlist 
+                          ? { 
+                              onClick: (e: React.MouseEvent) => handleCardClick(e, movie),
+                              className: "group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer"
+                            }
+                          : {
+                              href: tmdbUrl,
+                              target: "_blank",
+                              rel: "noopener noreferrer",
+                              className: "group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all block"
+                            };
 
-                      return (
-                        <div
-                          key={movie.id}
-                          className="bg-slate-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Movie Poster */}
-                          {movie.poster_path ? (
-                            <img
-                              src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
-                              alt={movie.title}
-                              className="w-full h-64 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-64 bg-slate-200 flex items-center justify-center">
-                              <Film className="h-16 w-16 text-slate-400" />
-                            </div>
-                          )}
+                        return (
+                          <CardWrapper key={movie.id} {...wrapperProps as any}>
+                            {/* Poster */}
+                            <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+                              {movie.poster_path ? (
+                                <img
+                                  src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
+                                  alt={movie.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Film className="h-12 w-12 text-slate-400" />
+                                </div>
+                              )}
 
-                          {/* Movie Info */}
-                          <div className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-semibold text-slate-900 flex-1">{movie.title}</h4>
+                              {/* Watchlist Button */}
                               <button
-                                onClick={() => !inWatchlist && !isAdding && handleAddToWatchlist(movie)}
-                                disabled={inWatchlist || isAdding}
-                                className={`flex-shrink-0 ml-2 ${
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (!isAdding) {
+                                    handleAddToWatchlist(movie);
+                                  }
+                                }}
+                                disabled={isAdding || inWatchlist}
+                                className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
                                   inWatchlist
-                                    ? 'text-purple-600'
-                                    : 'text-slate-400 hover:text-purple-600'
-                                } transition-colors disabled:opacity-50`}
-                                title={inWatchlist ? 'In your watchlist' : 'Add to watchlist'}
+                                    ? 'bg-green-500 cursor-default'
+                                    : isAdding
+                                    ? 'bg-slate-400 cursor-wait'
+                                    : 'bg-white/90 hover:bg-white'
+                                }`}
+                                title={inWatchlist ? 'In watchlist' : isAdding ? 'Adding...' : 'Add to watchlist'}
                               >
                                 {isAdding ? (
-                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                                  <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+                                ) : inWatchlist ? (
+                                  <Heart className="h-4 w-4 text-white fill-current" />
                                 ) : (
-                                  <Heart className={`h-5 w-5 ${inWatchlist ? 'fill-current' : ''}`} />
+                                  <Heart className="h-4 w-4 text-slate-600 hover:text-purple-500" />
                                 )}
                               </button>
+
+                              {/* Rating Badge */}
+                              {movie.vote_average && movie.vote_average > 0 && (
+                                <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                                  <div className="flex items-center space-x-1">
+                                    <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                    <span className="text-white text-xs font-semibold">
+                                      {movie.vote_average.toFixed(1)}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
 
-                            <div className="flex items-center space-x-4 text-sm text-slate-600 mb-2">
+                            {/* Movie Info */}
+                            <div className="p-3">
+                              <h3 className="font-semibold text-slate-900 text-sm mb-1 line-clamp-2">
+                                {movie.title}
+                              </h3>
                               {movie.release_date && (
-                                <div className="flex items-center space-x-1">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>{movie.release_date.substring(0, 4)}</span>
-                                </div>
-                              )}
-                              {movie.vote_average > 0 && (
-                                <div className="flex items-center space-x-1">
-                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                                  <span>{movie.vote_average.toFixed(1)}</span>
+                                <div className="flex items-center text-xs text-slate-500">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {new Date(movie.release_date).getFullYear()}
                                 </div>
                               )}
                             </div>
-
-                            {movie.overview && (
-                              <p className="text-sm text-slate-600 line-clamp-3">{movie.overview}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                          </CardWrapper>
+                        );
+                      })}
                   </div>
                 </div>
               </div>
