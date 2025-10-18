@@ -7,6 +7,7 @@ import { TMDBRecommendationsResponse } from '../lib/tmdb';
 import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
+import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 
 interface SeriesRecommendationsProps {
   recommendations?: TMDBRecommendationsResponse;
@@ -223,12 +224,13 @@ function RecommendationCard({
         if (error) throw error;
       } else {
         // Add to watchlist
-        // First get IMDb ID from TMDB
         const apiKey = import.meta.env.VITE_TMDB_API_KEY;
         const detailsUrl = `https://api.themoviedb.org/3/tv/${item.id}?api_key=${apiKey}&append_to_response=external_ids`;
         
         const response = await fetch(detailsUrl);
         const details = await response.json();
+        
+        const imdbId = details.external_ids?.imdb_id;
         
         const seriesData = {
           user_id: user.id,
@@ -236,19 +238,29 @@ function RecommendationCard({
           title: title,
           year: year ? parseInt(year.toString()) : undefined,
           imdb_score: item.vote_average || undefined,
-          imdb_id: details.external_ids?.imdb_id || undefined,
+          imdb_id: imdbId || undefined,
           status: 'To Watch' as const,
           poster_url: posterUrl || undefined,
           plot: item.overview || undefined
         };
 
-        const { error } = await supabase
+        const { data: insertedSeries, error } = await supabase
           .from('movies')
-          .insert(seriesData);
+          .insert(seriesData)
+          .select()
+          .single();
 
         if (error) throw error;
 
-        // Call the callback to update parent
+        // ✅ FIX: Trigger background OMDb enrichment for TV series
+        if (imdbId && insertedSeries) {
+          console.log('[SeriesRecommendations] Triggering OMDb enrichment for:', title);
+          // Don't await - let it run in background
+          omdbEnrichmentService.enrichMovie(insertedSeries.id, imdbId).catch(err => {
+            console.error('[SeriesRecommendations] Background enrichment failed:', err);
+          });
+        }
+
         if (onSeriesAddedToWatchlist) {
           onSeriesAddedToWatchlist();
         }
