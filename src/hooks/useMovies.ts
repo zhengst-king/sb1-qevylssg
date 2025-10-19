@@ -92,7 +92,6 @@ export function useMovies(mediaType?: 'movie' | 'series') {
       }
       
       console.log('[useMovies] Movie added successfully:', data);
-      alert(`"${movie.title}" added to your watchlist!`);
       
       // Only add to local state if it matches the current filter
       if (!mediaType || data.media_type === mediaType) {
