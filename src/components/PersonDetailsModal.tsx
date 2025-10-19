@@ -614,7 +614,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
             movieData.language = omdbDetails.Language;
           }
           if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
-            movieData.box_office = omdbDetails.BoxOffice;
+            movieData.box_office = omdbApi.parseBoxOffice(omdbDetails.BoxOffice);
           }
           if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
             movieData.genre = omdbDetails.Genre;
