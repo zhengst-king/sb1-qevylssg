@@ -340,7 +340,7 @@ export function CollectionDetailModal({
                                 disabled={isAdding || inWatchlist}
                                 className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
                                   inWatchlist
-                                    ? 'bg-green-500 cursor-default'
+                                    ? 'bg-red-600 cursor-default'
                                     : isAdding
                                     ? 'bg-slate-400 cursor-wait'
                                     : 'bg-white/90 hover:bg-white'
