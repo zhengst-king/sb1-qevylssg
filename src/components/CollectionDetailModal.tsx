@@ -145,7 +145,7 @@ export function CollectionDetailModal({
           newMovie.language = omdbDetails.Language;
         }
         if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
-          newMovie.box_office = omdbDetails.BoxOffice;
+          newMovie.box_office = omdbApi.parseBoxOffice(omdbDetails.BoxOffice);
         }
         if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
           newMovie.genre = omdbDetails.Genre;
