@@ -1045,13 +1045,6 @@ class TMDBService {
       return null;
     }
   }
-
-  /**
-   * Get TMDB image URL from path
-   */
-  getImageUrl(path: string, size: 'w500' | 'w780' | 'original' = 'w500'): string {
-    return `${TMDB_IMAGE_BASE_URL}/${size}${path}`;
-  }
 }
 
 // Export singleton instance
