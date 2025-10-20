@@ -101,7 +101,9 @@ export function CollectionDetailModal({
       const imdbId = fullDetails?.external_ids?.imdb_id;
       
       if (!imdbId) {
-        console.warn('[CollectionDetailModal] No IMDb ID found for:', movie.title);
+        console.error('[CollectionDetailModal] No IMDb ID found for:', movie.title);
+        alert(`Could not find IMDb ID for "${movie.title}". Cannot add to watchlist.`);
+        return;
       }
       
       // ✅ FIX: Fetch complete OMDb data BEFORE inserting
@@ -119,7 +121,7 @@ export function CollectionDetailModal({
         {
           title: movie.title,
           year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
-          imdb_id: imdbId || `tmdb_${movie.id}`,
+          imdb_id: imdbId,
           poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
           plot: movie.overview,
           imdb_score: movie.vote_average,
