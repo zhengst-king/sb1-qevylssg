@@ -165,4 +165,57 @@ export async function getIMDbIdFromTMDB(tmdbId: number, mediaType: 'movie' | 'tv
 }
 
 /**
- * Convenience function that combines TMDB data fetching + OMDb enrichment
+ * Convenience function that combines TMDB data fetching + OMDb enrichment + movie building
+ * Use this for the simplest integration in components
+ */
+export async function buildMovieFromTMDB(
+  tmdbId: number,
+  title: string,
+  releaseDate?: string,
+  posterPath?: string | null,
+  overview?: string,
+  voteAverage?: number
+): Promise<Omit<Movie, 'id' | 'user_id' | 'user_session' | 'created_at'> | null> {
+  try {
+    // Get IMDb ID from TMDB
+    const imdbId = await getIMDbIdFromTMDB(tmdbId, 'movie');
+    if (!imdbId) {
+      console.warn('[movieDataBuilder] No IMDb ID found for TMDB:', tmdbId);
+      // Return basic movie without OMDb enrichment
+      return buildMovieFromOMDb(
+        {
+          title,
+          year: releaseDate ? new Date(releaseDate).getFullYear() : undefined,
+          imdb_id: `tmdb_${tmdbId}`, // Fallback identifier
+          tmdb_id: tmdbId, // ✅ Include TMDB ID
+          poster_url: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : undefined,
+          plot: overview,
+          imdb_score: voteAverage,
+          media_type: 'movie'
+        },
+        null
+      );
+    }
+
+    // Fetch OMDb enrichment
+    const omdbDetails = await omdbApi.getMovieDetails(imdbId);
+
+    // Build complete movie object
+    return buildMovieFromOMDb(
+      {
+        title,
+        year: releaseDate ? new Date(releaseDate).getFullYear() : undefined,
+        imdb_id: imdbId,
+        tmdb_id: tmdbId, // ✅ Include TMDB ID
+        poster_url: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : undefined,
+        plot: overview,
+        imdb_score: voteAverage,
+        media_type: 'movie'
+      },
+      omdbDetails
+    );
+  } catch (error) {
+    console.error('[movieDataBuilder] Error building movie from TMDB:', error);
+    return null;
+  }
+}
