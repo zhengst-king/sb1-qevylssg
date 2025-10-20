@@ -1,11 +1,14 @@
 // src/components/CollectionDetailModal.tsx
+// COMPLETE FIXED VERSION - Fetches OMDb data before insert + fixes click handler
+
 import React, { useEffect, useState } from 'react';
-import { X, Film, Heart, Calendar, Star } from 'lucide-react';
+import { X, Film, Plus, Calendar, Star } from 'lucide-react';
 import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
 import { omdbApi } from '../lib/omdb';
+import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
@@ -24,7 +27,7 @@ export function CollectionDetailModal({
 }: CollectionDetailModalProps) {
   const [collection, setCollection] = useState<TMDBCollection | null>(null);
   const [loading, setLoading] = useState(true);
-  const { movies, addMovie } = useMovies('movie');
+  const { movies, addMovie, refetch } = useMovies('movie'); // ✅ ADD refetch
   const [addingMovies, setAddingMovies] = useState<Set<number>>(new Set());
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
 
@@ -86,80 +89,58 @@ export function CollectionDetailModal({
     setLoading(false);
   };
 
+  // ✅ FIXED: Fetch complete OMDb data BEFORE inserting
   const handleAddToWatchlist = async (movie: TMDBCollectionPart) => {
     setAddingMovies(prev => new Set([...prev, movie.id]));
     
     try {
+      console.log('[CollectionDetailModal] Adding movie:', movie.title);
+      
       // Fetch full movie details from TMDB to get IMDb ID
       const fullDetails = await tmdbService.getMovieDetailsFull(movie.id);
       const imdbId = fullDetails?.external_ids?.imdb_id;
       
-      // ✅ FIX: Fetch complete OMDb data BEFORE inserting
-      let omdbDetails = null;
-      if (imdbId) {
-        try {
-          console.log('[CollectionDetailModal] Fetching OMDb data for:', movie.title, imdbId);
-          omdbDetails = await omdbApi.getMovieDetails(imdbId);
-        } catch (omdbError) {
-          console.error('[CollectionDetailModal] OMDb fetch failed:', omdbError);
-          // Continue without OMDb data
-        }
+      if (!imdbId) {
+        console.warn('[CollectionDetailModal] No IMDb ID found for:', movie.title);
       }
       
-      // Build complete movie data with OMDb fields
-      const newMovie: Partial<Movie> = {
-        title: movie.title,
-        year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
-        poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
-        imdb_score: movie.vote_average,
-        imdb_id: imdbId || undefined,
-        status: 'To Watch',
-        plot: movie.overview,
-        media_type: 'movie'
-      };
-
-      // Add OMDb fields if available
-      if (omdbDetails && omdbDetails.Response === 'True') {
-        if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
-          newMovie.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
-        }
-        if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
-          newMovie.director = omdbDetails.Director;
-        }
-        if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
-          newMovie.actors = omdbDetails.Actors;
-        }
-        if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
-          newMovie.country = omdbDetails.Country;
-        }
-        if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
-          newMovie.language = omdbDetails.Language;
-        }
-        if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
-          newMovie.box_office = omdbDetails.BoxOffice;
-        }
-        if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
-          newMovie.genre = omdbDetails.Genre;
-        }
-        if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
-          newMovie.production = omdbDetails.Production;
-        }
-        if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
-          newMovie.writer = omdbDetails.Writer;
-        }
-        if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
-          newMovie.awards = omdbDetails.Awards;
-        }
-        if (omdbDetails.Plot && omdbDetails.Plot !== 'N/A') {
-          newMovie.plot = omdbDetails.Plot;
-        }
-        console.log('[CollectionDetailModal] ✅ OMDb data fetched successfully');
+      // ✅ FIX: Fetch complete OMDb data BEFORE inserting
+      let omdbDetails = null;
+      try {
+        console.log('[CollectionDetailModal] Fetching OMDb data for:', movie.title, imdbId);
+        omdbDetails = await omdbApi.getMovieDetails(imdbId);
+      } catch (omdbError) {
+        console.error('[CollectionDetailModal] OMDb fetch failed:', omdbError);
+        // Continue without OMDb data
       }
+      
+      // ✅ USE CENTRALIZED BUILDER
+      const movieData = buildMovieFromOMDb(
+        {
+          title: movie.title,
+          year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
+          imdb_id: imdbId,
+          poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
+          plot: movie.overview,
+          imdb_score: movie.vote_average,
+          media_type: 'movie',
+          status: 'Plan to Watch'
+        },
+        omdbDetails
+      );
 
-      await addMovie(newMovie);
+      // ✅ USE HOOK FOR INSERT (already being used)
+      await addMovie(movieData);
+      
       console.log('[CollectionDetailModal] ✅ Movie added with complete data');
+      
+      // Refresh watchlist to update UI
+      await refetch();
+      await loadWatchlistMovieIds();
+      
     } catch (error) {
-      console.error('Error adding movie to watchlist:', error);
+      console.error('[CollectionDetailModal] Error adding movie to watchlist:', error);
+      alert(`Failed to add "${movie.title}" to watchlist. ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setAddingMovies(prev => {
         const newSet = new Set(prev);
@@ -173,11 +154,13 @@ export function CollectionDetailModal({
     return watchlistMovieIds.has(movie.id);
   };
 
+  // ✅ FIXED: Proper click handler for watchlist movies
   const handleCardClick = async (e: React.MouseEvent, movie: TMDBCollectionPart) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (!onMovieDetailsClick) {
+      console.log('[CollectionDetailModal] No onMovieDetailsClick handler provided');
       return;
     }
     
@@ -191,7 +174,7 @@ export function CollectionDetailModal({
         return;
       }
 
-      console.log('[CollectionDetailModal] Fetching movie:', { title: movie.title, userId: user.id });
+      console.log('[CollectionDetailModal] Fetching movie from DB:', { title: movie.title, userId: user.id });
 
       const { data: dbMovie, error } = await supabase
         .from('movies')
@@ -205,15 +188,20 @@ export function CollectionDetailModal({
 
       if (error) {
         console.error('[CollectionDetailModal] Error fetching movie:', error);
+        alert(`Could not find "${movie.title}" in your watchlist.`);
         return;
       }
 
       if (dbMovie) {
         console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
         onMovieDetailsClick(dbMovie);
+      } else {
+        console.log('[CollectionDetailModal] No movie found in database');
+        alert(`Could not find "${movie.title}" in your watchlist.`);
       }
     } catch (error) {
       console.error('[CollectionDetailModal] Error in handleCardClick:', error);
+      alert('An error occurred while trying to open movie details.');
     }
   };
 
@@ -265,7 +253,7 @@ export function CollectionDetailModal({
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">
                     Movies in Collection ({collection.parts?.length || 0})
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {collection.parts
                       .sort((a, b) => {
                         const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
@@ -311,14 +299,14 @@ export function CollectionDetailModal({
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  if (!isAdding) {
+                                  if (!isAdding && !inWatchlist) {
                                     handleAddToWatchlist(movie);
                                   }
                                 }}
                                 disabled={isAdding || inWatchlist}
                                 className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
                                   inWatchlist
-                                    ? 'bg-green-500 cursor-default'
+                                    ? 'bg-red-600 cursor-default'
                                     : isAdding
                                     ? 'bg-slate-400 cursor-wait'
                                     : 'bg-white/90 hover:bg-white'
@@ -328,14 +316,14 @@ export function CollectionDetailModal({
                                 {isAdding ? (
                                   <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
                                 ) : inWatchlist ? (
-                                  <Heart className="h-4 w-4 text-white fill-current" />
+                                  <Plus className="h-4 w-4 text-white rotate-45" />
                                 ) : (
-                                  <Heart className="h-4 w-4 text-slate-600 hover:text-purple-500" />
+                                  <Plus className="h-4 w-4 text-slate-600" />
                                 )}
                               </button>
 
                               {/* Rating Badge */}
-                              {movie.vote_average && movie.vote_average > 0 && (
+                              {movie.vote_average > 0 && (
                                 <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
                                   <div className="flex items-center space-x-1">
                                     <Star className="h-3 w-3 text-yellow-400 fill-current" />
@@ -349,9 +337,9 @@ export function CollectionDetailModal({
 
                             {/* Movie Info */}
                             <div className="p-3">
-                              <h3 className="font-semibold text-slate-900 text-sm mb-1 line-clamp-2">
+                              <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
                                 {movie.title}
-                              </h3>
+                              </h4>
                               {movie.release_date && (
                                 <div className="flex items-center text-xs text-slate-500">
                                   <Calendar className="h-3 w-3 mr-1" />
@@ -366,8 +354,8 @@ export function CollectionDetailModal({
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center text-slate-600">
-                Failed to load collection details
+              <div className="flex items-center justify-center py-12">
+                <p className="text-slate-500">Failed to load collection details.</p>
               </div>
             )}
           </div>
