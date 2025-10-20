@@ -7,8 +7,7 @@ import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
-import { omdbApi } from '../lib/omdb';
-import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
+import { omdbApi } from '../lib/omdb'; // ✅ ADD THIS IMPORT
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
@@ -116,24 +115,57 @@ export function CollectionDetailModal({
         // Continue without OMDb data
       }
       
-      // ✅ USE CENTRALIZED BUILDER
-      const movieData = buildMovieFromOMDb(
-        {
-          title: movie.title,
-          year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
-          imdb_id: imdbId,
-          poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
-          plot: movie.overview,
-          imdb_score: movie.vote_average,
-          media_type: 'movie',
-          status: 'Plan to Watch'
-        },
-        omdbDetails
-      );
+      // Build complete movie data with OMDb fields
+      const newMovie: Partial<Movie> = {
+        title: movie.title,
+        year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
+        poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
+        imdb_score: movie.vote_average,
+        imdb_id: imdbId,
+        status: 'To Watch',
+        plot: movie.overview,
+        media_type: 'movie' // ✅ CRITICAL: Must include media_type
+      };
 
-      // ✅ USE HOOK FOR INSERT (already being used)
-      await addMovie(movieData);
-      
+      // Add OMDb fields if available
+      if (omdbDetails && omdbDetails.Response === 'True') {
+        if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
+          newMovie.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
+        }
+        if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
+          newMovie.director = omdbDetails.Director;
+        }
+        if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
+          newMovie.actors = omdbDetails.Actors;
+        }
+        if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
+          newMovie.country = omdbDetails.Country;
+        }
+        if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
+          newMovie.language = omdbDetails.Language;
+        }
+        if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
+          newMovie.box_office = omdbApi.parseBoxOffice(omdbDetails.BoxOffice);
+        }
+        if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
+          newMovie.genre = omdbDetails.Genre;
+        }
+        if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
+          newMovie.production = omdbDetails.Production;
+        }
+        if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
+          newMovie.writer = omdbDetails.Writer;
+        }
+        if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
+          newMovie.awards = omdbDetails.Awards;
+        }
+        if (omdbDetails.Plot && omdbDetails.Plot !== 'N/A') {
+          newMovie.plot = omdbDetails.Plot;
+        }
+        console.log('[CollectionDetailModal] ✅ OMDb data fetched successfully');
+      }
+
+      await addMovie(newMovie);
       console.log('[CollectionDetailModal] ✅ Movie added with complete data');
       
       // Refresh watchlist to update UI
