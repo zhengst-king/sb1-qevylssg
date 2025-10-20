@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
 import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 import { omdbApi } from '../lib/omdb';
+import { useMovies } from '../hooks/useMovies';
+import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
 
 interface PersonDetailsModalProps {
   tmdbPersonId: number;
@@ -524,6 +526,7 @@ interface CreditCardProps {
 
 function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails }: CreditCardProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const { addMovie } = useMovies('movie');
   
   const posterUrl = credit.poster_path
     ? tmdbService.getImageUrl(credit.poster_path, 'w342')
@@ -561,18 +564,20 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         if (error) throw error;
       } else {
-        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-        const mediaType = credit.media_type === 'tv' ? 'series' : 'movie';
-        const detailsUrl = credit.media_type === 'tv'
-          ? `https://api.themoviedb.org/3/tv/${credit.id}?api_key=${apiKey}&append_to_response=external_ids`
-          : `https://api.themoviedb.org/3/movie/${credit.id}?api_key=${apiKey}&append_to_response=external_ids`;
+        // ✅ PHASE 1: Movies only - skip TV series for now
+        if (credit.media_type === 'tv') {
+          alert('TV series support coming soon! For now, only movies can be added from this page.');
+          setIsAdding(false);
+          return;
+        }
+
+        // ✅ REFACTORED - Use centralized builder for movies
+        console.log('[PersonDetailsModal] Adding movie to watchlist:', title);
         
-        const response = await fetch(detailsUrl);
-        const details = await response.json();
+        // Get IMDb ID from TMDB
+        const imdbId = await getIMDbIdFromTMDB(credit.id, 'movie');
         
-        const imdbId = details.external_ids?.imdb_id;
-        
-        // ✅ FIX: Fetch complete OMDb data BEFORE inserting
+        // Fetch OMDb enrichment (if IMDb ID available)
         let omdbDetails = null;
         if (imdbId) {
           try {
@@ -584,65 +589,25 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           }
         }
         
-        // Build complete movie/series data with OMDb fields
-        const movieData: any = {
-          user_id: user.id,
-          media_type: mediaType,
-          title: title,
-          year: displayYear ? parseInt(displayYear.toString()) : undefined,
-          imdb_score: credit.vote_average || undefined,
-          imdb_id: imdbId || undefined,
-          status: 'To Watch' as const,
-          poster_url: posterUrl || undefined
-        };
+        // ✅ USE CENTRALIZED BUILDER
+        const movieData = buildMovieFromOMDb(
+          {
+            title: title,
+            year: displayYear || undefined,
+            imdb_id: imdbId || `tmdb_${credit.id}`,
+            poster_url: posterUrl || undefined,
+            plot: credit.overview,
+            imdb_score: credit.vote_average,
+            media_type: 'movie',
+            status: 'To Watch'
+          },
+          omdbDetails
+        );
 
-        // Add OMDb fields if available
-        if (omdbDetails && omdbDetails.Response === 'True') {
-          if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
-            movieData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
-          }
-          if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
-            movieData.director = omdbDetails.Director;
-          }
-          if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
-            movieData.actors = omdbDetails.Actors;
-          }
-          if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
-            movieData.country = omdbDetails.Country;
-          }
-          if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
-            movieData.language = omdbDetails.Language;
-          }
-          if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
-            movieData.box_office = omdbApi.parseBoxOffice(omdbDetails.BoxOffice);
-          }
-          if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
-            movieData.genre = omdbDetails.Genre;
-          }
-          if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
-            movieData.production = omdbDetails.Production;
-          }
-          if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
-            movieData.writer = omdbDetails.Writer;
-          }
-          if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
-            movieData.awards = omdbDetails.Awards;
-          }
-          if (omdbDetails.Plot && omdbDetails.Plot !== 'N/A') {
-            movieData.plot = omdbDetails.Plot;
-          }
-          console.log('[PersonDetailsModal] ✅ OMDb data fetched successfully');
-        }
+        // ✅ USE HOOK FOR INSERT
+        await addMovie(movieData);
 
-        const { data: insertedMovie, error } = await supabase
-          .from('movies')
-          .insert(movieData)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        console.log('[PersonDetailsModal] ✅ Movie/Series added with complete data');
+        console.log('[PersonDetailsModal] ✅ Movie added with complete data');
       }
       
       // Refresh watchlist
