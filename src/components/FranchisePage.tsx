@@ -229,6 +229,7 @@ export function FranchisePage() {
           onClose={() => setSelectedCollection(null)}
           collectionId={selectedCollection.id}
           collectionName={selectedCollection.name}
+          onMovieDetailsClick={handleMovieDetailsClick}
         />
       )}
 
