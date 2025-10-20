@@ -1,13 +1,9 @@
 // src/components/CollectionDetailModal.tsx
-// COMPLETE FIXED VERSION - Fetches OMDb data before insert + fixes click handler
-
 import React, { useEffect, useState } from 'react';
 import { X, Film, Heart, Calendar, Star } from 'lucide-react';
 import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
-import { supabase } from '../lib/supabase';
-import { omdbApi } from '../lib/omdb'; // ✅ ADD THIS IMPORT
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
@@ -26,7 +22,7 @@ export function CollectionDetailModal({
 }: CollectionDetailModalProps) {
   const [collection, setCollection] = useState<TMDBCollection | null>(null);
   const [loading, setLoading] = useState(true);
-  const { movies, addMovie, refetch } = useMovies('movie'); // ✅ ADD refetch
+  const { movies, addMovie } = useMovies('movie');
   const [addingMovies, setAddingMovies] = useState<Set<number>>(new Set());
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
 
@@ -88,93 +84,28 @@ export function CollectionDetailModal({
     setLoading(false);
   };
 
-  // ✅ FIXED: Fetch complete OMDb data BEFORE inserting
   const handleAddToWatchlist = async (movie: TMDBCollectionPart) => {
     setAddingMovies(prev => new Set([...prev, movie.id]));
     
     try {
-      console.log('[CollectionDetailModal] Adding movie:', movie.title);
-      
       // Fetch full movie details from TMDB to get IMDb ID
       const fullDetails = await tmdbService.getMovieDetailsFull(movie.id);
-      const imdbId = fullDetails?.external_ids?.imdb_id;
       
-      if (!imdbId) {
-        console.error('[CollectionDetailModal] No IMDb ID found for:', movie.title);
-        alert(`Could not find IMDb ID for "${movie.title}". Cannot add to watchlist.`);
-        return;
-      }
-      
-      // ✅ FIX: Fetch complete OMDb data BEFORE inserting
-      let omdbDetails = null;
-      try {
-        console.log('[CollectionDetailModal] Fetching OMDb data for:', movie.title, imdbId);
-        omdbDetails = await omdbApi.getMovieDetails(imdbId);
-      } catch (omdbError) {
-        console.error('[CollectionDetailModal] OMDb fetch failed:', omdbError);
-        // Continue without OMDb data
-      }
-      
-      // Build complete movie data with OMDb fields
+      // Add movie with available data from collection
       const newMovie: Partial<Movie> = {
         title: movie.title,
         year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
+        genre: undefined, // Will be fetched by backend
         poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
         imdb_score: movie.vote_average,
-        imdb_id: imdbId,
+        imdb_id: fullDetails?.external_ids?.imdb_id || undefined, // Get IMDb ID from TMDB
         status: 'To Watch',
-        plot: movie.overview,
-        media_type: 'movie' // ✅ CRITICAL: Must include media_type
+        plot: movie.overview
       };
 
-      // Add OMDb fields if available
-      if (omdbDetails && omdbDetails.Response === 'True') {
-        if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
-          newMovie.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
-        }
-        if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
-          newMovie.director = omdbDetails.Director;
-        }
-        if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
-          newMovie.actors = omdbDetails.Actors;
-        }
-        if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
-          newMovie.country = omdbDetails.Country;
-        }
-        if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
-          newMovie.language = omdbDetails.Language;
-        }
-        if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
-          newMovie.box_office = omdbApi.parseBoxOffice(omdbDetails.BoxOffice);
-        }
-        if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
-          newMovie.genre = omdbDetails.Genre;
-        }
-        if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
-          newMovie.production = omdbDetails.Production;
-        }
-        if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
-          newMovie.writer = omdbDetails.Writer;
-        }
-        if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
-          newMovie.awards = omdbDetails.Awards;
-        }
-        if (omdbDetails.Plot && omdbDetails.Plot !== 'N/A') {
-          newMovie.plot = omdbDetails.Plot;
-        }
-        console.log('[CollectionDetailModal] ✅ OMDb data fetched successfully');
-      }
-
       await addMovie(newMovie);
-      console.log('[CollectionDetailModal] ✅ Movie added with complete data');
-      
-      // Refresh watchlist to update UI
-      await refetch();
-      await loadWatchlistMovieIds();
-      
     } catch (error) {
-      console.error('[CollectionDetailModal] Error adding movie to watchlist:', error);
-      alert(`Failed to add "${movie.title}" to watchlist. ${error instanceof Error ? error.message : 'Please try again.'}`);
+      console.error('Error adding movie to watchlist:', error);
     } finally {
       setAddingMovies(prev => {
         const newSet = new Set(prev);
@@ -185,58 +116,11 @@ export function CollectionDetailModal({
   };
 
   const isInWatchlist = (movie: TMDBCollectionPart): boolean => {
-    return watchlistMovieIds.has(movie.id);
-  };
-
-  // ✅ FIXED: Proper click handler for watchlist movies
-  const handleCardClick = async (e: React.MouseEvent, movie: TMDBCollectionPart) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!onMovieDetailsClick) {
-      console.log('[CollectionDetailModal] No onMovieDetailsClick handler provided');
-      return;
-    }
-    
-    console.log('[CollectionDetailModal] Clicked watchlist title:', movie.title);
-    
-    // Fetch the movie from database to get full details
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[CollectionDetailModal] No user found');
-        return;
-      }
-
-      console.log('[CollectionDetailModal] Fetching movie from DB:', { title: movie.title, userId: user.id });
-
-      const { data: dbMovie, error } = await supabase
-        .from('movies')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('title', movie.title)
-        .eq('media_type', 'movie')
-        .single();
-
-      console.log('[CollectionDetailModal] Query result:', { dbMovie, error });
-
-      if (error) {
-        console.error('[CollectionDetailModal] Error fetching movie:', error);
-        alert(`Could not find "${movie.title}" in your watchlist.`);
-        return;
-      }
-
-      if (dbMovie) {
-        console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
-        onMovieDetailsClick(dbMovie);
-      } else {
-        console.log('[CollectionDetailModal] No movie found in database');
-        alert(`Could not find "${movie.title}" in your watchlist.`);
-      }
-    } catch (error) {
-      console.error('[CollectionDetailModal] Error in handleCardClick:', error);
-      alert('An error occurred while trying to open movie details.');
-    }
+    // This is a simple check - in production you'd want to match by TMDB ID
+    return movies.some(m => 
+      m.title.toLowerCase() === movie.title.toLowerCase() &&
+      m.year === parseInt(movie.release_date?.substring(0, 4) || '0')
+    );
   };
 
   if (!isOpen) return null;
@@ -288,108 +172,78 @@ export function CollectionDetailModal({
                     Movies in Collection ({collection.parts?.length || 0})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {collection.parts
-                      .sort((a, b) => {
-                        const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
-                        const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
-                        return dateA - dateB;
-                      })
-                      .map((movie) => {
-                        const inWatchlist = isInWatchlist(movie);
-                        const isAdding = addingMovies.has(movie.id);
-                        const tmdbUrl = `https://www.themoviedb.org/movie/${movie.id}`;
-                        
-                        const CardWrapper = inWatchlist ? 'div' : 'a';
-                        const wrapperProps = inWatchlist 
-                          ? { 
-                              onClick: (e: React.MouseEvent) => handleCardClick(e, movie),
-                              className: "group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer"
-                            }
-                          : {
-                              href: tmdbUrl,
-                              target: "_blank",
-                              rel: "noopener noreferrer",
-                              className: "group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all block"
-                            };
+                    {collection.parts?.map((movie) => {
+                      const inWatchlist = isInWatchlist(movie);
+                      const isAdding = addingMovies.has(movie.id);
 
-                        return (
-                          <CardWrapper key={movie.id} {...wrapperProps as any}>
-                            {/* Poster */}
-                            <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
-                              {movie.poster_path ? (
-                                <img
-                                  src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
-                                  alt={movie.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Film className="h-12 w-12 text-slate-400" />
-                                </div>
-                              )}
+                      return (
+                        <div
+                          key={movie.id}
+                          className="bg-slate-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                        >
+                          {/* Movie Poster */}
+                          {movie.poster_path ? (
+                            <img
+                              src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
+                              alt={movie.title}
+                              className="w-full h-64 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-64 bg-slate-200 flex items-center justify-center">
+                              <Film className="h-16 w-16 text-slate-400" />
+                            </div>
+                          )}
 
-                              {/* Watchlist Button */}
+                          {/* Movie Info */}
+                          <div className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-slate-900 flex-1">{movie.title}</h4>
                               <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (!isAdding && !inWatchlist) {
-                                    handleAddToWatchlist(movie);
-                                  }
-                                }}
-                                disabled={isAdding || inWatchlist}
-                                className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
+                                onClick={() => !inWatchlist && !isAdding && handleAddToWatchlist(movie)}
+                                disabled={inWatchlist || isAdding}
+                                className={`flex-shrink-0 ml-2 ${
                                   inWatchlist
-                                    ? 'bg-green-500 cursor-default'
-                                    : isAdding
-                                    ? 'bg-slate-400 cursor-wait'
-                                    : 'bg-white/90 hover:bg-white'
-                                }`}
-                                title={inWatchlist ? 'In watchlist' : isAdding ? 'Adding...' : 'Add to watchlist'}
+                                    ? 'text-purple-600'
+                                    : 'text-slate-400 hover:text-purple-600'
+                                } transition-colors disabled:opacity-50`}
+                                title={inWatchlist ? 'In your watchlist' : 'Add to watchlist'}
                               >
                                 {isAdding ? (
-                                  <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-                                ) : inWatchlist ? (
-                                  <Heart className="h-4 w-4 text-white fill-current" />
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                                 ) : (
-                                  <Heart className="h-4 w-4 text-slate-600" />
+                                  <Heart className={`h-5 w-5 ${inWatchlist ? 'fill-current' : ''}`} />
                                 )}
                               </button>
-
-                              {/* Rating Badge */}
-                              {movie.vote_average > 0 && (
-                                <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
-                                  <div className="flex items-center space-x-1">
-                                    <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                                    <span className="text-white text-xs font-semibold">
-                                      {movie.vote_average.toFixed(1)}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
                             </div>
 
-                            {/* Movie Info */}
-                            <div className="p-3">
-                              <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
-                                {movie.title}
-                              </h4>
+                            <div className="flex items-center space-x-4 text-sm text-slate-600 mb-2">
                               {movie.release_date && (
-                                <div className="flex items-center text-xs text-slate-500">
-                                  <Calendar className="h-3 w-3 mr-1" />
-                                  {new Date(movie.release_date).getFullYear()}
+                                <div className="flex items-center space-x-1">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{movie.release_date.substring(0, 4)}</span>
+                                </div>
+                              )}
+                              {movie.vote_average > 0 && (
+                                <div className="flex items-center space-x-1">
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                                  <span>{movie.vote_average.toFixed(1)}</span>
                                 </div>
                               )}
                             </div>
-                          </CardWrapper>
-                        );
-                      })}
+
+                            {movie.overview && (
+                              <p className="text-sm text-slate-600 line-clamp-3">{movie.overview}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-slate-500">Failed to load collection details.</p>
+              <div className="p-6 text-center text-slate-600">
+                Failed to load collection details
               </div>
             )}
           </div>
