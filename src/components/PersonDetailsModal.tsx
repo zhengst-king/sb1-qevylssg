@@ -596,7 +596,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
             year: displayYear || undefined,
             imdb_id: imdbId || `tmdb_${credit.id}`,
             poster_url: posterUrl || undefined,
-            plot: credit.overview,
+            plot: undefined,
             imdb_score: credit.vote_average,
             media_type: 'movie',
             status: 'To Watch'
