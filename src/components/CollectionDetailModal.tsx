@@ -45,41 +45,18 @@ export function CollectionDetailModal({
     loadWatchlistMovieIds();
   }, [movies]);
 
-  const loadWatchlistMovieIds = async () => {
-    try {
-      const tmdbIds = new Set<number>();
-      
-      for (const movie of movies) {
-        if (movie.imdb_id) {
-          // Get TMDB ID from IMDb ID
-          const tmdbId = await getTMDBIdFromIMDbId(movie.imdb_id);
-          if (tmdbId) {
-            tmdbIds.add(tmdbId);
-          }
-        }
+  const loadWatchlistMovieIds = () => {
+    // Use tmdb_id directly from database - no API calls needed
+    const tmdbIds = new Set<number>();
+    
+    for (const movie of movies) {
+      if (movie.tmdb_id) {
+        tmdbIds.add(movie.tmdb_id);
       }
-      
-      setWatchlistMovieIds(tmdbIds);
-    } catch (error) {
-      console.error('Error loading watchlist TMDB IDs:', error);
     }
-  };
-
-  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
-    try {
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-      const response = await fetch(
-        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
-      );
-      
-      if (!response.ok) return null;
-      
-      const data = await response.json();
-      return data.movie_results?.[0]?.id || null;
-    } catch (error) {
-      console.error('Error getting TMDB ID:', error);
-      return null;
-    }
+    
+    setWatchlistMovieIds(tmdbIds);
+    console.log('[CollectionDetailModal] Loaded', tmdbIds.size, 'watchlist TMDB IDs');
   };
 
   const fetchCollectionDetails = async () => {
@@ -121,7 +98,8 @@ export function CollectionDetailModal({
         {
           title: movie.title,
           year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
-          imdb_id: imdbId || `tmdb_${movie.id}`, // Fallback to TMDB ID
+          imdb_id: imdbId || `tmdb_${movie.id}`,
+          tmdb_id: movie.id,
           poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
           plot: movie.overview,
           imdb_score: movie.vote_average,
@@ -182,9 +160,9 @@ export function CollectionDetailModal({
         .from('movies')
         .select('*')
         .eq('user_id', user.id)
-        .eq('title', movie.title)
+        .eq('tmdb_id', movie.id)
         .eq('media_type', 'movie')
-        .single();
+        .maybeSingle();
 
       console.log('[CollectionDetailModal] Query result:', { dbMovie, error });
 
