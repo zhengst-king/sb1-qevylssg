@@ -1,116 +1,128 @@
 // src/components/MovieRecommendations.tsx
-// REFACTORED VERSION - Uses centralized buildMovieFromOMDb utility
+// CORRECT VERSION - Keeps original watchlist logic + applies refactoring
 
 import React, { useState, useEffect } from 'react';
-import { Film, Star, X, Plus, Check, ExternalLink, ThumbsUp, Sparkles } from 'lucide-react';
-import { tmdbService, TMDBMovieRecommendation } from '../lib/tmdb';
-import { supabase, Movie } from '../lib/supabase';
+import { ThumbsUp, Sparkles, ExternalLink, Star, Film, X } from 'lucide-react';
+import { TMDBMovieRecommendationsResponse } from '../lib/tmdb';
+import { tmdbService } from '../lib/tmdb';
+import { supabase } from '../lib/supabase';
+import { Movie } from '../lib/supabase';
 import { omdbApi } from '../lib/omdb';
-import { useMovies } from '../hooks/useMovies';
-import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
+import { useMovies } from '../hooks/useMovies'; // ✅ ADD
+import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder'; // ✅ ADD
 
 interface MovieRecommendationsProps {
-  movieId: number;
+  recommendations?: TMDBMovieRecommendationsResponse;
+  similar?: TMDBMovieRecommendationsResponse;
+  className?: string;
   onMovieDetailsClick?: (movie: Movie) => void;
   onMovieAddedToWatchlist?: () => void;
 }
 
-export function MovieRecommendations({ movieId, onMovieDetailsClick, onMovieAddedToWatchlist }: MovieRecommendationsProps) {
-  const [recommendedItems, setRecommendedItems] = useState<TMDBMovieRecommendation[]>([]);
-  const [similarItems, setSimilarItems] = useState<TMDBMovieRecommendation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [watchlistTitles, setWatchlistTitles] = useState<Set<number>>(new Set());
-  const [currentTab, setCurrentTab] = useState<'recommended' | 'similar'>('recommended');
+export function MovieRecommendations({ 
+  recommendations, 
+  similar, 
+  className = '',
+  onMovieDetailsClick,
+  onMovieAddedToWatchlist
+}: MovieRecommendationsProps) {
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'similar'>('recommendations');
+  const [watchlistTitles, setWatchlistTitles] = useState<Set<number>>(new Set()); // ✅ KEEP Set<number>
 
-  // Fetch recommendations and similar movies
-  useEffect(() => {
-    const loadRecommendations = async () => {
-      try {
-        setLoading(true);
-        const [recommended, similar] = await Promise.all([
-          tmdbService.getMovieRecommendations(movieId),
-          tmdbService.getSimilarMovies(movieId)
-        ]);
-        
-        setRecommendedItems(recommended || []);
-        setSimilarItems(similar || []);
-      } catch (error) {
-        console.error('Error loading movie recommendations:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Check if we have any data to display
+  const hasRecommendations = recommendations?.results && recommendations.results.length > 0;
+  const hasSimilar = similar?.results && similar.results.length > 0;
 
-    loadRecommendations();
-  }, [movieId]);
-
-  // Load watchlist titles
+  // Load watchlist titles on mount
   useEffect(() => {
     loadWatchlistTitles();
   }, []);
 
+  // ✅ KEEP ORIGINAL LOGIC - This works correctly
   const loadWatchlistTitles = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: movies } = await supabase
+      const { data } = await supabase
         .from('movies')
-        .select('title')
+        .select('imdb_id')
         .eq('user_id', user.id)
         .eq('media_type', 'movie');
 
-      if (movies) {
-        const titles = new Set(movies.map(m => m.title));
-        setWatchlistTitles(titles as any);
+      if (data) {
+        // Create a set of TMDB IDs from IMDb IDs
+        const tmdbIds = new Set<number>();
+        
+        for (const movie of data) {
+          if (movie.imdb_id) {
+            // Try to get TMDB ID from IMDb ID
+            const tmdbId = await getTMDBIdFromIMDbId(movie.imdb_id);
+            if (tmdbId) {
+              tmdbIds.add(tmdbId);
+            }
+          }
+        }
+        
+        setWatchlistTitles(tmdbIds);
       }
     } catch (error) {
-      console.error('Error loading watchlist titles:', error);
+      console.error('Error loading watchlist:', error);
     }
   };
 
-  const displayItems = currentTab === 'recommended' ? recommendedItems : similarItems;
+  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
+    try {
+      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+      const response = await fetch(
+        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
+      );
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      return data.movie_results?.[0]?.id || data.tv_results?.[0]?.id || null;
+    } catch (error) {
+      console.error('Error getting TMDB ID:', error);
+      return null;
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="h-8 w-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    );
+  if (!hasRecommendations && !hasSimilar) {
+    return null;
   }
 
-  if (displayItems.length === 0) {
-    return (
-      <div className="text-center py-8 text-slate-500">
-        No {currentTab === 'recommended' ? 'recommendations' : 'similar movies'} available
-      </div>
-    );
-  }
+  // Default to similar if no recommendations
+  const currentTab = !hasRecommendations ? 'similar' : activeTab;
+  const currentData = currentTab === 'recommendations' ? recommendations : similar;
+  const displayItems = currentData?.results?.slice(0, 12) || [];
 
   return (
-    <div className="space-y-4">
-      {/* Tab Navigation */}
-      <div className="border-b border-slate-200">
-        <div className="flex space-x-6">
-          <button
-            onClick={() => setCurrentTab('recommended')}
-            className={`relative pb-3 px-1 flex items-center space-x-2 transition-colors ${
-              currentTab === 'recommended'
-                ? 'text-purple-600 font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Recommended</span>
-            {currentTab === 'recommended' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></div>
-            )}
-          </button>
-          
-          {similarItems.length > 0 && (
+    <div className={`bg-slate-50 p-4 rounded-lg ${className}`}>
+      {/* Section Header with Tabs */}
+      <div className="mb-4">
+        <div className="flex items-center space-x-4 border-b border-slate-200">
+          {hasRecommendations && (
             <button
-              onClick={() => setCurrentTab('similar')}
-              className={`relative pb-3 px-1 flex items-center space-x-2 transition-colors ${
+              onClick={() => setActiveTab('recommendations')}
+              className={`flex items-center space-x-2 pb-2 px-3 transition-colors relative ${
+                currentTab === 'recommendations'
+                  ? 'text-purple-600 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>Recommended</span>
+              {currentTab === 'recommendations' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"></div>
+              )}
+            </button>
+          )}
+          
+          {hasSimilar && (
+            <button
+              onClick={() => setActiveTab('similar')}
+              className={`flex items-center space-x-2 pb-2 px-3 transition-colors relative ${
                 currentTab === 'similar'
                   ? 'text-purple-600 font-semibold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -132,7 +144,7 @@ export function MovieRecommendations({ movieId, onMovieDetailsClick, onMovieAdde
           <RecommendationCard 
             key={item.id} 
             item={item}
-            isInWatchlist={watchlistTitles.has(item.id)}
+            isInWatchlist={watchlistTitles.has(item.id)} // ✅ KEEP ORIGINAL - Check by TMDB ID
             onWatchlistUpdate={loadWatchlistTitles}
             onMovieDetailsClick={onMovieDetailsClick}
             onMovieAddedToWatchlist={onMovieAddedToWatchlist}
@@ -162,22 +174,16 @@ export function MovieRecommendations({ movieId, onMovieDetailsClick, onMovieAdde
 // ==================== RECOMMENDATION CARD ====================
 
 interface RecommendationCardProps {
-  item: TMDBMovieRecommendation;
+  item: any; // TMDBMovieRecommendation type
   isInWatchlist: boolean;
   onWatchlistUpdate: () => void;
   onMovieDetailsClick?: (movie: Movie) => void;
   onMovieAddedToWatchlist?: () => void;
 }
 
-function RecommendationCard({ 
-  item, 
-  isInWatchlist, 
-  onWatchlistUpdate, 
-  onMovieDetailsClick, 
-  onMovieAddedToWatchlist 
-}: RecommendationCardProps) {
+function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDetailsClick, onMovieAddedToWatchlist }: RecommendationCardProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const { addMovie } = useMovies('movie'); // ✅ USE HOOK
+  const { addMovie } = useMovies('movie'); // ✅ ADD - Use hook
 
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
@@ -188,12 +194,13 @@ function RecommendationCard({
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
   const title = item.title;
 
-  // ✅ REFACTORED: Use centralized utility
+  // ✅ REFACTORED - Use centralized utility
   const handleToggleWatchlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (isAdding) return;
+    
     setIsAdding(true);
     
     try {
@@ -213,22 +220,22 @@ function RecommendationCard({
           .eq('media_type', 'movie');
 
         if (error) throw error;
-        
-        console.log('[MovieRecommendations] Removed from watchlist:', title);
       } else {
-        // ✅ NEW PATTERN: Get IMDb ID and fetch OMDb data
+        // ✅ REFACTORED - Use centralized builder
         console.log('[MovieRecommendations] Adding to watchlist:', title);
         
+        // Get IMDb ID from TMDB
         const imdbId = await getIMDbIdFromTMDB(item.id, 'movie');
         
         // Fetch OMDb enrichment (if IMDb ID available)
         let omdbDetails = null;
         if (imdbId) {
           try {
+            console.log('[MovieRecommendations] Fetching OMDb data for:', title, imdbId);
             omdbDetails = await omdbApi.getMovieDetails(imdbId);
-            console.log('[MovieRecommendations] OMDb data fetched successfully');
           } catch (omdbError) {
-            console.warn('[MovieRecommendations] OMDb fetch failed, continuing with TMDB data only');
+            console.error('[MovieRecommendations] OMDb fetch failed:', omdbError);
+            // Continue without OMDb data
           }
         }
         
@@ -241,24 +248,26 @@ function RecommendationCard({
             poster_url: posterUrl || undefined,
             plot: item.overview,
             imdb_score: item.vote_average,
-            media_type: 'movie'
+            media_type: 'movie',
+            status: 'To Watch'
           },
           omdbDetails
         );
-        
+
         // ✅ USE HOOK FOR INSERT
         await addMovie(movieData);
-        
-        console.log('[MovieRecommendations] Added to watchlist successfully:', title);
-        
+
+        console.log('[MovieRecommendations] ✅ Movie added with complete data');
+
         if (onMovieAddedToWatchlist) {
           onMovieAddedToWatchlist();
         }
       }
       
+      // Refresh watchlist
       onWatchlistUpdate();
     } catch (error) {
-      console.error('[MovieRecommendations] Error toggling watchlist:', error);
+      console.error('Error toggling watchlist:', error);
       alert('Failed to update watchlist. Please try again.');
     } finally {
       setIsAdding(false);
@@ -270,9 +279,17 @@ function RecommendationCard({
       e.preventDefault();
       e.stopPropagation();
       
+      console.log('[MovieRecommendations] Clicked watchlist title:', title);
+      
+      // Fetch the movie from database to get full details
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          console.log('[MovieRecommendations] No user found');
+          return;
+        }
+
+        console.log('[MovieRecommendations] Fetching movie:', { title, userId: user.id });
 
         const { data: movie, error } = await supabase
           .from('movies')
@@ -282,12 +299,15 @@ function RecommendationCard({
           .eq('media_type', 'movie')
           .single();
 
+        console.log('[MovieRecommendations] Query result:', { movie, error });
+
         if (error) {
           console.error('[MovieRecommendations] Error fetching movie:', error);
           return;
         }
 
         if (movie) {
+          console.log('[MovieRecommendations] Opening movie details modal for:', movie.title);
           onMovieDetailsClick(movie);
         }
       } catch (error) {
@@ -299,8 +319,12 @@ function RecommendationCard({
   // If in watchlist, use div with onClick; otherwise use link
   if (isInWatchlist) {
     return (
-      <div onClick={handleCardClick} className="group relative block cursor-pointer">
+      <div
+        onClick={handleCardClick}
+        className="group relative block cursor-pointer"
+      >
         <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+          {/* Poster Image */}
           <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
             {posterUrl ? (
               <img
@@ -314,6 +338,7 @@ function RecommendationCard({
               </div>
             )}
 
+            {/* Watchlist Button */}
             <button
               onClick={handleToggleWatchlist}
               disabled={isAdding}
@@ -323,10 +348,11 @@ function RecommendationCard({
               {isAdding ? (
                 <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <X className="h-4 w-4 transition-all text-white" />
+                <X className="h-4 w-4 transition-all text-white rotate-0" />
               )}
             </button>
 
+            {/* Rating Badge */}
             {rating && parseFloat(rating) > 0 && (
               <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
                 <div className="flex items-center space-x-1">
@@ -337,9 +363,14 @@ function RecommendationCard({
             )}
           </div>
 
+          {/* Info */}
           <div className="p-3">
-            <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">{title}</h3>
-            {year && <p className="text-xs text-slate-500">{year}</p>}
+            <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
+              {title}
+            </h3>
+            {year && (
+              <p className="text-xs text-slate-500">{year}</p>
+            )}
           </div>
         </div>
       </div>
@@ -348,8 +379,14 @@ function RecommendationCard({
 
   // Not in watchlist - use regular link
   return (
-    <a href={tmdbUrl} target="_blank" rel="noopener noreferrer" className="group relative block">
+    <a
+      href={tmdbUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative block"
+    >
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+        {/* Poster Image */}
         <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
           {posterUrl ? (
             <img
@@ -363,6 +400,7 @@ function RecommendationCard({
             </div>
           )}
 
+          {/* Watchlist Button */}
           <button
             onClick={handleToggleWatchlist}
             disabled={isAdding}
@@ -370,12 +408,13 @@ function RecommendationCard({
             title="Add to watchlist"
           >
             {isAdding ? (
-              <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Plus className="h-4 w-4 text-slate-700" />
+              <X className="h-4 w-4 transition-all text-slate-600 hover:text-purple-500 rotate-45" />
             )}
           </button>
 
+          {/* Rating Badge */}
           {rating && parseFloat(rating) > 0 && (
             <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
               <div className="flex items-center space-x-1">
@@ -386,9 +425,14 @@ function RecommendationCard({
           )}
         </div>
 
+        {/* Info */}
         <div className="p-3">
-          <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">{title}</h3>
-          {year && <p className="text-xs text-slate-500">{year}</p>}
+          <h3 className="font-medium text-sm text-slate-900 line-clamp-2 mb-1">
+            {title}
+          </h3>
+          {year && (
+            <p className="text-xs text-slate-500">{year}</p>
+          )}
         </div>
       </div>
     </a>
