@@ -255,10 +255,11 @@ export function CollectionDetailModal({
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">
                     Movies in Collection ({collection.parts?.length || 0})
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    // Replace the movie card rendering section in CollectionDetailModal.tsx
-// Find the section that starts with: collection.parts.sort(...).map((movie) => {
+                  // Replace the movie card rendering section in CollectionDetailModal.tsx
+// Find the line that says: <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+// Replace everything from that div down to the closing </div> before "Movies Grid" section ends
 
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {collection.parts
                       .sort((a, b) => {
                         const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
