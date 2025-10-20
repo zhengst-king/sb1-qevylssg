@@ -295,18 +295,50 @@ export function CollectionDetailModal({
                                     </div>
                                   )}
 
-                                  {/* Watchlist Button */}
+                                  {/* Remove from Watchlist Button */}
                                   <button
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      // Already in watchlist, no action needed
+                                      
+                                      if (isAdding) return;
+                                      
+                                      setAddingMovies(prev => new Set([...prev, movie.id]));
+                                      
+                                      try {
+                                        const { data: { user } } = await supabase.auth.getUser();
+                                        if (!user) return;
+                                        
+                                        const { error } = await supabase
+                                          .from('movies')
+                                          .delete()
+                                          .eq('user_id', user.id)
+                                          .eq('title', movie.title)
+                                          .eq('media_type', 'movie');
+                                        
+                                        if (error) throw error;
+                                        
+                                        await refetch();
+                                        await loadWatchlistMovieIds();
+                                      } catch (error) {
+                                        console.error('Error removing from watchlist:', error);
+                                      } finally {
+                                        setAddingMovies(prev => {
+                                          const newSet = new Set(prev);
+                                          newSet.delete(movie.id);
+                                          return newSet;
+                                        });
+                                      }
                                     }}
-                                    disabled={true}
-                                    className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md bg-green-600 cursor-default"
-                                    title="In watchlist"
+                                    disabled={isAdding}
+                                    className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-red-500 hover:bg-red-600"
+                                    title="Remove from watchlist"
                                   >
-                                    <Plus className="h-4 w-4 text-white rotate-45" />
+                                    {isAdding ? (
+                                      <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <X className="h-4 w-4 text-white" />
+                                    )}
                                   </button>
 
                                   {/* Rating Badge */}
