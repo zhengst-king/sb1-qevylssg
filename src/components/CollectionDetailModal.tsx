@@ -101,7 +101,9 @@ export function CollectionDetailModal({
       const imdbId = fullDetails?.external_ids?.imdb_id;
       
       if (!imdbId) {
-        console.warn('[CollectionDetailModal] No IMDb ID found for:', movie.title);
+        console.error('[CollectionDetailModal] No IMDb ID found for:', movie.title);
+        alert(`Could not find IMDb ID for "${movie.title}". Cannot add to watchlist.`);
+        return;
       }
       
       // ✅ FIX: Fetch complete OMDb data BEFORE inserting
