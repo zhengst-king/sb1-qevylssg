@@ -18,6 +18,7 @@ export function buildMovieFromOMDb(
     title: string;
     year?: number;
     imdb_id: string;
+    tmdb_id?: number;
     poster_url?: string;
     plot?: string;
     imdb_score?: number;
@@ -33,6 +34,7 @@ export function buildMovieFromOMDb(
     title: baseData.title,
     year: baseData.year || null,
     imdb_id: baseData.imdb_id,
+    tmdb_id: baseData.tmdb_id || null,
     poster_url: baseData.poster_url || null,
     plot: baseData.plot || null,
     imdb_score: baseData.imdb_score || null,
