@@ -2,7 +2,7 @@
 // COMPLETE FIXED VERSION - Fetches OMDb data before insert + fixes click handler
 
 import React, { useEffect, useState } from 'react';
-import { X, Film, Plus, Calendar, Star } from 'lucide-react';
+import { X, Film, Heart, Calendar, Star } from 'lucide-react';
 import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
@@ -287,7 +287,7 @@ export function CollectionDetailModal({
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">
                     Movies in Collection ({collection.parts?.length || 0})
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {collection.parts
                       .sort((a, b) => {
                         const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
@@ -350,9 +350,9 @@ export function CollectionDetailModal({
                                 {isAdding ? (
                                   <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
                                 ) : inWatchlist ? (
-                                  <Plus className="h-4 w-4 text-white rotate-45" />
+                                  <Heart className="h-4 w-4 text-white fill-current" />
                                 ) : (
-                                  <Plus className="h-4 w-4 text-slate-600" />
+                                  <Heart className="h-4 w-4 text-slate-600" />
                                 )}
                               </button>
 
