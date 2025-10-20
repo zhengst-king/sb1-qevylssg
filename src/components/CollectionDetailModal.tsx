@@ -126,7 +126,7 @@ export function CollectionDetailModal({
           plot: movie.overview,
           imdb_score: movie.vote_average,
           media_type: 'movie',
-          status: 'Plan to Watch'
+          status: 'To Watch' // ✅ FIX: Changed from 'Plan to Watch' to match DB constraint
         },
         omdbDetails
       );
