@@ -1,6 +1,6 @@
 // src/utils/movieDataBuilder.ts
+// UPDATED VERSION - Now includes tmdb_id field
 // Centralized utility for building movie objects with OMDb enrichment
-// This eliminates duplication across all movie addition workflows
 
 import { omdbApi, OMDBMovieDetails } from '../lib/omdb';
 import { Movie } from '../lib/supabase';
@@ -18,6 +18,7 @@ export function buildMovieFromOMDb(
     title: string;
     year?: number;
     imdb_id: string;
+    tmdb_id?: number; // ✅ NEW: Optional TMDB ID
     poster_url?: string;
     plot?: string;
     imdb_score?: number;
@@ -33,10 +34,11 @@ export function buildMovieFromOMDb(
     title: baseData.title,
     year: baseData.year || null,
     imdb_id: baseData.imdb_id,
+    tmdb_id: baseData.tmdb_id || null, // ✅ NEW: Include TMDB ID
     poster_url: baseData.poster_url || null,
     plot: baseData.plot || null,
     imdb_score: baseData.imdb_score || null,
-    status: baseData.status || 'Plan to Watch',
+    status: baseData.status || 'To Watch',
   };
 
   // Enrich with OMDb data if available
@@ -48,7 +50,7 @@ export function buildMovieFromOMDb(
       movieData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
     }
 
-    // Box Office (parsed to number - CRITICAL FIX)
+    // Box Office (parsed to number)
     if (omdbDetails.BoxOffice && omdbDetails.BoxOffice !== 'N/A') {
       movieData.box_office = omdbApi.parseBoxOffice(omdbDetails.BoxOffice);
     }
@@ -108,9 +110,9 @@ export function buildMovieFromOMDb(
       movieData.rated = omdbDetails.Rated;
     }
 
-    // DVD Release Date
-    if (omdbDetails.DVD && omdbDetails.DVD !== 'N/A') {
-      movieData.dvd = omdbDetails.DVD;
+    // Released date
+    if (omdbDetails.Released && omdbDetails.Released !== 'N/A') {
+      movieData.released = omdbDetails.Released;
     }
 
     // Metascore
@@ -123,14 +125,16 @@ export function buildMovieFromOMDb(
 
     // IMDb Votes
     if (omdbDetails.imdbVotes && omdbDetails.imdbVotes !== 'N/A') {
-      const votes = parseInt(omdbDetails.imdbVotes.replace(/,/g, ''));
-      if (!isNaN(votes)) {
-        movieData.imdb_votes = votes;
-      }
+      movieData.imdb_votes = omdbDetails.imdbVotes;
+    }
+
+    // Website
+    if (omdbDetails.Website && omdbDetails.Website !== 'N/A') {
+      movieData.website = omdbDetails.Website;
     }
 
     console.log('[movieDataBuilder] OMDb enrichment complete. Fields added:', 
-      Object.keys(movieData).filter(k => !['title', 'year', 'imdb_id', 'poster_url', 'media_type', 'status'].includes(k))
+      Object.keys(movieData).filter(k => !['title', 'year', 'imdb_id', 'tmdb_id', 'poster_url', 'media_type', 'status'].includes(k))
     );
   } else {
     console.log('[movieDataBuilder] No OMDb data available, using TMDB data only for:', baseData.title);
@@ -161,55 +165,4 @@ export async function getIMDbIdFromTMDB(tmdbId: number, mediaType: 'movie' | 'tv
 }
 
 /**
- * Convenience function that combines TMDB data fetching + OMDb enrichment + movie building
- * Use this for the simplest integration in components
- */
-export async function buildMovieFromTMDB(
-  tmdbId: number,
-  title: string,
-  releaseDate?: string,
-  posterPath?: string | null,
-  overview?: string,
-  voteAverage?: number
-): Promise<Omit<Movie, 'id' | 'user_id' | 'user_session' | 'created_at'> | null> {
-  try {
-    // Get IMDb ID from TMDB
-    const imdbId = await getIMDbIdFromTMDB(tmdbId, 'movie');
-    if (!imdbId) {
-      console.warn('[movieDataBuilder] No IMDb ID found for TMDB:', tmdbId);
-      // Return basic movie without OMDb enrichment
-      return buildMovieFromOMDb(
-        {
-          title,
-          year: releaseDate ? new Date(releaseDate).getFullYear() : undefined,
-          imdb_id: `tmdb_${tmdbId}`, // Fallback identifier
-          poster_url: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : undefined,
-          plot: overview,
-          imdb_score: voteAverage,
-          media_type: 'movie'
-        },
-        null
-      );
-    }
-
-    // Fetch OMDb enrichment
-    const omdbDetails = await omdbApi.getMovieDetails(imdbId);
-
-    // Build complete movie object
-    return buildMovieFromOMDb(
-      {
-        title,
-        year: releaseDate ? new Date(releaseDate).getFullYear() : undefined,
-        imdb_id: imdbId,
-        poster_url: posterPath ? `https://image.tmdb.org/t/p/w342${posterPath}` : undefined,
-        plot: overview,
-        imdb_score: voteAverage,
-        media_type: 'movie'
-      },
-      omdbDetails
-    );
-  } catch (error) {
-    console.error('[movieDataBuilder] Error building movie from TMDB:', error);
-    return null;
-  }
-}
+ * Convenience function that combines TMDB data fetching + OMDb enrichment
