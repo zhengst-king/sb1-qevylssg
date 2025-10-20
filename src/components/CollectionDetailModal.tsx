@@ -119,7 +119,7 @@ export function CollectionDetailModal({
         {
           title: movie.title,
           year: movie.release_date ? parseInt(movie.release_date.substring(0, 4)) : undefined,
-          imdb_id: imdbId,
+          imdb_id: imdbId || `tmdb_${movie.id}`,
           poster_url: movie.poster_path ? tmdbService.getImageUrl(movie.poster_path) : undefined,
           plot: movie.overview,
           imdb_score: movie.vote_average,
