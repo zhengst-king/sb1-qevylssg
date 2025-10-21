@@ -9,6 +9,8 @@ import { supabase } from '../lib/supabase';
 import { Movie } from '../lib/supabase';
 import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 import { omdbApi } from '../lib/omdb';
+import { useMovies } from '../hooks/useMovies';
+import { buildSeriesFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
 
 interface SeriesRecommendationsProps {
   recommendations?: TMDBRecommendationsResponse;
@@ -165,6 +167,7 @@ function RecommendationCard({
   onSeriesAddedToWatchlist
 }: RecommendationCardProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const { addMovie } = useMovies('series');
 
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
@@ -202,16 +205,13 @@ function RecommendationCard({
 
         if (error) throw error;
       } else {
-        // Add to watchlist with complete OMDb data
-        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-        const detailsUrl = `https://api.themoviedb.org/3/tv/${item.id}?api_key=${apiKey}&append_to_response=external_ids`;
+        // ✅ REFACTORED - Use centralized builder
+        console.log('[SeriesRecommendations] Adding series to watchlist:', title);
         
-        const response = await fetch(detailsUrl);
-        const details = await response.json();
+        // Get IMDb ID from TMDB
+        const imdbId = await getIMDbIdFromTMDB(item.id, 'tv');
         
-        const imdbId = details.external_ids?.imdb_id;
-        
-        // ✅ FIX: Fetch complete OMDb data BEFORE inserting
+        // Fetch OMDb enrichment (if IMDb ID available)
         let omdbDetails = null;
         if (imdbId) {
           try {
@@ -223,55 +223,23 @@ function RecommendationCard({
           }
         }
         
-        // Build complete series data with OMDb fields
-        const seriesData: any = {
-          user_id: user.id,
-          media_type: 'series' as const,
-          title: title,
-          year: year ? parseInt(year.toString()) : undefined,
-          imdb_score: item.vote_average || undefined,
-          imdb_id: imdbId || undefined,
-          status: 'To Watch' as const,
-          poster_url: posterUrl || undefined,
-          plot: item.overview || undefined
-        };
+        // ✅ USE CENTRALIZED BUILDER
+        const seriesData = buildSeriesFromOMDb(
+          {
+            title: title,
+            year: year ? parseInt(year.toString()) : undefined,
+            imdb_id: imdbId || `tmdb_${item.id}`,
+            tmdb_id: item.id, // ✅ Include TMDB ID
+            poster_url: posterUrl || undefined,
+            plot: item.overview,
+            imdb_score: item.vote_average,
+            status: 'To Watch'
+          },
+          omdbDetails
+        );
 
-        // Add OMDb fields if available
-        if (omdbDetails && omdbDetails.Response === 'True') {
-          if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
-            seriesData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
-          }
-          if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
-            seriesData.director = omdbDetails.Director;
-          }
-          if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
-            seriesData.actors = omdbDetails.Actors;
-          }
-          if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
-            seriesData.country = omdbDetails.Country;
-          }
-          if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
-            seriesData.language = omdbDetails.Language;
-          }
-          if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
-            seriesData.genre = omdbDetails.Genre;
-          }
-          if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
-            seriesData.writer = omdbDetails.Writer;
-          }
-          if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
-            seriesData.awards = omdbDetails.Awards;
-          }
-          console.log('[SeriesRecommendations] ✅ OMDb data fetched successfully');
-        }
-
-        const { data: insertedSeries, error } = await supabase
-          .from('movies')
-          .insert(seriesData)
-          .select()
-          .single();
-
-        if (error) throw error;
+        // ✅ USE HOOK FOR INSERT
+        await addMovie(seriesData);
 
         console.log('[SeriesRecommendations] ✅ Series added with complete data');
 
