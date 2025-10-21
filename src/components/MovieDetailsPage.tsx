@@ -76,6 +76,12 @@ export function MovieDetailsPage({
     setShowPersonDetailsModal(true);
   };
 
+  const handleOpenSeriesDetails = (series: Movie) => {
+    console.log('[MovieDetailsPage] Series clicked from PersonDetailsModal:', series.title);
+    // MovieDetailsPage doesn't have episodes modal, so we'll show a helpful message
+    alert(`"${series.title}" is a TV series. Please view it from your TV Watchlist to see episodes.`);
+  };
+
   // Update local state when movie prop changes
   useEffect(() => {
     setLocalRating(movie.user_rating || null);
@@ -580,6 +586,8 @@ export function MovieDetailsPage({
               setShowPersonDetailsModal(false);
               setSelectedPersonId(null);
             }}
+            onOpenMovieDetails={handleRecommendationClick}
+            onOpenSeriesDetails={handleOpenSeriesDetails} // ✅ ADD THIS LINE
           />
         </div>
       )}
