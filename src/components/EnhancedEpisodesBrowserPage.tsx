@@ -122,6 +122,16 @@ export function EnhancedEpisodesBrowserPage({
     setSelectedPersonType(personType);
     setShowPersonDetailsModal(true);
   };
+
+  const handleOpenSeriesDetails = (series: Movie) => {
+    console.log('[EnhancedEpisodesBrowserPage] Series clicked from PersonDetailsModal:', series.title);
+    // Close person modal and update the current series being viewed
+    setShowPersonDetailsModal(false);
+    setSelectedPersonId(null);
+    if (onViewRecommendation) {
+      onViewRecommendation(series);
+    }
+  };
   
   // Update local state when series prop changes
   useEffect(() => {
@@ -1194,6 +1204,13 @@ export function EnhancedEpisodesBrowserPage({
               setShowPersonDetailsModal(false);
               setSelectedPersonId(null);
             }}
+            onOpenMovieDetails={(movie) => {  // ✅ ADD THIS ENTIRE PROP
+              console.log('[EnhancedEpisodesBrowserPage] Movie clicked from PersonDetailsModal');
+              setShowPersonDetailsModal(false);
+              setSelectedPersonId(null);
+              alert(`"${movie.title}" is a movie. This feature works best from the Movies page where you can view full movie details.`);
+            }}
+            onOpenSeriesDetails={handleOpenSeriesDetails}
           />
         </div>
       )}
