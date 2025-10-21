@@ -612,17 +612,24 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('[PersonDetailsModal] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
+      console.log('[PersonDetailsModal CreditCard] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
+      
+      // ✅ Check if this is a TV series - we can't open movie details for series
+      if (mediaType === 'series') {
+        console.log('[PersonDetailsModal CreditCard] This is a TV series - cannot open movie details modal');
+        alert('TV series details coming soon! For now, you can view this in your TV watchlist.');
+        return;
+      }
       
       // Fetch the movie from database to get full details
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('[PersonDetailsModal] No user found');
+          console.log('[PersonDetailsModal CreditCard] No user found');
           return;
         }
 
-        console.log('[PersonDetailsModal] Fetching item by tmdb_id:', { tmdb_id: credit.id, mediaType, userId: user.id });
+        console.log('[PersonDetailsModal CreditCard] Fetching item by tmdb_id:', { tmdb_id: credit.id, mediaType, userId: user.id });
 
         // ✅ FIXED: Query by tmdb_id instead of title (more reliable)
         const { data: movie, error } = await supabase
@@ -633,23 +640,23 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           .eq('media_type', mediaType)
           .maybeSingle();
 
-        console.log('[PersonDetailsModal] Query result:', { movie, error });
+        console.log('[PersonDetailsModal CreditCard] Query result:', { movie, error });
 
         if (error) {
-          console.error('[PersonDetailsModal] Error fetching item:', error);
-          alert(`Could not find item in watchlist: ${error.message}`);
+          console.error('[PersonDetailsModal CreditCard] Database error:', error);
+          alert(`Database error: ${error.message}`);
           return;
         }
 
         if (movie) {
-          console.log('[PersonDetailsModal] Opening details modal for:', movie.title);
+          console.log('[PersonDetailsModal CreditCard] Opening details modal for:', movie.title);
           onOpenMovieDetails(movie);
         } else {
-          console.log('[PersonDetailsModal] No item found in database with tmdb_id:', credit.id);
-          alert(`Could not find "${title}" in your watchlist. Try adding it again.`);
+          console.log('[PersonDetailsModal CreditCard] No item found in database with tmdb_id:', credit.id);
+          alert(`Could not find "${title}" in your watchlist. The title may have been removed.`);
         }
       } catch (error) {
-        console.error('[PersonDetailsModal] Error in handleCardClick:', error);
+        console.error('[PersonDetailsModal CreditCard] Error in handleCardClick:', error);
         alert('An error occurred while trying to open movie details.');
       }
     }
