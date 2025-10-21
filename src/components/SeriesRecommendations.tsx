@@ -44,21 +44,16 @@ export function SeriesRecommendations({
 
       const { data } = await supabase
         .from('movies')
-        .select('imdb_id')
+        .select('tmdb_id')
         .eq('user_id', user.id)
         .eq('media_type', 'series');
 
       if (data) {
-        // Create a set of TMDB IDs from IMDb IDs
         const tmdbIds = new Set<number>();
-        
+    
         for (const series of data) {
-          if (series.imdb_id) {
-            // Try to get TMDB ID from IMDb ID
-            const tmdbId = await getTMDBIdFromIMDbId(series.imdb_id);
-            if (tmdbId) {
-              tmdbIds.add(tmdbId);
-            }
+          if (series.tmdb_id) {
+            tmdbIds.add(series.tmdb_id);
           }
         }
         
@@ -66,23 +61,6 @@ export function SeriesRecommendations({
       }
     } catch (error) {
       console.error('Error loading watchlist:', error);
-    }
-  };
-
-  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
-    try {
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-      const response = await fetch(
-        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
-      );
-      
-      if (!response.ok) return null;
-      
-      const data = await response.json();
-      return data.tv_results?.[0]?.id || null;
-    } catch (error) {
-      console.error('Error getting TMDB ID:', error);
-      return null;
     }
   };
 
