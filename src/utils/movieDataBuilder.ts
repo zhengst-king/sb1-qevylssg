@@ -240,3 +240,129 @@ export async function buildMovieFromTMDB(
     return null;
   }
 }
+
+/**
+ * Builds a complete TV series object ready for database insertion
+ * Combines base TMDB data with optional OMDb enrichment
+ * Same pattern as buildMovieFromOMDb but for TV series (media_type: 'series')
+ * 
+ * @param baseData - Core series fields from TMDB
+ * @param omdbDetails - Optional OMDb API response for enrichment
+ * @returns Complete series object with all fields properly parsed
+ */
+export function buildSeriesFromOMDb(
+  baseData: {
+    title: string;
+    year?: number;
+    imdb_id: string;
+    tmdb_id?: number;
+    poster_url?: string;
+    plot?: string;
+    imdb_score?: number;
+    status?: string;
+  },
+  omdbDetails: OMDBMovieDetails | null
+): Omit<Movie, 'id' | 'user_id' | 'user_session' | 'created_at'> {
+  
+  // Start with base data
+  const seriesData: any = {
+    media_type: 'series', // ✅ Always 'series' for this function
+    title: baseData.title,
+    year: baseData.year || null,
+    imdb_id: baseData.imdb_id,
+    tmdb_id: baseData.tmdb_id || null,
+    poster_url: baseData.poster_url || null,
+    plot: baseData.plot || null,
+    imdb_score: baseData.imdb_score || null,
+    status: baseData.status || 'To Watch',
+  };
+
+  // Enrich with OMDb data if available
+  if (omdbDetails && omdbDetails.Response === 'True') {
+    console.log('[seriesDataBuilder] Enriching with OMDb data for:', baseData.title);
+
+    // Runtime (parsed to number)
+    if (omdbDetails.Runtime && omdbDetails.Runtime !== 'N/A') {
+      seriesData.runtime = omdbApi.parseRuntime(omdbDetails.Runtime);
+    }
+
+    // IMDb Rating (use OMDb if not already set)
+    if (omdbDetails.imdbRating && omdbDetails.imdbRating !== 'N/A' && !seriesData.imdb_score) {
+      seriesData.imdb_score = omdbApi.parseRating(omdbDetails.imdbRating);
+    }
+
+    // Director/Creator
+    if (omdbDetails.Director && omdbDetails.Director !== 'N/A') {
+      seriesData.director = omdbDetails.Director;
+    }
+
+    // Actors
+    if (omdbDetails.Actors && omdbDetails.Actors !== 'N/A') {
+      seriesData.actors = omdbDetails.Actors;
+    }
+
+    // Country
+    if (omdbDetails.Country && omdbDetails.Country !== 'N/A') {
+      seriesData.country = omdbDetails.Country;
+    }
+
+    // Language
+    if (omdbDetails.Language && omdbDetails.Language !== 'N/A') {
+      seriesData.language = omdbDetails.Language;
+    }
+
+    // Genre
+    if (omdbDetails.Genre && omdbDetails.Genre !== 'N/A') {
+      seriesData.genre = omdbDetails.Genre;
+    }
+
+    // Production (for series, this might be network/studio)
+    if (omdbDetails.Production && omdbDetails.Production !== 'N/A') {
+      seriesData.production = omdbDetails.Production;
+    }
+
+    // Writer
+    if (omdbDetails.Writer && omdbDetails.Writer !== 'N/A') {
+      seriesData.writer = omdbDetails.Writer;
+    }
+
+    // Awards
+    if (omdbDetails.Awards && omdbDetails.Awards !== 'N/A') {
+      seriesData.awards = omdbDetails.Awards;
+    }
+
+    // Plot (use OMDb if not already set)
+    if (omdbDetails.Plot && omdbDetails.Plot !== 'N/A' && !seriesData.plot) {
+      seriesData.plot = omdbDetails.Plot;
+    }
+
+    // Rated (TV rating)
+    if (omdbDetails.Rated && omdbDetails.Rated !== 'N/A') {
+      seriesData.rated = omdbDetails.Rated;
+    }
+
+    // Metascore
+    if (omdbDetails.Metascore && omdbDetails.Metascore !== 'N/A') {
+      const metascore = parseInt(omdbDetails.Metascore);
+      if (!isNaN(metascore)) {
+        seriesData.metascore = metascore;
+      }
+    }
+
+    // IMDb Votes
+    if (omdbDetails.imdbVotes && omdbDetails.imdbVotes !== 'N/A') {
+      const votes = parseInt(omdbDetails.imdbVotes.replace(/,/g, ''));
+      if (!isNaN(votes)) {
+        seriesData.imdb_votes = votes;
+      }
+    }
+
+    console.log('[seriesDataBuilder] OMDb enrichment complete. Fields added:', 
+      Object.keys(seriesData).filter(k => !['title', 'year', 'imdb_id', 'poster_url', 'media_type', 'status'].includes(k))
+    );
+  } else {
+    console.log('[seriesDataBuilder] No OMDb data available, using TMDB data only for:', baseData.title);
+  }
+
+  return seriesData as Omit<Movie, 'id' | 'user_id' | 'user_session' | 'created_at'>;
+}
