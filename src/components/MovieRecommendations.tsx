@@ -28,6 +28,7 @@ export function MovieRecommendations({
 }: MovieRecommendationsProps) {
   const [activeTab, setActiveTab] = useState<'recommendations' | 'similar'>('recommendations');
   const [watchlistTitles, setWatchlistTitles] = useState<Set<number>>(new Set()); // ✅ KEEP Set<number>
+  const { movies } = useMovies('movie');
 
   // Check if we have any data to display
   const hasRecommendations = recommendations?.results && recommendations.results.length > 0;
@@ -36,36 +37,19 @@ export function MovieRecommendations({
   // Load watchlist titles on mount
   useEffect(() => {
     loadWatchlistTitles();
-  }, []);
+  }, [movies]);
   
   // ✅ KEEP ORIGINAL LOGIC - This works correctly
-  const loadWatchlistTitles = () => {
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await supabase
-          .from('movies')
-          .select('tmdb_id')
-          .eq('user_id', user.id)
-          .eq('media_type', 'movie');
-
-        if (data) {
-          const tmdbIds = new Set<number>();
-        
-          for (const movie of data) {
-            if (movie.tmdb_id) {
-              tmdbIds.add(movie.tmdb_id);
-            }
-          }
-        
-          setWatchlistTitles(tmdbIds);
-        }
-      } catch (error) {
-        console.error('Error loading watchlist:', error);
+  const loadWatchlistTitles = () => { // ✅ Remove async
+    const tmdbIds = new Set<number>();
+  
+    for (const movie of movies) { // ✅ Use movies from hook
+      if (movie.tmdb_id) {
+        tmdbIds.add(movie.tmdb_id);
       }
-    })();
+    }
+  
+    setWatchlistTitles(tmdbIds);
   };
 
   if (!hasRecommendations && !hasSimilar) {
@@ -237,7 +221,6 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
         // ✅ USE HOOK FOR INSERT
         await addMovie(movieData);
 
-        onWatchlistUpdate();
         if (onMovieAddedToWatchlist) {
           onMovieAddedToWatchlist();
         }
