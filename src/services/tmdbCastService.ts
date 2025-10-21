@@ -128,10 +128,10 @@ class TMDBCastService {
 
       console.log('[TMDBCast] Cache miss, fetching from API');
 
-      // First, get TMDB series ID from IMDb ID
-      const tmdbSeriesId = await this.findSeriesIdByImdbId(imdbId);
+      // Get TMDB series ID from database cache first
+      const tmdbSeriesId = await this.getTmdbIdFromDatabase(imdbId, 'tv');
       if (!tmdbSeriesId) {
-        console.error('[TMDBCast] Could not find TMDB series ID');
+        console.error('[TMDBCast] Could not find TMDB series ID in database');
         return null;
       }
 
@@ -180,10 +180,10 @@ class TMDBCastService {
         return cached;
       }
 
-      // Get TMDB series ID
-      const tmdbSeriesId = await this.findSeriesIdByImdbId(imdbId);
+      // Get TMDB series ID from database cache first
+      const tmdbSeriesId = await this.getTmdbIdFromDatabase(imdbId, 'tv');
       if (!tmdbSeriesId) {
-        console.error('[TMDBCast] Could not find TMDB series ID');
+        console.error('[TMDBCast] Could not find TMDB series ID in database');
         return null;
       }
 
@@ -310,10 +310,10 @@ class TMDBCastService {
 
       console.log('[TMDBCast] Cache miss, fetching from API');
 
-      // First, get TMDB movie ID from IMDb ID
-      const tmdbMovieId = await this.findMovieIdByImdbId(imdbId);
+      // Get TMDB movie ID from database cache first
+      const tmdbMovieId = await this.getTmdbIdFromDatabase(imdbId, 'movie');
       if (!tmdbMovieId) {
-        console.error('[TMDBCast] Could not find TMDB movie ID');
+        console.error('[TMDBCast] Could not find TMDB movie ID in database');
         return null;
       }
 
@@ -485,6 +485,50 @@ class TMDBCastService {
   }
 
   // ==================== PRIVATE METHODS ====================
+
+  /**
+   * Get TMDB ID from database cache (no API call)
+   */
+  private async getTmdbIdFromDatabase(imdbId: string, mediaType: 'tv' | 'movie'): Promise<number | null> {
+    try {
+      if (mediaType === 'tv') {
+        // Check tmdb_series_cache table
+        const { data, error } = await supabase
+          .from('tmdb_series_cache')
+          .select('tmdb_id')
+          .eq('imdb_id', imdbId)
+          .single();
+
+        if (error || !data) {
+          console.log('[TMDBCast] No TMDB ID found in series cache for:', imdbId);
+          return null;
+        }
+
+        console.log('[TMDBCast] Found TMDB series ID in cache:', data.tmdb_id);
+        return data.tmdb_id;
+      } else {
+        // Check movies table
+        const { data, error } = await supabase
+          .from('movies')
+          .select('tmdb_id')
+          .eq('imdb_id', imdbId)
+          .not('tmdb_id', 'is', null)
+          .limit(1)
+          .single();
+
+        if (error || !data) {
+          console.log('[TMDBCast] No TMDB ID found in movies table for:', imdbId);
+          return null;
+        }
+
+        console.log('[TMDBCast] Found TMDB movie ID in database:', data.tmdb_id);
+        return data.tmdb_id;
+      }
+    } catch (error) {
+      console.error('[TMDBCast] Error getting TMDB ID from database:', error);
+      return null;
+    }
+  }
 
   /**
    * Find TMDB series ID from IMDb ID
