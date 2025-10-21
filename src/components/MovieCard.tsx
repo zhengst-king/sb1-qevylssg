@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Star, Plus, Check, Calendar, MapPin, User, Users, Clock, Award, DollarSign, Globe, Film, Tv } from 'lucide-react';
 import { OMDBMovieDetails } from '../lib/omdb';
 import { supabase } from '../lib/supabase';
+import { useMovies } from '../hooks/useMovies'; 
 import { buildMovieFromOMDb, getTMDBIdFromIMDb } from '../utils/movieDataBuilder';
 
 interface MovieCardProps {
