@@ -37,19 +37,33 @@ export function MovieRecommendations({
   // Load watchlist titles on mount
   useEffect(() => {
     loadWatchlistTitles();
-  }, [movies]);
+  }, []);
   
-  // ✅ KEEP ORIGINAL LOGIC - This works correctly
-  const loadWatchlistTitles = () => { // ✅ Remove async
-    const tmdbIds = new Set<number>();
-  
-    for (const movie of movies) { // ✅ Use movies from hook
-      if (movie.tmdb_id) {
-        tmdbIds.add(movie.tmdb_id);
+  const loadWatchlistTitles = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('movies')
+        .select('tmdb_id')
+        .eq('user_id', user.id)
+        .eq('media_type', 'movie');
+
+      if (data) {
+        const tmdbIds = new Set<number>();
+    
+        for (const movie of data) {
+          if (movie.tmdb_id) {
+            tmdbIds.add(movie.tmdb_id);
+          }
+        }
+        
+        setWatchlistTitles(tmdbIds);
       }
+    } catch (error) {
+      console.error('Error loading watchlist:', error);
     }
-  
-    setWatchlistTitles(tmdbIds);
   };
 
   if (!hasRecommendations && !hasSimilar) {
@@ -234,7 +248,7 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
       }
       
       // Refresh watchlist
-      onWatchlistUpdate();
+      await onWatchlistUpdate();
     } catch (error) {
       console.error('Error toggling watchlist:', error);
       alert('Failed to update watchlist. Please try again.');
