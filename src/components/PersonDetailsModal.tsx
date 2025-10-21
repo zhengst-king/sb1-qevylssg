@@ -8,7 +8,7 @@ import { Movie } from '../lib/supabase';
 import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 import { omdbApi } from '../lib/omdb';
 import { useMovies } from '../hooks/useMovies';
-import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
+import { buildMovieFromOMDb, buildSeriesFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
 
 interface PersonDetailsModalProps {
   tmdbPersonId: number;
@@ -543,9 +543,8 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         if (error) throw error;
       } else {
-
-        // ✅ REFACTORED - Use centralized builder for movies
-        console.log('[PersonDetailsModal] Adding movie to watchlist:', title);
+        // ✅ REFACTORED - Use centralized builder for both movies and series
+        console.log('[PersonDetailsModal] Adding to watchlist:', title, 'Type:', mediaType);
         
         // Get IMDb ID from TMDB
         const imdbId = await getIMDbIdFromTMDB(credit.id, credit.media_type === 'tv' ? 'tv' : 'movie');
@@ -562,26 +561,40 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           }
         }
         
-        // ✅ USE CENTRALIZED BUILDER
-        const movieData = buildMovieFromOMDb(
-          {
-            title: title,
-            year: displayYear || undefined,
-            imdb_id: imdbId || `tmdb_${credit.id}`,
-            tmdb_id: credit.id,
-            poster_url: posterUrl || undefined,
-            plot: undefined,
-            imdb_score: credit.vote_average,
-            media_type: mediaType,
-            status: 'To Watch'
-          },
-          omdbDetails
-        );
+        // ✅ USE CENTRALIZED BUILDER - choose based on media type
+        const itemData = mediaType === 'series' 
+          ? buildSeriesFromOMDb(
+              {
+                title: title,
+                year: displayYear || undefined,
+                imdb_id: imdbId || `tmdb_${credit.id}`,
+                tmdb_id: credit.id, // ✅ Include TMDB ID
+                poster_url: posterUrl || undefined,
+                plot: undefined,
+                imdb_score: credit.vote_average,
+                status: 'To Watch'
+              },
+              omdbDetails
+            )
+          : buildMovieFromOMDb(
+              {
+                title: title,
+                year: displayYear || undefined,
+                imdb_id: imdbId || `tmdb_${credit.id}`,
+                tmdb_id: credit.id, // ✅ Include TMDB ID
+                poster_url: posterUrl || undefined,
+                plot: undefined,
+                imdb_score: credit.vote_average,
+                media_type: 'movie',
+                status: 'To Watch'
+              },
+              omdbDetails
+            );
 
         // ✅ USE HOOK FOR INSERT
-        await addMovieToWatchlist(movieData);
+        await addMovieToWatchlist(itemData);
 
-        console.log('[PersonDetailsModal] ✅ Movie added with complete data');
+        console.log('[PersonDetailsModal] ✅ Item added with complete data');
       }
       
       // Refresh watchlist
