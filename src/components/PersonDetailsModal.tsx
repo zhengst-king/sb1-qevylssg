@@ -611,21 +611,26 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
   };
 
   const handleCardClick = async (e: React.MouseEvent) => {
-  if (isInWatchlist) {  // ✅ Remove the onOpenMovieDetails check
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('[PersonDetailsModal CreditCard] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
-    
-    // ✅ Check which modal to open based on media type
-    if (mediaType === 'series') {
-      if (!onOpenSeriesDetails) {
+    if (isInWatchlist) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('[PersonDetailsModal CreditCard] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
+      
+      // ✅ Check which modal handler is available
+      if (mediaType === 'series' && !onOpenSeriesDetails) {
         console.log('[PersonDetailsModal CreditCard] No series details handler available');
         alert('TV series details coming soon! For now, you can view this in your TV watchlist.');
         return;
       }
       
-      // Fetch the movie from database to get full details
+      if (mediaType === 'movie' && !onOpenMovieDetails) {
+        console.log('[PersonDetailsModal CreditCard] No movie details handler available');
+        alert('Movie details handler not available.');
+        return;
+      }
+      
+      // ✅ Fetch from database (for BOTH movies and series)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -635,8 +640,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         console.log('[PersonDetailsModal CreditCard] Fetching item by tmdb_id:', { tmdb_id: credit.id, mediaType, userId: user.id });
 
-        // ✅ FIXED: Query by tmdb_id instead of title (more reliable)
-        const { data: movie, error } = await supabase
+        const { data: item, error } = await supabase
           .from('movies')
           .select('*')
           .eq('user_id', user.id)
@@ -644,7 +648,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           .eq('media_type', mediaType)
           .maybeSingle();
 
-        console.log('[PersonDetailsModal CreditCard] Query result:', { movie, error });
+        console.log('[PersonDetailsModal CreditCard] Query result:', { item, error });
 
         if (error) {
           console.error('[PersonDetailsModal CreditCard] Database error:', error);
@@ -652,13 +656,13 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           return;
         }
 
-        if (movie) {
-          console.log('[PersonDetailsModal CreditCard] Opening details modal for:', movie.title);
+        if (item) {
+          console.log('[PersonDetailsModal CreditCard] Opening details modal for:', item.title);
           // ✅ Call the correct modal based on media type
           if (mediaType === 'series' && onOpenSeriesDetails) {
-            onOpenSeriesDetails(movie);
+            onOpenSeriesDetails(item);
           } else if (mediaType === 'movie' && onOpenMovieDetails) {
-            onOpenMovieDetails(movie);
+            onOpenMovieDetails(item);
           }
         } else {
           console.log('[PersonDetailsModal CreditCard] No item found in database with tmdb_id:', credit.id);
@@ -666,11 +670,10 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
         }
       } catch (error) {
         console.error('[PersonDetailsModal CreditCard] Error in handleCardClick:', error);
-        alert('An error occurred while trying to open movie details.');
+        alert('An error occurred while trying to open details.');
       }
     }
-  }
-};
+  };
 
   const tmdbUrl = credit.media_type === 'tv'
     ? `https://www.themoviedb.org/tv/${credit.id}`
