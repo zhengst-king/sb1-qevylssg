@@ -120,17 +120,7 @@ function App() {
 
   // NEW: Show landing page if user is not authenticated
   if (!isAuthenticated) {
-    return (
-      <>
-        <LandingPage onShowAuth={handleShowAuth} />
-        {showAuthModal && (
-          <AuthModal 
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-          />
-        )}
-      </>
-    );
+    return <LandingPage />;
   }
 
   // Show main app if user is authenticated
