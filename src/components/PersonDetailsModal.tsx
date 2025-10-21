@@ -669,7 +669,8 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
         alert('An error occurred while trying to open movie details.');
       }
     }
-  };
+  }
+};
 
   const tmdbUrl = credit.media_type === 'tv'
     ? `https://www.themoviedb.org/tv/${credit.id}`
