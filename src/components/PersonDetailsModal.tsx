@@ -568,6 +568,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
             title: title,
             year: displayYear || undefined,
             imdb_id: imdbId || `tmdb_${credit.id}`,
+            tmdb_id: credit.id,
             poster_url: posterUrl || undefined,
             plot: undefined,
             imdb_score: credit.vote_average,
