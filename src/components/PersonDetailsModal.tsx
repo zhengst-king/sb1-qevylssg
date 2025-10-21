@@ -463,6 +463,7 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
                   }}
                   onWatchlistUpdate={loadWatchlistTitles}
                   onOpenMovieDetails={onOpenMovieDetails}
+                  onOpenSeriesDetails={onOpenSeriesDetails}
                 />
               ))}
             </div>
