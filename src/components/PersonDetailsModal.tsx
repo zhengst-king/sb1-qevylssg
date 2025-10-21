@@ -83,20 +83,15 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
 
       const { data } = await supabase
         .from('movies')
-        .select('imdb_id')
+        .select('tmdb_id')
         .eq('user_id', user.id);
 
       if (data) {
-        // Create a set of TMDB IDs from IMDb IDs
         const tmdbIds = new Set<number>();
-        
+    
         for (const movie of data) {
-          if (movie.imdb_id) {
-            // Try to get TMDB ID from IMDb ID
-            const tmdbId = await getTMDBIdFromIMDbId(movie.imdb_id);
-            if (tmdbId) {
-              tmdbIds.add(tmdbId);
-            }
+          if (movie.tmdb_id) {
+            tmdbIds.add(movie.tmdb_id);
           }
         }
         
@@ -104,22 +99,6 @@ export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClo
       }
     } catch (error) {
       console.error('Error loading watchlist:', error);
-    }
-  };
-
-  const getTMDBIdFromIMDbId = async (imdbId: string): Promise<number | null> => {
-    try {
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-      const response = await fetch(
-        `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`
-      );
-      
-      if (!response.ok) return null;
-      
-      const data = await response.json();
-      return data.movie_results?.[0]?.id || data.tv_results?.[0]?.id || null;
-    } catch (error) {
-      return null;
     }
   };
 
