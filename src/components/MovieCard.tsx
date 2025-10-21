@@ -73,7 +73,7 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
           plot: movie.Plot !== 'N/A' ? movie.Plot : undefined,
           imdb_score: movie.imdbRating !== 'N/A' ? parseFloat(movie.imdbRating) : undefined,
           media_type: movie.Type === 'series' ? 'series' : 'movie',
-          status: 'Plan to Watch'
+          status: 'To Watch'
         },
         movie // ✅ Pass the entire movie object as OMDb details
       );
