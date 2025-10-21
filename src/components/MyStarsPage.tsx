@@ -8,6 +8,7 @@ import { Film, Camera, Music, Palette, Wand2, Sparkles, Clapperboard } from 'luc
 import { PersonDetailsModal } from './PersonDetailsModal';
 import { MovieDetailsPage } from './MovieDetailsPage';
 import { Movie } from '../lib/supabase';
+import { EnhancedEpisodesBrowserPage } from './EnhancedEpisodesBrowserPage';
 
 type MainTab = 'actors' | 'crew';
 type CrewSubTab = 'director' | 'creator' | 'producer' | 'executive-producer' | 'cinematographer' | 'editor' | 'music' | 'production-design' | 'costume-design' | 'vfx' | 'sfx' | 'choreographer';
@@ -35,11 +36,19 @@ export function MyStarsPage() {
   const [favoriteCrew, setFavoriteCrew] = useState<FavoriteCrewMember[]>([]);
   const [showMovieDetailsModal, setShowMovieDetailsModal] = useState(false);
   const [selectedMovieForDetails, setSelectedMovieForDetails] = useState<Movie | null>(null);
+  const [showEpisodesModal, setShowEpisodesModal] = useState(false);
+  const [selectedSeriesForEpisodes, setSelectedSeriesForEpisodes] = useState<Movie | null>(null);
 
   const handleOpenMovieDetails = (movie: Movie) => {
     console.log('[MyStarsPage] handleOpenMovieDetails called with:', movie);
     setSelectedMovieForDetails(movie);
     setShowMovieDetailsModal(true);
+  };
+
+  const handleOpenSeriesDetails = (series: Movie) => {
+    console.log('[MyStarsPage] handleOpenSeriesDetails called with:', series.title);
+    setSelectedSeriesForEpisodes(series);
+    setShowEpisodesModal(true);
   };
 
   useEffect(() => {
@@ -242,6 +251,7 @@ export function MyStarsPage() {
                     crew={crew}
                     onRemove={handleRemoveCrew}
                     onOpenMovieDetails={handleOpenMovieDetails}
+                    onOpenSeriesDetails={handleOpenSeriesDetails}
                   />
                 ))}
               </div>
@@ -271,6 +281,28 @@ export function MyStarsPage() {
                 setShowMovieDetailsModal(false);
                 setSelectedMovieForDetails(null);
               }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Episodes Modal for TV Series */}
+      {showEpisodesModal && selectedSeriesForEpisodes && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50" 
+            onClick={() => setShowEpisodesModal(false)}
+          />
+          <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <EnhancedEpisodesBrowserPage 
+              series={selectedSeriesForEpisodes} 
+              onBack={() => {
+                setShowEpisodesModal(false);
+                setSelectedSeriesForEpisodes(null);
+              }}
+              onUpdateStatus={async (id, status) => {}}
+              onUpdateRating={async (id, rating) => {}}
+              onUpdateMovie={async (id, updates) => {}}
             />
           </div>
         </div>
@@ -373,6 +405,11 @@ function FavoriteActorCard({ favorite, onRemove, onOpenMovieDetails }: FavoriteA
             setShowModal(false);
             handleOpenMovieDetails(movie);
           }}
+          onOpenSeriesDetails={(series) => {
+            console.log('[FavoriteActorCard] Closing actor modal, opening series modal');
+            setShowModal(false);
+            handleOpenSeriesDetails(series);
+          }}
         />
       )}
     </>
@@ -385,9 +422,10 @@ interface FavoriteCrewCardProps {
   crew: FavoriteCrewMember;
   onRemove: (crewId: number) => void;
   onOpenMovieDetails: (movie: Movie) => void;
+  onOpenSeriesDetails: (series: Movie) => void;
 }
 
-function FavoriteCrewCard({ crew, onRemove, onOpenMovieDetails }: FavoriteCrewCardProps) {
+function FavoriteCrewCard({ crew, onRemove, onOpenMovieDetails, onOpenSeriesDetails }: FavoriteCrewCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const profileUrl = crew.profile_path
@@ -467,6 +505,10 @@ function FavoriteCrewCard({ crew, onRemove, onOpenMovieDetails }: FavoriteCrewCa
           onOpenMovieDetails={(movie) => {
             setShowModal(false);
             onOpenMovieDetails(movie);
+          }}
+          onOpenSeriesDetails={(series) => {
+            setShowModal(false);
+            onOpenSeriesDetails(series);
           }}
         />
       )}
