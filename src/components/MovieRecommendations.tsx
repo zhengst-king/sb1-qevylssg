@@ -235,6 +235,8 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
 
         // ✅ USE HOOK FOR INSERT
         await addMovie(movieData);
+        await onWatchlistUpdate(); 
+        onMovieAddedToWatchlist?.();
 
         console.log('[MovieRecommendations] ✅ Movie added with complete data');
 
