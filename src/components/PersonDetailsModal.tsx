@@ -505,7 +505,7 @@ interface CreditCardProps {
 
 function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails }: CreditCardProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const { addMovie } = useMovies('movie');
+  const { addMovie: addMovieToWatchlist } = useMovies(mediaType);
   
   const posterUrl = credit.poster_path
     ? tmdbService.getImageUrl(credit.poster_path, 'w342')
@@ -548,7 +548,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
         console.log('[PersonDetailsModal] Adding movie to watchlist:', title);
         
         // Get IMDb ID from TMDB
-        const imdbId = await getIMDbIdFromTMDB(credit.id, 'movie');
+        const imdbId = await getIMDbIdFromTMDB(credit.id, credit.media_type === 'tv' ? 'tv' : 'movie');
         
         // Fetch OMDb enrichment (if IMDb ID available)
         let omdbDetails = null;
@@ -571,14 +571,14 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
             poster_url: posterUrl || undefined,
             plot: undefined,
             imdb_score: credit.vote_average,
-            media_type: 'movie',
+            media_type: mediaType,
             status: 'To Watch'
           },
           omdbDetails
         );
 
         // ✅ USE HOOK FOR INSERT
-        await addMovie(movieData);
+        await addMovieToWatchlist(movieData);
 
         console.log('[PersonDetailsModal] ✅ Movie added with complete data');
       }
