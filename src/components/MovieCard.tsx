@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Star, Plus, Check, Calendar, MapPin, User, Users, Clock, Award, DollarSign, Globe, Film, Tv } from 'lucide-react';
 import { OMDBMovieDetails } from '../lib/omdb';
 import { supabase } from '../lib/supabase';
+import { buildMovieFromOMDb, getTMDBIdFromIMDb } from '../utils/movieDataBuilder';
 
 interface MovieCardProps {
   movie: OMDBMovieDetails;
@@ -58,7 +59,7 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
       }
 
       // ✅ NEW: Get TMDB ID from IMDb ID
-      const tmdbId = await getIMDbIdFromTMDB(movie.imdbID, movie.Type === 'series' ? 'tv' : 'movie');
+      const tmdbId = await getTMDBIdFromIMDb(movie.imdbID, movie.Type === 'series' ? 'tv' : 'movie');
 
       // ✅ NEW: movie already has OMDb details, use buildMovieFromOMDb
       const movieData = buildMovieFromOMDb(
