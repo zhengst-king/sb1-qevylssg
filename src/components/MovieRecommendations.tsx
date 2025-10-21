@@ -39,32 +39,33 @@ export function MovieRecommendations({
   }, []);
   
   // ✅ KEEP ORIGINAL LOGIC - This works correctly
-  const loadWatchlistTitles = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  cconst loadWatchlistTitles = () => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data } = await supabase
-        .from('movies')
-        .select('tmdb_id')
-        .eq('user_id', user.id)
-        .eq('media_type', 'movie');
+        const { data } = await supabase
+          .from('movies')
+          .select('tmdb_id')
+          .eq('user_id', user.id)
+          .eq('media_type', 'movie');
 
-      if (data) {
-        // Create a set of TMDB IDs from IMDb IDs
-        const tmdbIds = new Set<number>();
+        if (data) {
+          const tmdbIds = new Set<number>();
         
-        for (const movie of data) {
-          if (movie.tmdb_id) {
-            tmdbIds.add(movie.tmdb_id);
+          for (const movie of data) {
+            if (movie.tmdb_id) {
+              tmdbIds.add(movie.tmdb_id);
+            }
           }
-        }
         
-        setWatchlistTitles(tmdbIds);
+          setWatchlistTitles(tmdbIds);
+        }
+      } catch (error) {
+        console.error('Error loading watchlist:', error);
       }
-    } catch (error) {
-      console.error('Error loading watchlist:', error);
-    }
+    })();
   };
 
   if (!hasRecommendations && !hasSimilar) {
