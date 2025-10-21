@@ -39,7 +39,7 @@ export function MovieRecommendations({
   }, []);
   
   // ✅ KEEP ORIGINAL LOGIC - This works correctly
-  cconst loadWatchlistTitles = () => {
+  const loadWatchlistTitles = () => {
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
