@@ -15,14 +15,8 @@ interface PersonDetailsModalProps {
   personName: string;
   personType: 'cast' | 'crew';
   onClose: () => void;
-}
-
-interface PersonDetailsModalProps {
-  tmdbPersonId: number;
-  personName: string;
-  personType: 'cast' | 'crew';
-  onClose: () => void;
-  onOpenMovieDetails?: (movie: Movie) => void; // Add this line
+  onOpenMovieDetails?: (movie: Movie) => void; 
+  onOpenSeriesDetails?: (series: Movie) => void;
 }
 
 interface PersonCredits {
@@ -501,9 +495,10 @@ interface CreditCardProps {
   onToggleWatchlist: () => void;
   onWatchlistUpdate: () => void;
   onOpenMovieDetails?: (movie: Movie) => void;
+  onOpenSeriesDetails?: (series: Movie) => void;
 }
 
-function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails }: CreditCardProps) {
+function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails, onOpenSeriesDetails }: CreditCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const { addMovie: addMovieToWatchlist } = useMovies();
   
