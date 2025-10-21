@@ -36,6 +36,10 @@ export function MovieRecommendations({
   // Load watchlist titles on mount
   useEffect(() => {
     loadWatchlistTitles();
+  }, []);
+  
+  useEffect(() => {
+    loadWatchlistTitles();
   }, [movies]);
 
   // ✅ KEEP ORIGINAL LOGIC - This works correctly
