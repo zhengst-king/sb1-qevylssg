@@ -209,6 +209,7 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
             title: title,
             year: year || undefined,
             imdb_id: imdbId || `tmdb_${item.id}`,
+            tmdb_id: item.id,
             poster_url: posterUrl || undefined,
             plot: item.overview,
             imdb_score: item.vote_average,
