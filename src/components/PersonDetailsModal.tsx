@@ -543,12 +543,6 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         if (error) throw error;
       } else {
-        // ✅ PHASE 1: Movies only - skip TV series for now
-        if (credit.media_type === 'tv') {
-          alert('TV series support coming soon! For now, only movies can be added from this page.');
-          setIsAdding(false);
-          return;
-        }
 
         // ✅ REFACTORED - Use centralized builder for movies
         console.log('[PersonDetailsModal] Adding movie to watchlist:', title);
