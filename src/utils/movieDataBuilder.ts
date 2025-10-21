@@ -163,6 +163,31 @@ export async function getIMDbIdFromTMDB(tmdbId: number, mediaType: 'movie' | 'tv
 }
 
 /**
+ * Helper function to fetch TMDB ID from IMDb ID
+ * Reverse of getIMDbIdFromTMDB
+ */
+export async function getTMDBIdFromIMDb(imdbId: string, mediaType: 'movie' | 'tv'): Promise<number | null> {
+  try {
+    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+    const url = `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`;
+    
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    
+    if (mediaType === 'movie') {
+      return data.movie_results?.[0]?.id || null;
+    } else {
+      return data.tv_results?.[0]?.id || null;
+    }
+  } catch (error) {
+    console.error('[movieDataBuilder] Error fetching TMDB ID:', error);
+    return null;
+  }
+}
+
+/**
  * Convenience function that combines TMDB data fetching + OMDb enrichment + movie building
  * Use this for the simplest integration in components
  */
