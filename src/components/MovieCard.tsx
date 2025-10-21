@@ -14,6 +14,7 @@ interface MovieCardProps {
 export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCardProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const { addMovie } = useMovies('movie'); 
 
   // Check if movie is already in watchlist
   React.useEffect(() => {
@@ -56,78 +57,37 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
         return;
       }
 
-      // Prepare movie data
-      const movieData = {
-        user_id: currentUser.id,  // CRITICAL: Include authenticated user's ID
-        media_type: movie.Type === 'series' ? 'series' : 'movie',
-        title: movie.Title,
-        genre: movie.Genre !== 'N/A' ? movie.Genre : undefined,
-        year: movie.Year !== 'N/A' ? parseInt(movie.Year) : undefined,
-        country: movie.Country !== 'N/A' ? movie.Country : undefined,
-        director: movie.Director !== 'N/A' ? movie.Director : undefined,
-        actors: movie.Actors !== 'N/A' ? movie.Actors : undefined,
-        imdb_score: movie.imdbRating !== 'N/A' ? parseFloat(movie.imdbRating) : undefined,
-        imdb_url: imdbUrl || '',
-        status: (() => {
-          // Determine if movie/series is upcoming based on release date
-          if (movie.Released && movie.Released !== 'N/A') {
-            try {
-              const releaseDate = new Date(movie.Released);
-              const today = new Date();
+      // ✅ NEW: Get TMDB ID from IMDb ID
+      const tmdbId = await getIMDbIdFromTMDB(movie.imdbID, movie.Type === 'series' ? 'tv' : 'movie');
+
+      // ✅ NEW: movie already has OMDb details, use buildMovieFromOMDb
+      const movieData = buildMovieFromOMDb(
+        {
+          title: movie.Title,
+          year: movie.Year !== 'N/A' ? parseInt(movie.Year) : undefined,
+          imdb_id: movie.imdbID,
+          tmdb_id: tmdbId || undefined, // ✅ Include TMDB ID
+          poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
+          plot: movie.Plot !== 'N/A' ? movie.Plot : undefined,
+          imdb_score: movie.imdbRating !== 'N/A' ? parseFloat(movie.imdbRating) : undefined,
+          media_type: movie.Type === 'series' ? 'series' : 'movie',
+          status: 'Plan to Watch'
+        },
+        movie // ✅ Pass the entire movie object as OMDb details
+      );
+
+      // ✅ NEW: Use the hook instead of direct insert
+      await addMovie(movieData);
+
+      console.log('[MovieCard] ✅ Movie added successfully with tmdb_id');
       
-              // If release date is in the future, mark as Upcoming
-              if (releaseDate > today) {
-                return 'Upcoming';
-              }
-            } catch (error) {
-              console.warn('[MovieCard] Could not parse release date:', movie.Released);
-            }
-          }
-  
-          // Default to 'To Watch' for released or unknown release dates
-          return 'To Watch';
-        })(),
-        poster_url: posterUrl,
-        imdb_id: movie.imdbID,
-        metascore: movie.Metascore !== 'N/A' ? parseInt(movie.Metascore) : undefined,
-        imdb_votes: movie.imdbVotes !== 'N/A' ? movie.imdbVotes : undefined,
-        runtime: movie.Runtime && movie.Runtime !== 'N/A' ? parseInt(movie.Runtime.replace(' min', '')) : undefined,
-        awards: movie.Awards !== 'N/A' ? movie.Awards : undefined,
-        box_office: movie.BoxOffice && movie.BoxOffice !== 'N/A' ? parseFloat(movie.BoxOffice.replace(/[$,]/g, '')) : undefined,
-        production: movie.Production !== 'N/A' ? movie.Production : undefined,
-        website: movie.Website !== 'N/A' ? movie.Website : undefined,
-        plot: movie.Plot !== 'N/A' ? movie.Plot : undefined,
-        rated: movie.Rated !== 'N/A' ? movie.Rated : undefined,
-        released: movie.Released !== 'N/A' ? movie.Released : undefined,
-        language: movie.Language !== 'N/A' ? movie.Language : undefined,
-        writer: movie.Writer !== 'N/A' ? movie.Writer : undefined,
-      };
-
-      const { data: inserted, error } = await supabase
-        .from('movies')
-        .insert([movieData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase insert error:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          status: error.status
-        });
-        alert(`Failed to add "${movie.Title}" to watchlist:\n${error.message}`);
-      } else {
-        console.log('Insert succeeded:', inserted);
-        // Mark this card as added without a popup
-        setIsInWatchlist(true);
-        
-        // NEW: Call the callback to refresh parent component if provided
-        if (onMovieAdded) {
-          console.log('[MovieCard] Calling onMovieAdded callback');
-          onMovieAdded();
-        }
+      // Mark this card as added without a popup
+      setIsInWatchlist(true);
+      
+      // Call the callback to refresh parent component if provided
+      if (onMovieAdded) {
+        console.log('[MovieCard] Calling onMovieAdded callback');
+        onMovieAdded();
       }
 
     } catch (error) {
