@@ -505,7 +505,7 @@ interface CreditCardProps {
 
 function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails }: CreditCardProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const { addMovie: addMovieToWatchlist } = useMovies(mediaType);
+  const { addMovie: addMovieToWatchlist } = useMovies();
   
   const posterUrl = credit.poster_path
     ? tmdbService.getImageUrl(credit.poster_path, 'w342')
