@@ -43,7 +43,14 @@ interface CreditItem {
 type FilmographyTab = 'known-for' | 'credits';
 type CrewDepartment = 'all' | 'Directing' | 'Writing' | 'Production' | 'Camera' | 'Editing' | 'Sound' | 'Art' | 'Costume & Make-Up' | 'Visual Effects';
 
-export function PersonDetailsModal({ tmdbPersonId, personName, personType, onClose, onOpenMovieDetails }: PersonDetailsModalProps) {
+export function PersonDetailsModal({ 
+  tmdbPersonId, 
+  personName, 
+  personType, 
+  onClose, 
+  onOpenMovieDetails,
+  onOpenSeriesDetails  // ✅ ADD THIS
+}: PersonDetailsModalProps) {
   const [personDetails, setPersonDetails] = useState<TMDBPersonDetails | null>(null);
   const [personCredits, setPersonCredits] = useState<PersonCredits | null>(null);
   const [loading, setLoading] = useState(true);
