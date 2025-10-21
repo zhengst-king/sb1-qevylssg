@@ -15,6 +15,7 @@ import { CalendarsPage } from './components/CalendarsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
 import { useAuth } from './hooks/useAuth';
 import { FranchisePage } from './components/FranchisePage';
+import { LandingPage } from './components/LandingPage';
 
 // Updated PageType with 'my-spots' removed
 type PageType = 
@@ -31,9 +32,12 @@ type PageType =
   | 'analytics'
   | 'settings';
 
+type AuthMode = 'signin' | 'signup';
+
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('search');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('signup');
   const { isAuthenticated, loading } = useAuth();
 
   // FIX: Initialize episode discovery system on app startup
@@ -62,9 +66,14 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleShowAuth = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
   const handlePageChange = (page: PageType) => {
     if (!isAuthenticated && page !== 'search') {
-      setShowAuthModal(true);
+      handleShowAuth('signin');
       return;
     }
     setCurrentPage(page);
@@ -109,12 +118,28 @@ function App() {
     );
   }
 
+  // NEW: Show landing page if user is not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LandingPage onShowAuth={handleShowAuth} />
+        {showAuthModal && (
+          <AuthModal 
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Show main app if user is authenticated
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <Navigation 
         currentPage={currentPage} 
         onPageChange={handlePageChange}
-        onSignInClick={() => setShowAuthModal(true)}
+        onSignInClick={() => handleShowAuth('signin')} // Updated
       />
       
       <main>
@@ -122,7 +147,10 @@ function App() {
       </main>
 
       {showAuthModal && (
-        <AuthModal onClose={() => setShowAuthModal(false)} />
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
       )}
     </div>
   );
