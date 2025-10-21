@@ -612,7 +612,7 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('[PersonDetailsModal] Clicked watchlist title:', title, mediaType);
+      console.log('[PersonDetailsModal] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
       
       // Fetch the movie from database to get full details
       try {
@@ -622,30 +622,31 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           return;
         }
 
-        console.log('[PersonDetailsModal] Fetching movie:', { title, mediaType, userId: user.id });
+        console.log('[PersonDetailsModal] Fetching item by tmdb_id:', { tmdb_id: credit.id, mediaType, userId: user.id });
 
+        // ✅ FIXED: Query by tmdb_id instead of title (more reliable)
         const { data: movie, error } = await supabase
           .from('movies')
           .select('*')
           .eq('user_id', user.id)
-          .eq('title', title)
+          .eq('tmdb_id', credit.id)
           .eq('media_type', mediaType)
-          .single();
+          .maybeSingle();
 
         console.log('[PersonDetailsModal] Query result:', { movie, error });
 
         if (error) {
-          console.error('[PersonDetailsModal] Error fetching movie:', error);
-          alert(`Could not find movie in watchlist: ${error.message}`);
+          console.error('[PersonDetailsModal] Error fetching item:', error);
+          alert(`Could not find item in watchlist: ${error.message}`);
           return;
         }
 
         if (movie) {
-          console.log('[PersonDetailsModal] Opening movie details modal for:', movie.title);
+          console.log('[PersonDetailsModal] Opening details modal for:', movie.title);
           onOpenMovieDetails(movie);
         } else {
-          console.log('[PersonDetailsModal] No movie found in database');
-          alert('Could not find this movie in your watchlist.');
+          console.log('[PersonDetailsModal] No item found in database with tmdb_id:', credit.id);
+          alert(`Could not find "${title}" in your watchlist. Try adding it again.`);
         }
       } catch (error) {
         console.error('[PersonDetailsModal] Error in handleCardClick:', error);
