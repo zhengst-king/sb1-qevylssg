@@ -38,10 +38,6 @@ export function MovieRecommendations({
     loadWatchlistTitles();
   }, []);
   
-  useEffect(() => {
-    loadWatchlistTitles();
-  }, [movies]);
-
   // ✅ KEEP ORIGINAL LOGIC - This works correctly
   const loadWatchlistTitles = async () => {
     try {
@@ -166,7 +162,7 @@ interface RecommendationCardProps {
 
 function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDetailsClick, onMovieAddedToWatchlist }: RecommendationCardProps) {
   const [isAdding, setIsAdding] = useState(false);
-  const { movies, addMovie, refetch } = useMovies('movie');
+  const { addMovie } = useMovies('movie');
 
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
@@ -239,9 +235,10 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
 
         // ✅ USE HOOK FOR INSERT
         await addMovie(movieData);
-        await onWatchlistUpdate(); 
+
+        onWatchlistUpdate();
         if (onMovieAddedToWatchlist) {
-          onMovieAddedToWatchlist?.();
+          onMovieAddedToWatchlist();
         }
 
         console.log('[MovieRecommendations] ✅ Movie added with complete data');
