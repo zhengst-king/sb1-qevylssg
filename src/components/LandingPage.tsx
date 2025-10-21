@@ -1,16 +1,21 @@
 // src/components/LandingPage.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { LandingHeader } from './landing/LandingHeader';
 import { LandingFooter } from './landing/LandingFooter';
+import { AuthModal } from './AuthModal';
 
-interface LandingPageProps {
-  onShowAuth: (mode: 'signin' | 'signup') => void;
-}
+export function LandingPage() {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
 
-export function LandingPage({ onShowAuth }: LandingPageProps) {
+  const handleShowAuth = (mode: 'signin' | 'signup') => {
+    setAuthMode(mode);
+    setShowAuthModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      <LandingHeader onShowAuth={onShowAuth} />
+      <LandingHeader onShowAuth={handleShowAuth} />
       
       {/* Main Content - Will be populated in later phases */}
       <main className="pt-16">
@@ -25,13 +30,13 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
             </p>
             <div className="flex gap-4 justify-center">
               <button
-                onClick={() => onShowAuth('signup')}
+                onClick={() => handleShowAuth('signup')}
                 className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg"
               >
                 Start Free
               </button>
               <button
-                onClick={() => onShowAuth('signin')}
+                onClick={() => handleShowAuth('signin')}
                 className="px-8 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-all"
               >
                 Sign In
@@ -44,6 +49,12 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
       </main>
 
       <LandingFooter />
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        defaultMode={authMode}
+      />
     </div>
   );
 }
