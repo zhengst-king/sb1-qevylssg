@@ -654,7 +654,12 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
 
         if (movie) {
           console.log('[PersonDetailsModal CreditCard] Opening details modal for:', movie.title);
-          onOpenMovieDetails(movie);
+          // ✅ Call the correct modal based on media type
+          if (mediaType === 'series' && onOpenSeriesDetails) {
+            onOpenSeriesDetails(movie);
+          } else if (mediaType === 'movie' && onOpenMovieDetails) {
+            onOpenMovieDetails(movie);
+          }
         } else {
           console.log('[PersonDetailsModal CreditCard] No item found in database with tmdb_id:', credit.id);
           alert(`Could not find "${title}" in your watchlist. The title may have been removed.`);
