@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+// src/components/AuthModal.tsx
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, User, AlertCircle, Loader } from 'lucide-react';
 import { signInWithEmail, signUpWithEmail } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultMode?: 'signin' | 'signup'; 
+  defaultMode?: 'signin' | 'signup';
 }
 
 export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModalProps) {
@@ -16,10 +17,12 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModal
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Update mode when defaultMode prop changes
   useEffect(() => {
     setIsSignUp(defaultMode === 'signup');
   }, [defaultMode]);
 
+  // Handle Escape key press and body scroll lock
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -29,7 +32,7 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModal
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden'; // Prevent body scroll
+      document.body.style.overflow = 'hidden';
     }
 
     return () => {
@@ -37,18 +40,6 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModal
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
-
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  // Updated backdrop div
-  <div 
-    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-    onClick={handleBackdropClick}
-  >
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,10 +85,20 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModal
     resetForm();
   };
 
+  // Handle click outside modal
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
