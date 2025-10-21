@@ -611,15 +611,16 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
   };
 
   const handleCardClick = async (e: React.MouseEvent) => {
-    if (isInWatchlist && onOpenMovieDetails) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      console.log('[PersonDetailsModal CreditCard] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
-      
-      // ✅ Check if this is a TV series - we can't open movie details for series
-      if (mediaType === 'series') {
-        console.log('[PersonDetailsModal CreditCard] This is a TV series - cannot open movie details modal');
+  if (isInWatchlist) {  // ✅ Remove the onOpenMovieDetails check
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('[PersonDetailsModal CreditCard] Clicked watchlist title:', title, mediaType, 'TMDB ID:', credit.id);
+    
+    // ✅ Check which modal to open based on media type
+    if (mediaType === 'series') {
+      if (!onOpenSeriesDetails) {
+        console.log('[PersonDetailsModal CreditCard] No series details handler available');
         alert('TV series details coming soon! For now, you can view this in your TV watchlist.');
         return;
       }
