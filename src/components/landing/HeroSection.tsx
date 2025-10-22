@@ -52,7 +52,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
               
               <button
                 onClick={() => onShowAuth('signin')}
-                className="group px-8 py-4 border-2 border-slate-300 text-slate-700 text-lg font-semibold rounded-xl hover:border-slate-400 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg transition-all border-2 border-slate-600"
               >
                 <Play className="w-5 h-5" />
                 Watch Demo
