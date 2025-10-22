@@ -125,6 +125,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             </Link>
             <Link
               to="/features"
+              onClick={() => setIsMobileMenuOpen(false)}
               className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
             >
               Features
@@ -143,17 +144,17 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             >
               Testimonials
             </Link>
-            <button
-              onClick={() => scrollToSection('pricing')}
+            <Link
+              onClick={() => setIsMobileMenuOpen(false)}
               className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
             >
               Pricing
-            </button>
+            </Link>
             
             <div className="pt-4 border-t border-slate-200 space-y-3">
               <button
                 onClick={() => onShowAuth('signin')}
-                className="px-4 py-2 text-slate-600 hover:text-blue-600 font-medium transition-colors"
+                className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
               >
                 Login
               </button>
