@@ -1,6 +1,6 @@
 // src/components/landing/HeroSection.tsx
 import React from 'react';
-import { Play, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface HeroSectionProps {
   onShowAuth: (mode: 'signin' | 'signup') => void;
@@ -54,7 +54,6 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
                 onClick={() => onShowAuth('signin')}
                 className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg transition-all border-2 border-slate-600"
               >
-                <Play className="w-5 h-5" />
                 Watch Demo
               </button>
             </div>
