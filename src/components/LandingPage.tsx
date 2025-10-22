@@ -15,21 +15,14 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onShowAuth }: LandingPageProps) {
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
-
-  const handleShowAuth = (mode: 'signin' | 'signup') => {
-    setAuthMode(mode);
-    setShowAuthModal(true);
-  };
 
   return (
     <div className="min-h-screen bg-white">
-      <LandingHeader onShowAuth={handleShowAuth} />
+      <LandingHeader onShowAuth={onShowAuth} />
       
       <main className="pt-16">
         {/* Hero Section */}
-        <HeroSection onShowAuth={handleShowAuth} />
+        <HeroSection onShowAuth={onShowAuth} />
         
         {/* Stats Bar */}
         <StatsBar />
@@ -47,12 +40,6 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
       </main>
 
       <LandingFooter />
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        defaultMode={authMode}
-      />
     </div>
   );
 }
