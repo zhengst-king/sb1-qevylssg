@@ -8,8 +8,13 @@ import { FeaturesSection } from './landing/FeaturesSection';
 import { HowItWorksSection } from './landing/HowItWorksSection';
 import { PricingSection } from './landing/PricingSection';
 import { AuthModal } from './AuthModal';
+import { Link } from 'react-router-dom';
 
-export function LandingPage() {
+interface LandingPageProps {
+  onShowAuth: (mode: 'signin' | 'signup') => void;
+}
+
+export function LandingPage({ onShowAuth }: LandingPageProps) {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
 
