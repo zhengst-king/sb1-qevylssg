@@ -77,7 +77,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
           </div>
 
           {/* Right Column - Visual Mockup */}
-          <div className="relative lg:block">
+          <div className="relative hidden lg:block">
             <div className="relative mx-auto max-w-lg lg:max-w-none">
               {/* Main App Mockup */}
               <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 transform hover:scale-105 transition-transform duration-500">
