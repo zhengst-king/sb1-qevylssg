@@ -1,14 +1,14 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { UserPlus, List, TrendingUp, ArrowLeft } from 'lucide-react';
+import { UserPlus, List, TrendingUp } from 'lucide-react';
+import { LandingHeader } from './landing/LandingHeader';
+import { LandingFooter } from './landing/LandingFooter';
+import { Link } from 'react-router-dom';
 
 interface HowItWorksPageProps {
   onShowAuth: (mode: 'signin' | 'signup') => void;
 }
 
 export default function HowItWorksPage({ onShowAuth }: HowItWorksPageProps) {
-  const navigate = useNavigate();
-
   const steps = [
     {
       icon: UserPlus,
@@ -53,40 +53,11 @@ export default function HowItWorksPage({ onShowAuth }: HowItWorksPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <button 
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-medium">Back to Home</span>
-            </button>
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              WatchlistApp
-            </div>
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => onShowAuth('signin')}
-                className="text-gray-700 hover:text-gray-900 font-medium"
-              >
-                Log In
-              </button>
-              <button 
-                onClick={() => onShowAuth('signup')}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all"
-              >
-                Sign Up Free
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Use your existing LandingHeader */}
+      <LandingHeader onShowAuth={onShowAuth} />
 
       {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+      <section className="pt-32 pb-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-6">
             How It Works
@@ -158,7 +129,7 @@ export default function HowItWorksPage({ onShowAuth }: HowItWorksPageProps) {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            Why Choose WatchlistApp?
+            Why Choose Tagflix?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
@@ -199,7 +170,7 @@ export default function HowItWorksPage({ onShowAuth }: HowItWorksPageProps) {
             Ready to Get Started?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join thousands of users who've organized their movie watching with WatchlistApp
+            Join thousands of users who've organized their movie watching with Tagflix
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button 
@@ -208,54 +179,18 @@ export default function HowItWorksPage({ onShowAuth }: HowItWorksPageProps) {
             >
               Sign Up Free
             </button>
-            <button 
-              onClick={() => navigate('/features')}
+            <Link 
+              to="/features"
               className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-200"
             >
               See Features
-            </button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">WatchlistApp</h3>
-              <p className="text-gray-400">
-                The smartest way to manage your movies and TV shows.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><button onClick={() => navigate('/features')} className="hover:text-white">Features</button></li>
-                <li><button onClick={() => navigate('/how-it-works')} className="hover:text-white">How It Works</button></li>
-                <li><button onClick={() => navigate('/testimonials')} className="hover:text-white">Testimonials</button></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><button className="hover:text-white">About</button></li>
-                <li><button className="hover:text-white">Contact</button></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><button className="hover:text-white">Privacy Policy</button></li>
-                <li><button className="hover:text-white">Terms of Service</button></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
-            <p>© 2024 WatchlistApp. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Use your existing LandingFooter */}
+      <LandingFooter />
     </div>
   );
 }
