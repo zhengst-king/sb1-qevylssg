@@ -34,7 +34,7 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
         <HowItWorksSection />
 
         {/* Pricing Section */}
-        <PricingSection onShowAuth={handleShowAuth} />
+        <PricingSection onShowAuth={onShowAuth} />
 
         {/* Additional sections will be added in later phases */}
       </main>
