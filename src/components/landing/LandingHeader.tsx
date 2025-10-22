@@ -85,8 +85,11 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             <button
-              onClick={() => onShowAuth('signin')}
-              className="px-6 py-2 text-slate-700 hover:text-blue-600 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all"
+              onClick={() => {
+                onShowAuth('signin');
+                setIsMobileMenuOpen(false);
+              }}
+              className="block w-full px-4 py-2 bg-white text-slate-700 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all text-center"
             >
               Login
             </button>
@@ -153,8 +156,11 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             
             <div className="pt-4 border-t border-slate-200 space-y-3">
               <button
-                onClick={() => onShowAuth('signin')}
-                className="block w-full px-4 py-2 text-slate-700 font-medium border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all text-center"
+                onClick={() => {
+                  onShowAuth('signin');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="block w-full px-4 py-2 bg-white text-slate-700 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all text-center"
               >
                 Login
               </button>
