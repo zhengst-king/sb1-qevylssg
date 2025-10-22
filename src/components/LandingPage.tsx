@@ -4,6 +4,8 @@ import { LandingHeader } from './landing/LandingHeader';
 import { LandingFooter } from './landing/LandingFooter';
 import { HeroSection } from './landing/HeroSection';
 import { StatsBar } from './landing/StatsBar';
+import { FeaturesSection } from './landing/FeaturesSection';
+import { HowItWorksSection } from './landing/HowItWorksSection';
 import { AuthModal } from './AuthModal';
 
 export function LandingPage() {
@@ -25,6 +27,12 @@ export function LandingPage() {
         
         {/* Stats Bar */}
         <StatsBar />
+
+        {/* Features Section */}
+        <FeaturesSection />
+
+        {/* How It Works Section */}
+        <HowItWorksSection />
 
         {/* Additional sections will be added in later phases */}
       </main>
