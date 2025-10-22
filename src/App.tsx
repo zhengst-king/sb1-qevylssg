@@ -16,6 +16,9 @@ import { AnalyticsPage } from './components/AnalyticsPage';
 import { useAuth } from './hooks/useAuth';
 import { FranchisePage } from './components/FranchisePage';
 import { LandingPage } from './components/LandingPage';
+import HowItWorksPage from './components/HowItWorksPage';
+import FeaturesPage from './components/FeaturesPage';
+import TestimonialsPage from './components/TestimonialsPage';
 
 // Updated PageType with 'my-spots' removed
 type PageType = 
