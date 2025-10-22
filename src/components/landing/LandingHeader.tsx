@@ -51,7 +51,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link
-              to="/features"
+              to="/"
               className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
             >
               Home                
@@ -74,12 +74,12 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             >
               Testimonials
             </Link>
-            <button
-              onClick={() => scrollToSection('pricing')}
+            <Link>
+              to="/pricing"
               className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
             >
               Pricing
-            </button>
+            </Link>
           </nav>
 
           {/* Desktop Auth Buttons */}
@@ -117,7 +117,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
         <div className="md:hidden bg-white border-t border-slate-200 shadow-lg">
           <div className="px-4 py-6 space-y-4">
             <Link
-              to="/features"
+              to="/"
               onClick={() => setIsMobileMenuOpen(false)}
               className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
             >
@@ -153,7 +153,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             <div className="pt-4 border-t border-slate-200 space-y-3">
               <button
                 onClick={() => onShowAuth('signin')}
-                className="block w-full px-4 py-2 text-slate-700 font-medium border-2 border-slate-300 rounded-lg hover:border-slate-400 transition-colors"
+                className="px-4 py-2 text-slate-600 hover:text-blue-600 font-medium transition-colors"
               >
                 Login
               </button>
