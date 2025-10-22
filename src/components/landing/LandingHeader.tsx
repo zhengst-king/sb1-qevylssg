@@ -74,7 +74,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             >
               Testimonials
             </Link>
-            <Link>
+            <Link
               to="/pricing"
               className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
             >
