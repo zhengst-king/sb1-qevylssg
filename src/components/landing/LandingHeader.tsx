@@ -39,11 +39,13 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
-            <Film className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Tagflix
-            </span>
+          <div className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
+              <Film className="h-8 w-8 text-blue-600" />
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Tagflix
+              </span>
+            </Link>
           </div>
 
           {/* Desktop Navigation */}
