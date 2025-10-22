@@ -1,5 +1,6 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AuthModal } from './components/AuthModal';
 import { SearchPage } from './components/SearchPage';
@@ -13,37 +14,80 @@ import { CharactersPage } from './components/CharactersPage';
 import { MyTagsPage } from './components/MyTagsPage';
 import { CalendarsPage } from './components/CalendarsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
-import { useAuth } from './hooks/useAuth';
 import { FranchisePage } from './components/FranchisePage';
 import { LandingPage } from './components/LandingPage';
 import HowItWorksPage from './components/HowItWorksPage';
 import FeaturesPage from './components/FeaturesPage';
 import TestimonialsPage from './components/TestimonialsPage';
-
-// Updated PageType with 'my-spots' removed
-type PageType = 
-  | 'search' 
-  | 'movies' 
-  | 'tv-series' 
-  | 'collections' 
-  | 'new2me'
-  | 'franchises'
-  | 'my-stars'
-  | 'characters' 
-  | 'my-tags'
-  | 'calendars'
-  | 'analytics'
-  | 'settings';
+import { useAuth } from './hooks/useAuth';
 
 type AuthMode = 'signin' | 'signup';
 
+// Protected Route wrapper - redirects to landing if not authenticated
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Main App Layout for authenticated users
+function AuthenticatedApp() {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleShowAuth = () => {
+    setShowAuthModal(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <Navigation onSignInClick={handleShowAuth} />
+      
+      <main>
+        <Routes>
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/movies" element={<MovieWatchlistPage />} />
+          <Route path="/tv-series" element={<TVSeriesWatchlistPage />} />
+          <Route path="/collections" element={<MyCollectionsPage />} />
+          <Route path="/new2me" element={<SmartRecommendationsContainer />} />
+          <Route path="/franchises" element={<FranchisePage />} />
+          <Route path="/my-stars" element={<MyStarsPage />} />
+          <Route path="/characters" element={<CharactersPage />} />
+          <Route path="/my-tags" element={<MyTagsPage />} />
+          <Route path="/calendars" element={<CalendarsPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/search" replace />} />
+        </Routes>
+      </main>
+
+      {showAuthModal && (
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 function App() {
-  const [currentPage, setCurrentPage] = useState<PageType>('search');
+  const { isAuthenticated, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signup');
-  const { isAuthenticated, loading } = useAuth();
 
-  // FIX: Initialize episode discovery system on app startup
+  // Initialize episode discovery system on app startup
   useEffect(() => {
     const initializeEpisodeSystem = async () => {
       console.log('🚀 Initializing episode discovery system...');
@@ -64,7 +108,6 @@ function App() {
       }
     };
 
-    // Run initialization after a short delay to avoid blocking initial render
     const timer = setTimeout(initializeEpisodeSystem, 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -72,45 +115,6 @@ function App() {
   const handleShowAuth = (mode: AuthMode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
-  };
-
-  const handlePageChange = (page: PageType) => {
-    if (!isAuthenticated && page !== 'search') {
-      handleShowAuth('signin');
-      return;
-    }
-    setCurrentPage(page);
-  };
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'search':
-        return <SearchPage />;
-      case 'movies':
-        return <MovieWatchlistPage />;
-      case 'tv-series':
-        return <TVSeriesWatchlistPage />;
-      case 'collections':
-        return <MyCollectionsPage />;
-      case 'new2me':
-        return <SmartRecommendationsContainer />;
-      case 'franchises':
-        return <FranchisePage />;
-      case 'my-stars':
-        return <MyStarsPage />;
-      case 'characters':
-        return <CharactersPage />;
-      case 'my-tags':
-        return <MyTagsPage />;
-      case 'calendars':
-        return <CalendarsPage />;
-      case 'analytics':
-        return <AnalyticsPage />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <SearchPage />;
-    }
   };
 
   if (loading) {
@@ -121,31 +125,44 @@ function App() {
     );
   }
 
-  // NEW: Show landing page if user is not authenticated
-  if (!isAuthenticated) {
-    return <LandingPage />;
-  }
-
-  // Show main app if user is authenticated
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <Navigation 
-        currentPage={currentPage} 
-        onPageChange={handlePageChange}
-        onSignInClick={() => handleShowAuth('signin')} // Updated
-      />
-      
-      <main>
-        {renderPage()}
-      </main>
+    <Router>
+      <Routes>
+        {/* Public Routes - Landing & Marketing Pages */}
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? (
+              <Navigate to="/search" replace />
+            ) : (
+              <LandingPage onShowAuth={handleShowAuth} />
+            )
+          } 
+        />
+        <Route path="/how-it-works" element={<HowItWorksPage onShowAuth={handleShowAuth} />} />
+        <Route path="/features" element={<FeaturesPage onShowAuth={handleShowAuth} />} />
+        <Route path="/testimonials" element={<TestimonialsPage onShowAuth={handleShowAuth} />} />
+        
+        {/* Protected Routes - Main App */}
+        <Route 
+          path="/*" 
+          element={
+            <ProtectedRoute>
+              <AuthenticatedApp />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
 
+      {/* Auth Modal - Available everywhere */}
       {showAuthModal && (
         <AuthModal 
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
+          mode={authMode}
         />
       )}
-    </div>
+    </Router>
   );
 }
 
