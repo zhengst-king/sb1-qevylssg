@@ -20,6 +20,7 @@ import HowItWorksPage from './components/HowItWorksPage';
 import FeaturesPage from './components/FeaturesPage';
 import TestimonialsPage from './components/TestimonialsPage';
 import { useAuth } from './hooks/useAuth';
+import PricingPage from './components/PricingPage';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -142,6 +143,7 @@ function App() {
         <Route path="/how-it-works" element={<HowItWorksPage onShowAuth={handleShowAuth} />} />
         <Route path="/features" element={<FeaturesPage onShowAuth={handleShowAuth} />} />
         <Route path="/testimonials" element={<TestimonialsPage onShowAuth={handleShowAuth} />} />
+        <Route path="/pricing" element={<PricingPage onShowAuth={handleShowAuth} />} />
         
         {/* Protected Routes - Main App */}
         <Route 
