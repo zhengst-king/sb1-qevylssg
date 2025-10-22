@@ -6,7 +6,6 @@ import { HeroSection } from './landing/HeroSection';
 import { StatsBar } from './landing/StatsBar';
 import { FeaturesSection } from './landing/FeaturesSection';
 import { HowItWorksSection } from './landing/HowItWorksSection';
-import { PricingSection } from './landing/PricingSection';
 import { AuthModal } from './AuthModal';
 import { Link } from 'react-router-dom';
 
@@ -32,9 +31,6 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
 
         {/* How It Works Section */}
         <HowItWorksSection />
-
-        {/* Pricing Section */}
-        <PricingSection onShowAuth={onShowAuth} />
 
         {/* Additional sections will be added in later phases */}
       </main>
