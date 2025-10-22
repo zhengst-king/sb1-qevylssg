@@ -6,6 +6,7 @@ import { HeroSection } from './landing/HeroSection';
 import { StatsBar } from './landing/StatsBar';
 import { FeaturesSection } from './landing/FeaturesSection';
 import { HowItWorksSection } from './landing/HowItWorksSection';
+import { PricingSection } from './landing/PricingSection';
 import { AuthModal } from './AuthModal';
 
 export function LandingPage() {
@@ -33,6 +34,9 @@ export function LandingPage() {
 
         {/* How It Works Section */}
         <HowItWorksSection />
+
+        {/* Pricing Section */}
+        <PricingSection onShowAuth={handleShowAuth} />
 
         {/* Additional sections will be added in later phases */}
       </main>
