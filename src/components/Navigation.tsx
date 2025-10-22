@@ -1,5 +1,6 @@
 // src/components/Navigation.tsx
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Search, 
   Film, 
@@ -16,28 +17,27 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
-type PageType = 
-  | 'search' 
-  | 'movies' 
-  | 'tv-series' 
-  | 'collections' 
-  | 'new2me'
-  | 'franchises'
-  | 'my-stars'
-  | 'characters'
-  | 'my-tags'
-  | 'calendars'
-  | 'analytics'
-  | 'settings';
-
 interface NavigationProps {
-  currentPage: PageType;
-  onPageChange: (page: PageType) => void;
   onSignInClick: () => void;
 }
 
-export function Navigation({ currentPage, onPageChange, onSignInClick }: NavigationProps) {
+export function Navigation({ onSignInClick }: NavigationProps) {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get current page from URL path
+  const currentPath = location.pathname;
+
+  const handleNavigation = (path: string) => {
+    if (!isAuthenticated && path !== '/search') {
+      onSignInClick();
+      return;
+    }
+    navigate(path);
+  };
+
+  const isActive = (path: string) => currentPath === path;
 
   return (
     <nav className="sticky top-0 z-50 bg-slate-800 shadow-lg border-b border-slate-700">
@@ -51,11 +51,11 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
           {/* Navigation Items */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-1">
-              {/* Home (previously Search) */}
+              {/* Home (Search) */}
               <button
-                onClick={() => onPageChange('search')}
+                onClick={() => handleNavigation('/search')}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'search'
+                  isActive('/search')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`}
@@ -66,10 +66,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* Movies */}
               <button
-                onClick={() => onPageChange('movies')}
+                onClick={() => handleNavigation('/movies')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'movies'
+                  isActive('/movies')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -82,10 +82,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* TV Series */}
               <button
-                onClick={() => onPageChange('tv-series')}
+                onClick={() => handleNavigation('/tv-series')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'tv-series'
+                  isActive('/tv-series')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -96,44 +96,44 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
                 <Tv className="h-5 w-5" />
               </button>
 
-              {/* My Discs (previously Collections) */}
+              {/* Collections */}
               <button
-                onClick={() => onPageChange('collections')}
+                onClick={() => handleNavigation('/collections')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'collections'
+                  isActive('/collections')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
                       : 'text-slate-500 cursor-not-allowed'
                 }`}
-                title="My Discs"
+                title="My Collections"
               >
                 <Disc3 className="h-5 w-5" />
               </button>
 
-              {/* New2Me */}
+              {/* New2Me (Recommendations) */}
               <button
-                onClick={() => onPageChange('new2me')}
+                onClick={() => handleNavigation('/new2me')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'new2me'
+                  isActive('/new2me')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
                       : 'text-slate-500 cursor-not-allowed'
                 }`}
-                title="New2Me"
+                title="New2Me Recommendations"
               >
                 <Sparkles className="h-5 w-5" />
               </button>
 
-              {/* Franchises - Changed icon to Layers */}
+              {/* Franchises */}
               <button
-                onClick={() => onPageChange('franchises')}
+                onClick={() => handleNavigation('/franchises')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'franchises'
+                  isActive('/franchises')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -146,10 +146,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* My Stars */}
               <button
-                onClick={() => onPageChange('my-stars')}
+                onClick={() => handleNavigation('/my-stars')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'my-stars'
+                  isActive('/my-stars')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -162,10 +162,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* Characters */}
               <button
-                onClick={() => onPageChange('characters')}
+                onClick={() => handleNavigation('/characters')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'characters'
+                  isActive('/characters')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -178,10 +178,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* My Tags */}
               <button
-                onClick={() => onPageChange('my-tags')}
+                onClick={() => handleNavigation('/my-tags')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'my-tags'
+                  isActive('/my-tags')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -194,10 +194,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* Calendars */}
               <button
-                onClick={() => onPageChange('calendars')}
+                onClick={() => handleNavigation('/calendars')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'calendars'
+                  isActive('/calendars')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -210,10 +210,10 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
 
               {/* Analytics */}
               <button
-                onClick={() => onPageChange('analytics')}
+                onClick={() => handleNavigation('/analytics')}
                 disabled={!isAuthenticated}
                 className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'analytics'
+                  isActive('/analytics')
                     ? 'bg-blue-600 text-white shadow-lg'
                     : isAuthenticated 
                       ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
@@ -226,12 +226,12 @@ export function Navigation({ currentPage, onPageChange, onSignInClick }: Navigat
             </div>
           </div>
 
-          {/* Settings Button - Moved to right side */}
+          {/* Settings Button - Right side */}
           <div className="flex items-center">
             <button
-              onClick={() => isAuthenticated ? onPageChange('settings') : onSignInClick()}
+              onClick={() => isAuthenticated ? handleNavigation('/settings') : onSignInClick()}
               className={`px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
-                currentPage === 'settings'
+                isActive('/settings')
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
