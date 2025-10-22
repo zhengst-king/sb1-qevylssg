@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { LandingHeader } from './landing/LandingHeader';
+import { LandingFooter } from './landing/LandingFooter';
 import { Link } from 'react-router-dom';
 
-export default function FeaturesPage() {
+interface FeaturesPageProps {
+  onShowAuth: (mode: 'signin' | 'signup') => void;
+}
+
+export default function FeaturesPage({ onShowAuth }: FeaturesPageProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Placeholder screenshots - replace with actual app screenshots
@@ -65,38 +71,18 @@ export default function FeaturesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-medium">Back to Home</span>
-            </Link>
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              WatchlistApp
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-gray-700 hover:text-gray-900 font-medium">
-                Log In
-              </Link>
-              <Link to="/signup" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all">
-                Sign Up Free
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Use your existing LandingHeader */}
+      <LandingHeader onShowAuth={onShowAuth} />
 
       {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+      <section className="pt-32 pb-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-6">
             Powerful Features
           </h1>
           <p className="text-xl text-blue-100 max-w-2xl mx-auto">
             Everything you need to organize, discover, and enjoy your favorite movies and TV shows. 
-            Explore the features that make WatchlistApp the best choice for movie enthusiasts.
+            Explore the features that make Tagflix the best choice for movie enthusiasts.
           </p>
         </div>
       </section>
@@ -270,54 +256,24 @@ export default function FeaturesPage() {
             Start organizing your watchlist today with our powerful, easy-to-use platform
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/signup" className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg">
+            <button 
+              onClick={() => onShowAuth('signup')}
+              className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg"
+            >
               Get Started Free
-            </Link>
-            <Link to="/testimonials" className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-200">
+            </button>
+            <Link 
+              to="/testimonials"
+              className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-200"
+            >
               See What Users Say
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">WatchlistApp</h3>
-              <p className="text-gray-400">
-                The smartest way to manage your movies and TV shows.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/features" className="hover:text-white">Features</Link></li>
-                <li><Link to="/how-it-works" className="hover:text-white">How It Works</Link></li>
-                <li><Link to="/testimonials" className="hover:text-white">Testimonials</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/about" className="hover:text-white">About</Link></li>
-                <li><Link to="/contact" className="hover:text-white">Contact</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                <li><Link to="/terms" className="hover:text-white">Terms of Service</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
-            <p>© 2024 WatchlistApp. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Use your existing LandingFooter */}
+      <LandingFooter />
     </div>
   );
 }
