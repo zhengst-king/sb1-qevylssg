@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, ArrowLeft, Star, Quote } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Quote } from 'lucide-react';
+import { LandingHeader } from './landing/LandingHeader';
+import { LandingFooter } from './landing/LandingFooter';
 import { Link } from 'react-router-dom';
+
+interface TestimonialsPageProps {
+  onShowAuth: (mode: 'signin' | 'signup') => void;
+}
 
 interface Testimonial {
   quote: string;
@@ -76,7 +82,7 @@ function TestimonialCard({ quote, name, role, avatar, rating, verified = false }
   );
 }
 
-export default function TestimonialsPage() {
+export default function TestimonialsPage({ onShowAuth }: TestimonialsPageProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const testimonials: Testimonial[] = [
@@ -172,31 +178,11 @@ export default function TestimonialsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2 text-gray-700 hover:text-gray-900">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="font-medium">Back to Home</span>
-            </Link>
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              WatchlistApp
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link to="/login" className="text-gray-700 hover:text-gray-900 font-medium">
-                Log In
-              </Link>
-              <Link to="/signup" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all">
-                Sign Up Free
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Use your existing LandingHeader */}
+      <LandingHeader onShowAuth={onShowAuth} />
 
       {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
+      <section className="pt-32 pb-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-6">
             Loved By Movie Enthusiasts
@@ -325,48 +311,6 @@ export default function TestimonialsPage() {
         </div>
       </section>
 
-      {/* Video Testimonials Section (Optional) */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            See What Users Are Saying
-          </h2>
-          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-            Real stories from real users about how WatchlistApp has improved their movie-watching experience
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <div className="aspect-video bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
-                <svg className="h-16 w-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">From Chaos to Order</h3>
-              <p className="text-sm text-gray-600">Sarah shares how she organized 500+ movies</p>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <div className="aspect-video bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
-                <svg className="h-16 w-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Perfect for Families</h3>
-              <p className="text-sm text-gray-600">The Johnson family's movie night revolution</p>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <div className="aspect-video bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
-                <svg className="h-16 w-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Film Student Success</h3>
-              <p className="text-sm text-gray-600">Marcus uses it to track his film education</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-br from-blue-600 to-purple-600">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -374,57 +318,27 @@ export default function TestimonialsPage() {
             Join Our Community Today
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Start organizing your watchlist and discover why thousands of users love WatchlistApp
+            Start organizing your watchlist and discover why thousands of users love Tagflix
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/signup" className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg">
+            <button 
+              onClick={() => onShowAuth('signup')}
+              className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg"
+            >
               Start Your Free Trial
-            </Link>
-            <Link to="/how-it-works" className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-200">
+            </button>
+            <Link 
+              to="/how-it-works"
+              className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transform hover:scale-105 transition-all duration-200"
+            >
               See How It Works
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">WatchlistApp</h3>
-              <p className="text-gray-400">
-                The smartest way to manage your movies and TV shows.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/features" className="hover:text-white">Features</Link></li>
-                <li><Link to="/how-it-works" className="hover:text-white">How It Works</Link></li>
-                <li><Link to="/testimonials" className="hover:text-white">Testimonials</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/about" className="hover:text-white">About</Link></li>
-                <li><Link to="/contact" className="hover:text-white">Contact</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                <li><Link to="/terms" className="hover:text-white">Terms of Service</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
-            <p>© 2024 WatchlistApp. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      {/* Use your existing LandingFooter */}
+      <LandingFooter />
     </div>
   );
 }
