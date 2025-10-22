@@ -86,7 +86,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
           <div className="hidden md:flex items-center space-x-4">
             <button
               onClick={() => onShowAuth('signin')}
-              className="px-4 py-2 text-slate-700 hover:text-blue-600 font-medium transition-colors"
+              className="px-6 py-2 text-slate-700 hover:text-blue-600 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all"
             >
               Login
             </button>
@@ -101,7 +101,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 text-slate-700 hover:text-blue-600"
+            className="md:hidden p-2 text-slate-600 hover:text-blue-600"
           >
             {isMobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -154,7 +154,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             <div className="pt-4 border-t border-slate-200 space-y-3">
               <button
                 onClick={() => onShowAuth('signin')}
-                className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
+                className="block w-full px-4 py-2 text-slate-700 font-medium border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all text-center"
               >
                 Login
               </button>
