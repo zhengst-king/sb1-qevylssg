@@ -13,19 +13,6 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Smooth scroll to section
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const offsetTop = element.offsetTop - 80; // Account for header height
-      window.scrollTo({
-        top: offsetTop,
-        behavior: 'smooth'
-      });
-      setIsMobileMenuOpen(false);
-    }
-  };
-
   // Handle scroll effects
   useEffect(() => {
     const handleScroll = () => {
@@ -63,22 +50,22 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
   }, [isMobileMenuOpen]);
 
   const navLinks = [
-    { label: 'Features', sectionId: 'features' },
-    { label: 'How It Works', sectionId: 'how-it-works' },
-    { label: 'Pricing', sectionId: 'pricing' },
-    { label: 'Testimonials', sectionId: 'testimonials' },
+    { label: 'Features', path: '/features' },
+    { label: 'How It Works', path: '/how-it-works' },
+    { label: 'Pricing', path: '/pricing' },
+    { label: 'Testimonials', path: '/testimonials' },
   ];
 
   return (
     <>
       {/* Header */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 ${
           isVisible ? 'translate-y-0' : '-translate-y-full'
         } ${
           isScrolled
             ? 'bg-white/95 backdrop-blur-md shadow-lg'
-            : 'bg-transparent'
+            : 'bg-white/80 backdrop-blur-md'
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -101,15 +88,14 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
               {navLinks.map((link) => (
-                <button
-                  key={link.sectionId}
-                  onClick={() => scrollToSection(link.sectionId)}
-                  className={`font-medium transition-colors hover:text-blue-600 ${
-                    isScrolled ? 'text-slate-600' : 'text-white hover:text-blue-200'
-                  }`}
+                <Link
+                  key={link.label}
+                  to={link.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block px-4 py-2 text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-lg font-medium transition-colors"
                 >
                   {link.label}
-                </button>
+                </Link>
               ))}
             </nav>
 
@@ -192,13 +178,13 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             {/* Navigation Links */}
             <nav className="space-y-2 mb-8">
               {navLinks.map((link) => (
-                <button
-                  key={link.sectionId}
-                  onClick={() => scrollToSection(link.sectionId)}
-                  className="w-full text-left px-4 py-3 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
+                <Link
+                  key={link.label}
+                  to={link.path}
+                  className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
                 >
                   {link.label}
-                </button>
+                </Link>
               ))}
             </nav>
 
