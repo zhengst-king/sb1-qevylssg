@@ -6,13 +6,6 @@ import { Film, Mail, MapPin, Phone, Facebook, Twitter, Instagram, Youtube, Githu
 export function LandingFooter() {
   const currentYear = new Date().getFullYear();
 
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   return (
     <footer className="bg-slate-900 text-slate-300">
       {/* Main Footer Content */}
@@ -55,36 +48,24 @@ export function LandingFooter() {
             <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <button
-                  onClick={() => scrollToSection('features')}
-                  className="hover:text-white transition-colors text-left w-full"
-                >
+                <Link to="/features" className="hover:text-white transition-colors">
                   Features
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => scrollToSection('pricing')}
-                  className="hover:text-white transition-colors text-left w-full"
-                >
+                <Link to="/pricing" className="hover:text-white transition-colors">
                   Pricing
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => scrollToSection('how-it-works')}
-                  className="hover:text-white transition-colors text-left w-full"
-                >
-                  How It Works
-                </button>
+                <Link to="/how-it-works" className="hover:text-white transition-colors">
+                 How It Works
+                </Link>
               </li>
               <li>
-                <button
-                  onClick={() => scrollToSection('testimonials')}
-                  className="hover:text-white transition-colors text-left w-full"
-                >
+                <Link to="/testimonials" className="hover:text-white transition-colors">
                   Testimonials
-                </button>
+                </Link>
               </li>
               <li>
                 <a href="#faq" className="hover:text-white transition-colors">
