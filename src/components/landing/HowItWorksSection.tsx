@@ -1,6 +1,7 @@
 // src/components/landing/HowItWorksSection.tsx
 import React from 'react';
 import { UserPlus, Plus, Sparkles } from 'lucide-react';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 interface Step {
   number: string;
@@ -31,8 +32,15 @@ const steps: Step[] = [
 ];
 
 export function HowItWorksSection() {
+  // Add intersection observer for scroll animations
+  const [ref, isVisible] = useIntersectionObserver({ threshold: 0.1 });
+
   return (
-    <section id="how-it-works" className="py-20 bg-gradient-to-br from-slate-50 to-slate-100">
+    <section 
+      id="how-it-works" 
+      ref={ref}
+      className={`py-20 bg-gradient-to-br from-slate-50 to-slate-100 transition-all duration-700 ${isVisible ? 'fade-up' : 'opacity-0'}`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -54,14 +62,14 @@ export function HowItWorksSection() {
           {steps.map((step, index) => (
             <div key={index} className="relative">
               {/* Step Card */}
-              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 relative z-10">
+              <div className="card-hover bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 relative z-10">
                 {/* Step Number */}
                 <div className="text-6xl font-bold text-slate-100 absolute top-4 right-4">
                   {step.number}
                 </div>
 
-                {/* Icon */}
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white mb-6 relative z-10">
+                {/* Icon with bounce animation */}
+                <div className="icon-bounce w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white mb-6 relative z-10">
                   {step.icon}
                 </div>
 
@@ -82,9 +90,9 @@ export function HowItWorksSection() {
 
         {/* Bottom CTA */}
         <div className="mt-16 text-center">
-          <a
+          
             href="#hero"
-            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="btn-hover-lift inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
           >
             Start Building Your Watchlist
             <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
