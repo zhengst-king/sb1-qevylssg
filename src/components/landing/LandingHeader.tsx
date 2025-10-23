@@ -9,169 +9,223 @@ interface LandingHeaderProps {
 
 export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
+  // Smooth scroll to section
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      const offsetTop = element.offsetTop - 80; // Account for header height
+      window.scrollTo({
+        top: offsetTop,
+        behavior: 'smooth'
+      });
       setIsMobileMenuOpen(false);
     }
   };
 
+  // Handle scroll effects
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Add background when scrolled
+      setIsScrolled(currentScrollY > 50);
+
+      // Hide/show header based on scroll direction
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down & past threshold
+        setIsVisible(false);
+      } else {
+        // Scrolling up
+        setIsVisible(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
+  const navLinks = [
+    { label: 'Features', sectionId: 'features' },
+    { label: 'How It Works', sectionId: 'how-it-works' },
+    { label: 'Pricing', sectionId: 'pricing' },
+    { label: 'Testimonials', sectionId: 'testimonials' },
+  ];
+
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-white/95 backdrop-blur-md shadow-md'
-          : 'bg-transparent'
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <Link to="/" className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity">
-              <Film className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+    <>
+      {/* Header */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isVisible ? 'translate-y-0' : '-translate-y-full'
+        } ${
+          isScrolled
+            ? 'bg-white/95 backdrop-blur-md shadow-lg'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center space-x-2 group"
+            >
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl group-hover:scale-110 transition-transform">
+                <Film className="h-6 w-6 text-white" />
+              </div>
+              <span className={`text-2xl font-bold transition-colors ${
+                isScrolled ? 'text-slate-900' : 'text-white'
+              }`}>
                 Tagflix
               </span>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link
-              to="/"
-              className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
-            >
-              Home                
-            </Link>
-            <Link
-              to="/features"
-              className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
-            >
-              Features
-            </Link>
-            <Link
-              to="/how-it-works"
-              className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
-            >
-              How It Works
-            </Link>
-            <Link
-              to="/testimonials"
-              className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
-            >
-              Testimonials
-            </Link>
-            <Link
-              to="/pricing"
-              className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
-            >
-              Pricing
-            </Link>
-          </nav>
-
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            <button
-              onClick={() => onShowAuth('signin')}
-              className="block w-full px-4 py-2 bg-white text-slate-700 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all text-center"
-            >
-              Login
             </button>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-8">
+              {navLinks.map((link) => (
+                <button
+                  key={link.sectionId}
+                  onClick={() => scrollToSection(link.sectionId)}
+                  className={`font-medium transition-colors hover:text-blue-600 ${
+                    isScrolled ? 'text-slate-600' : 'text-white hover:text-blue-200'
+                  }`}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </nav>
+
+            {/* Desktop Auth Buttons */}
+            <div className="hidden md:flex items-center space-x-4">
+              <button
+                onClick={() => onShowAuth('signin')}
+                className={`px-4 py-2 font-medium rounded-lg transition-all ${
+                  isScrolled
+                    ? 'text-slate-700 hover:text-blue-600'
+                    : 'text-white hover:bg-white/10'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => onShowAuth('signup')}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+              >
+                Get Started
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
             <button
-              onClick={() => onShowAuth('signup')}
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`md:hidden p-2 rounded-lg transition-colors ${
+                isScrolled ? 'text-slate-900' : 'text-white'
+              }`}
+              aria-label="Toggle menu"
             >
-              Sign Up
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </button>
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 text-slate-600 hover:text-blue-600"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-white border-t border-slate-200 shadow-lg">
-          <div className="px-4 py-6 space-y-4">
-            <Link
-              to="/"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              to="/features"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
-            >
-              Features
-            </Link>
-            <Link
-              to="/how-it-works"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
-            >
-              How It Works
-            </Link>
-            <Link
-              to="/testimonials"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
-            >
-              Testimonials
-            </Link>
-            <Link
-              to="/pricing"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 rounded-lg font-medium transition-colors"
-            >
-              Pricing
-            </Link>
-            
-            <div className="pt-4 border-t border-slate-200 space-y-3">
+      {/* Mobile Menu Overlay */}
+      <div
+        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${
+          isMobileMenuOpen
+            ? 'opacity-100 pointer-events-auto'
+            : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+
+        {/* Menu Panel */}
+        <div
+          className={`absolute top-0 right-0 bottom-0 w-80 bg-white shadow-2xl transform transition-transform duration-300 ${
+            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          <div className="p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl">
+                  <Film className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-2xl font-bold text-slate-900">Tagflix</span>
+              </div>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
+                aria-label="Close menu"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Navigation Links */}
+            <nav className="space-y-2 mb-8">
+              {navLinks.map((link) => (
+                <button
+                  key={link.sectionId}
+                  onClick={() => scrollToSection(link.sectionId)}
+                  className="w-full text-left px-4 py-3 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
+                >
+                  {link.label}
+                </button>
+              ))}
+            </nav>
+
+            {/* Auth Buttons */}
+            <div className="space-y-3 pt-6 border-t border-slate-200">
               <button
                 onClick={() => {
                   onShowAuth('signin');
                   setIsMobileMenuOpen(false);
                 }}
-                className="block w-full px-4 py-2 bg-white text-slate-700 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 transition-all text-center"
+                className="w-full px-6 py-3 text-slate-700 font-semibold rounded-lg border-2 border-slate-300 hover:border-blue-600 hover:text-blue-600 transition-all"
               >
-                Login
+                Sign In
               </button>
               <button
-                onClick={() => onShowAuth('signup')}
-                className="block w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
+                onClick={() => {
+                  onShowAuth('signup');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
               >
-                Sign Up
+                Get Started Free
               </button>
             </div>
           </div>
         </div>
-      )}
-    </header>
+      </div>
+    </>
   );
 }
