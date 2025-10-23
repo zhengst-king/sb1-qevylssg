@@ -13,19 +13,6 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Smooth scroll to section
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const offsetTop = element.offsetTop - 80; // Account for header height
-      window.scrollTo({
-        top: offsetTop,
-        behavior: 'smooth'
-      });
-      setIsMobileMenuOpen(false);
-    }
-  };
-
   // Handle scroll effects
   useEffect(() => {
     const handleScroll = () => {
@@ -62,13 +49,6 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
     };
   }, [isMobileMenuOpen]);
 
-  const navLinks = [
-    { label: 'Features', sectionId: 'features' },
-    { label: 'How It Works', sectionId: 'how-it-works' },
-    { label: 'Pricing', sectionId: 'pricing' },
-    { label: 'Testimonials', sectionId: 'testimonials' },
-  ];
-
   return (
     <>
       {/* Header */}
@@ -77,57 +57,65 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
           isVisible ? 'translate-y-0' : '-translate-y-full'
         } ${
           isScrolled
-            ? 'bg-white/95 backdrop-blur-md shadow-lg'
+            ? 'bg-white/95 backdrop-blur-md shadow-md'
             : 'bg-transparent'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex items-center space-x-2 group"
-            >
-              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl group-hover:scale-110 transition-transform">
-                <Film className="h-6 w-6 text-white" />
-              </div>
-              <span className={`text-2xl font-bold transition-colors ${
-                isScrolled ? 'text-slate-900' : 'text-white'
-              }`}>
+            <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+              <Film className="h-8 w-8 text-blue-600" />
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Tagflix
               </span>
-            </button>
+            </Link>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
-              {navLinks.map((link) => (
-                <button
-                  key={link.sectionId}
-                  onClick={() => scrollToSection(link.sectionId)}
-                  className={`font-medium transition-colors hover:text-blue-600 ${
-                    isScrolled ? 'text-slate-600' : 'text-white hover:text-blue-200'
-                  }`}
-                >
-                  {link.label}
-                </button>
-              ))}
+              <Link
+                to="/"
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Home
+              </Link>
+              <Link
+                to="/features"
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Features
+              </Link>
+              <Link
+                to="/how-it-works"
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                How It Works
+              </Link>
+              <Link
+                to="/testimonials"
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Testimonials
+              </Link>
+              <Link
+                to="/pricing"
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Pricing
+              </Link>
             </nav>
 
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-4">
               <button
                 onClick={() => onShowAuth('signin')}
-                className={`px-4 py-2 font-medium rounded-lg transition-all ${
-                  isScrolled
-                    ? 'text-slate-700 hover:text-blue-600'
-                    : 'text-white hover:bg-white/10'
-                }`}
+                className="px-4 py-2 text-slate-700 font-semibold hover:text-blue-600 transition-colors"
               >
                 Sign In
               </button>
               <button
                 onClick={() => onShowAuth('signup')}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
               >
                 Get Started
               </button>
@@ -136,9 +124,7 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`md:hidden p-2 rounded-lg transition-colors ${
-                isScrolled ? 'text-slate-900' : 'text-white'
-              }`}
+              className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
@@ -152,80 +138,79 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
       </header>
 
       {/* Mobile Menu Overlay */}
-      <div
-        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${
-          isMobileMenuOpen
-            ? 'opacity-100 pointer-events-auto'
-            : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
+      {isMobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-        {/* Menu Panel */}
-        <div
-          className={`absolute top-0 right-0 bottom-0 w-80 bg-white shadow-2xl transform transition-transform duration-300 ${
-            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-        >
-          <div className="p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl">
-                  <Film className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-2xl font-bold text-slate-900">Tagflix</span>
-              </div>
-              <button
+          {/* Mobile Menu Slide-in */}
+          <div className="fixed top-16 right-0 bottom-0 w-64 bg-white shadow-xl z-50 md:hidden transform transition-transform duration-300 ease-in-out overflow-y-auto">
+            <nav className="flex flex-col p-6 space-y-4">
+              <Link
+                to="/"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
-                aria-label="Close menu"
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors py-2"
               >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
+                Home
+              </Link>
+              <Link
+                to="/features"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors py-2"
+              >
+                Features
+              </Link>
+              <Link
+                to="/how-it-works"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors py-2"
+              >
+                How It Works
+              </Link>
+              <Link
+                to="/testimonials"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors py-2"
+              >
+                Testimonials
+              </Link>
+              <Link
+                to="/pricing"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-slate-700 hover:text-blue-600 font-medium transition-colors py-2"
+              >
+                Pricing
+              </Link>
 
-            {/* Navigation Links */}
-            <nav className="space-y-2 mb-8">
-              {navLinks.map((link) => (
+              {/* Mobile Auth Buttons */}
+              <div className="pt-6 space-y-3 border-t border-slate-200">
                 <button
-                  key={link.sectionId}
-                  onClick={() => scrollToSection(link.sectionId)}
-                  className="w-full text-left px-4 py-3 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onShowAuth('signin');
+                  }}
+                  className="w-full px-4 py-3 text-slate-700 font-semibold border-2 border-slate-300 rounded-lg hover:border-blue-600 hover:text-blue-600 transition-all text-center"
                 >
-                  {link.label}
+                  Sign In
                 </button>
-              ))}
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onShowAuth('signup');
+                  }}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md text-center"
+                >
+                  Get Started
+                </button>
+              </div>
             </nav>
-
-            {/* Auth Buttons */}
-            <div className="space-y-3 pt-6 border-t border-slate-200">
-              <button
-                onClick={() => {
-                  onShowAuth('signin');
-                  setIsMobileMenuOpen(false);
-                }}
-                className="w-full px-6 py-3 text-slate-700 font-semibold rounded-lg border-2 border-slate-300 hover:border-blue-600 hover:text-blue-600 transition-all"
-              >
-                Sign In
-              </button>
-              <button
-                onClick={() => {
-                  onShowAuth('signup');
-                  setIsMobileMenuOpen(false);
-                }}
-                className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
-              >
-                Get Started Free
-              </button>
-            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </>
   );
 }
