@@ -73,9 +73,6 @@ function AuthenticatedApp() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/search" replace />} />
-          <Route path="/eula" element={<EULAPage />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
-          <Route path="/terms" element={<TermsPage />} />
         </Routes>
       </main>
 
@@ -150,6 +147,11 @@ function App() {
         <Route path="/features" element={<FeaturesPage onShowAuth={handleShowAuth} />} />
         <Route path="/testimonials" element={<TestimonialsPage onShowAuth={handleShowAuth} />} />
         <Route path="/pricing" element={<PricingPage onShowAuth={handleShowAuth} />} />
+        
+        {/* Legal Pages - PUBLIC (accessible to everyone) */}
+        <Route path="/eula" element={<EULAPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         
         {/* Protected Routes - Main App */}
         <Route 
