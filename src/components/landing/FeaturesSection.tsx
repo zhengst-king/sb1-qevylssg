@@ -122,7 +122,7 @@ export function FeaturesSection() {
           <p className="text-lg text-slate-600 mb-6">
             Ready to get started?
           </p>
-          <a
+          
             href="#hero"
             className="btn-hover-lift inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
           >
