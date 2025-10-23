@@ -57,8 +57,13 @@ function StatItem({ icon, value, label, delay = 0 }: StatItemProps) {
   }, [isVisible, targetNumber]);
 
   return (
-    <div ref={ref} className="flex flex-col items-center space-y-2 p-6">
-      <div className="text-blue-600 mb-2">
+    <div 
+      ref={ref} 
+      className={`flex flex-col items-center space-y-2 p-6 transition-all duration-500 ${
+        isVisible ? 'fade-up' : 'opacity-0'
+      }`}
+    >
+      <div className="icon-bounce text-blue-600 mb-2">
         {icon}
       </div>
       <div className="text-4xl font-bold text-slate-900">
