@@ -10,6 +10,7 @@ import {
   Search,
   Tv
 } from 'lucide-react';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 interface Feature {
   icon: React.ReactNode;
@@ -70,8 +71,15 @@ const features: Feature[] = [
 ];
 
 export function FeaturesSection() {
+  // Add intersection observer for scroll animations
+  const [ref, isVisible] = useIntersectionObserver({ threshold: 0.1 });
+
   return (
-    <section id="features" className="py-20 bg-white">
+    <section 
+      id="features" 
+      ref={ref}
+      className={`py-20 bg-white transition-all duration-700 ${isVisible ? 'fade-up' : 'opacity-0'}`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -88,13 +96,13 @@ export function FeaturesSection() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative bg-white rounded-xl p-6 border border-slate-200 hover:border-transparent hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              className="card-hover group relative bg-white rounded-xl p-6 border border-slate-200 hover:border-transparent hover:shadow-xl transition-all duration-300"
             >
               {/* Gradient border effect on hover */}
               <div className={`absolute inset-0 rounded-xl bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur`}></div>
               
-              {/* Icon */}
-              <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${feature.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform duration-300`}>
+              {/* Icon with bounce animation */}
+              <div className={`icon-bounce w-12 h-12 rounded-lg bg-gradient-to-r ${feature.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform duration-300`}>
                 {feature.icon}
               </div>
 
@@ -114,9 +122,9 @@ export function FeaturesSection() {
           <p className="text-lg text-slate-600 mb-6">
             Ready to get started?
           </p>
-          <a
+          
             href="#hero"
-            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+            className="btn-hover-lift inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
           >
             Start Free Today
             <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
