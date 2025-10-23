@@ -21,6 +21,9 @@ import FeaturesPage from './components/FeaturesPage';
 import TestimonialsPage from './components/TestimonialsPage';
 import { useAuth } from './hooks/useAuth';
 import PricingPage from './components/PricingPage';
+import EULAPage from './components/legal/EULAPage';
+import PrivacyPolicyPage from './components/legal/PrivacyPolicyPage';
+import TermsPage from './components/legal/TermsPage';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -70,6 +73,9 @@ function AuthenticatedApp() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/search" replace />} />
+          <Route path="/eula" element={<EULAPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
         </Routes>
       </main>
 
