@@ -40,7 +40,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <button
                 onClick={() => onShowAuth('signup')}
-                className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="btn-hover-lift group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
               >
                 <span className="flex items-center justify-center">
                   Start Free
@@ -52,7 +52,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
               
               <button
                 onClick={() => onShowAuth('signin')}
-                className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg transition-all border-2 border-slate-600"
+                className="btn-hover-lift px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg transition-all border-2 border-slate-600"
               >
                 Watch Demo
               </button>
@@ -79,7 +79,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
           <div className="relative hidden lg:block">
             <div className="relative mx-auto max-w-lg lg:max-w-none">
               {/* Main App Mockup */}
-              <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 transform hover:scale-105 transition-transform duration-500">
+              <div className="card-hover relative bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 transition-transform duration-500">
                 {/* Browser Chrome */}
                 <div className="bg-slate-100 px-4 py-3 flex items-center space-x-2 border-b border-slate-200">
                   <div className="flex space-x-2">
@@ -99,7 +99,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
                   {/* Simulated Movie Cards */}
                   <div className="grid grid-cols-3 gap-3 h-full">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <div key={i} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div key={i} className="scale-hover bg-white rounded-lg shadow-sm overflow-hidden">
                         <div className="aspect-[2/3] bg-gradient-to-br from-blue-200 to-purple-200"></div>
                         <div className="p-2 space-y-1">
                           <div className="h-2 bg-slate-200 rounded w-3/4"></div>
@@ -114,7 +114,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
               {/* Floating Feature Cards */}
               <div className="absolute -top-4 -left-4 bg-white rounded-lg shadow-lg p-3 animate-float">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <div className="icon-bounce w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
                     <Check className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -126,7 +126,7 @@ export function HeroSection({ onShowAuth }: HeroSectionProps) {
 
               <div className="absolute -bottom-4 -right-4 bg-white rounded-lg shadow-lg p-3 animate-float animation-delay-2000">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                  <div className="icon-bounce w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
