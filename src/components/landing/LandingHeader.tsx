@@ -4,7 +4,8 @@ import { Film, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface LandingHeaderProps {
-  onShowAuth: (mode: 'signin' | 'signup') => void;
+  onLoginClick: () => void;
+  onSignUpClick: () => void;
 }
 
 export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
@@ -95,20 +96,20 @@ export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-4">
               <button
-                onClick={() => onShowAuth('signin')}
-                className={`px-4 py-2 font-medium rounded-lg transition-all ${
+                onClick={onLoginClick}
+                className={`px-5 py-2 font-medium rounded-lg transition-all ${
                   isScrolled
-                    ? 'text-slate-700 hover:text-blue-600'
+                    ? 'text-slate-700 hover:bg-slate-100'
                     : 'text-white hover:bg-white/10'
                 }`}
               >
-                Sign In
+                Log In
               </button>
               <button
-                onClick={() => onShowAuth('signup')}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                onClick={onSignUpClick}
+                className="px-5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
               >
-                Get Started
+                Sign Up Free
               </button>
             </div>
 
