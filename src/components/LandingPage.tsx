@@ -7,16 +7,31 @@ import { StatsBar } from './landing/StatsBar';
 import { FeaturesSection } from './landing/FeaturesSection';
 import { HowItWorksSection } from './landing/HowItWorksSection';
 import { FinalCTASection } from './landing/FinalCTASection';
-import { AuthModal } from './AuthModal';
-import { Link } from 'react-router-dom';
+import { SEOHead, AppStructuredData } from './landing/SEOHead';
+import { useAnalytics, usePerformanceMonitoring } from '../utils/analytics';
 
 interface LandingPageProps {
   onShowAuth: (mode: 'signin' | 'signup') => void;
 }
 
 export function LandingPage({ onShowAuth }: LandingPageProps) {
+  useAnalytics();
+  usePerformanceMonitoring();
+  
   return (
     <div className="min-h-screen bg-white">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title="Tagflix - Smart Movie & TV Show Watchlist Management"
+        description="Discover, track, and organize your favorite movies and TV shows with intelligent recommendations, custom collections, and personalized analytics. Your ultimate entertainment companion."
+        canonicalUrl="https://tagflix.com"
+        ogImage="https://tagflix.com/og-image.jpg"
+        ogType="website"
+      />
+      
+      {/* Structured Data for Search Engines */}
+      <AppStructuredData />
+      
       <LandingHeader 
         onLoginClick={() => onShowAuth('signin')}
         onSignUpClick={() => onShowAuth('signup')}
