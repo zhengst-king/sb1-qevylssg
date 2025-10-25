@@ -1,4 +1,4 @@
-@import './styles/mobile-utilities.css';
+@import './components/styles/mobile-utilities.css';
 
 @tailwind base;
 @tailwind components;
