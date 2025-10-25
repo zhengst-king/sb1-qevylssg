@@ -17,7 +17,10 @@ interface LandingPageProps {
 export function LandingPage({ onShowAuth }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-white">
-      <LandingHeader onShowAuth={onShowAuth} />
+      <LandingHeader 
+        onLoginClick={() => onShowAuth('signin')}
+        onSignUpClick={() => onShowAuth('signup')}
+      />
       
       <main className="pt-16">
         {/* Hero Section */}
