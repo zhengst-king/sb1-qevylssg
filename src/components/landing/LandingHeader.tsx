@@ -69,7 +69,7 @@ export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProp
             : 'bg-white/80 backdrop-blur-md'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
