@@ -8,7 +8,7 @@ interface LandingHeaderProps {
   onSignUpClick: () => void;
 }
 
-export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
+export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
