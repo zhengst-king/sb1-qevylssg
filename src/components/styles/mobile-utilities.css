@@ -1,0 +1,513 @@
+/* Mobile Optimization Utilities */
+
+/* ============================================
+   TOUCH TARGET UTILITIES
+   ============================================ */
+
+.touch-target {
+  /* Minimum size for touch targets */
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-target-spacing {
+  /* Minimum spacing between touch targets */
+  margin: 4px;
+}
+
+/* Remove tap highlight on mobile */
+.no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+/* ============================================
+   MOBILE-SPECIFIC FIXES
+   ============================================ */
+
+/* Fix viewport height on mobile Safari */
+.full-screen-mobile {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+}
+
+/* Prevent input zoom on iOS */
+input,
+textarea,
+select {
+  font-size: 16px !important;
+}
+
+/* iOS momentum scrolling */
+.smooth-scroll-mobile {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* Disable pull-to-refresh on mobile */
+body {
+  overscroll-behavior-y: contain;
+}
+
+/* Fix iOS Safari bottom bar issue */
+.mobile-safe-area {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ============================================
+   RESPONSIVE TYPOGRAPHY
+   ============================================ */
+
+.responsive-heading-1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.responsive-heading-2 {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+}
+
+.responsive-heading-3 {
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+}
+
+.responsive-heading-4 {
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+
+.responsive-text {
+  font-size: clamp(1rem, 2vw, 1.125rem);
+}
+
+.responsive-text-small {
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+}
+
+/* ============================================
+   RESPONSIVE SPACING
+   ============================================ */
+
+.responsive-padding-section {
+  padding: clamp(2rem, 5vw, 4rem);
+}
+
+.responsive-padding-large {
+  padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.responsive-padding {
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.responsive-padding-small {
+  padding: clamp(0.5rem, 2vw, 1rem);
+}
+
+.responsive-gap-large {
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+
+.responsive-gap {
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.responsive-gap-small {
+  gap: clamp(0.5rem, 2vw, 1rem);
+}
+
+/* ============================================
+   RESPONSIVE GRIDS
+   ============================================ */
+
+.responsive-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .responsive-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+.responsive-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .responsive-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+.responsive-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .responsive-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+/* GPU acceleration for animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Contain layout recalculations */
+.layout-contained {
+  contain: layout;
+}
+
+.paint-contained {
+  contain: paint;
+}
+
+.strict-contained {
+  contain: strict;
+}
+
+/* Optimize animations */
+.smooth-animation {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Optimize transforms */
+.transform-3d {
+  transform: translate3d(0, 0, 0);
+}
+
+/* ============================================
+   IMAGE OPTIMIZATION
+   ============================================ */
+
+/* Aspect ratio boxes */
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
+.aspect-portrait {
+  aspect-ratio: 3 / 4;
+}
+
+/* Prevent layout shift */
+img[width][height] {
+  height: auto;
+}
+
+/* Object fit utilities */
+.img-cover {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.img-contain {
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================
+   SCROLL BEHAVIOR
+   ============================================ */
+
+/* Smooth scrolling */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Snap scrolling for carousels */
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 1rem;
+}
+
+.scroll-snap-item {
+  scroll-snap-align: start;
+}
+
+/* ============================================
+   MOBILE NAVIGATION
+   ============================================ */
+
+/* Slide-in animation */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.slide-out-right {
+  animation: slideOutRight 0.3s ease-out;
+}
+
+/* Backdrop blur (with fallback) */
+.backdrop-blur {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@supports not (backdrop-filter: blur(8px)) {
+  .backdrop-blur {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* ============================================
+   BUTTON STATES FOR TOUCH
+   ============================================ */
+
+.touch-button {
+  position: relative;
+  transition: transform 0.1s ease-out;
+}
+
+.touch-button:active {
+  transform: scale(0.95);
+}
+
+/* Loading state */
+.button-loading {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.button-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   SKELETON LOADERS
+   ============================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #e0e0e0 20%,
+    #f0f0f0 40%,
+    #f0f0f0 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-text {
+  height: 1em;
+  margin-bottom: 0.5em;
+}
+
+.skeleton-heading {
+  height: 2em;
+  margin-bottom: 1em;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 200px;
+}
+
+/* ============================================
+   UTILITY CLASSES FOR RESPONSIVE DISPLAY
+   ============================================ */
+
+/* Show only on mobile */
+.mobile-only {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+}
+
+/* Show only on tablet */
+.tablet-only {
+  display: none;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-only {
+    display: block;
+  }
+}
+
+/* Show only on desktop */
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible for keyboard navigation */
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ============================================
+   SAFE AREAS (for notched devices)
+   ============================================ */
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-all {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-break-before {
+    page-break-before: always;
+  }
+
+  .print-break-after {
+    page-break-after: always;
+  }
+
+  .print-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+}
