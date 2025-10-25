@@ -12,10 +12,6 @@
     "lighthouse": "npm run build && npm run preview & sleep 3 && lighthouse http://localhost:4173 --view",
     "generate-sitemap": "ts-node src/utils/generateSitemap.ts",
     "prepare-deploy": "npm run generate-sitemap && npm run build"
-    "analyze": "vite build && open dist/stats.html",
-    "lighthouse": "npm run build && npm run preview & sleep 3 && lighthouse http://localhost:4173 --view",
-    "generate-sitemap": "ts-node src/utils/generateSitemap.ts",
-    "prepare-deploy": "npm run generate-sitemap && npm run build"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -40,12 +36,6 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
-    
-    "// Performance & SEO plugins": "",
-    "vite-plugin-compression": "^0.5.1",
-    "rollup-plugin-visualizer": "^5.11.0",
-    "lighthouse": "^11.4.0",
-    "ts-node": "^10.9.2"
     "vite-plugin-compression": "^0.5.1",
     "rollup-plugin-visualizer": "^5.11.0",
     "lighthouse": "^11.4.0",
