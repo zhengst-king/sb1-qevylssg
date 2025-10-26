@@ -4,11 +4,10 @@ import { Film, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface LandingHeaderProps {
-  onLoginClick: () => void;
-  onSignUpClick: () => void;
+  onShowAuth: (mode: 'signin' | 'signup') => void;
 }
 
-export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProps) {
+export function LandingHeader({ onShowAuth }: LandingHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -51,6 +50,7 @@ export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProp
   }, [isMobileMenuOpen]);
 
   const navLinks = [
+    { label: 'Home', path: '/' },
     { label: 'Features', path: '/features' },
     { label: 'How It Works', path: '/how-it-works' },
     { label: 'Pricing', path: '/pricing' },
@@ -95,17 +95,13 @@ export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProp
             {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-4">
               <button
-                onClick={onLoginClick}
-                className={`px-5 py-2 font-medium rounded-lg transition-all ${
-                  isScrolled
-                    ? 'text-slate-700 hover:bg-slate-100'
-                    : 'text-white hover:bg-white/10'
-                }`}
+                onClick={() => onShowAuth('signin')}
+                className="px-5 py-2 text-slate-700 font-medium rounded-lg transition-all hover:bg-slate-100"
               >
                 Log In
               </button>
               <button
-                onClick={onSignUpClick}
+                onClick={() => onShowAuth('signup')}
                 className="px-5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl active:scale-95"
               >
                 Sign Up Free
@@ -115,11 +111,7 @@ export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProp
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`md:hidden p-2 rounded-lg transition-colors touch-target ${
-                isScrolled 
-                  ? 'text-slate-700 hover:bg-slate-100'
-                  : 'text-white hover:bg-white/10'
-              }`}
+              className="md:hidden p-2 text-slate-700 rounded-lg transition-colors hover:bg-slate-100 touch-target"
               aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={isMobileMenuOpen}
             >
@@ -190,7 +182,7 @@ export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProp
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  setTimeout(onLoginClick, 300); // Delay to allow slide-out animation
+                  setTimeout(() => onShowAuth('signin'), 300);
                 }}
                 className="w-full px-6 py-3 border-2 border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition-all active:scale-95 touch-target"
               >
@@ -199,7 +191,7 @@ export function LandingHeader({ onLoginClick, onSignUpClick }: LandingHeaderProp
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  setTimeout(onSignUpClick, 300); // Delay to allow slide-out animation
+                  setTimeout(() => onShowAuth('signup'), 300);
                 }}
                 className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg active:scale-95 touch-target"
               >
