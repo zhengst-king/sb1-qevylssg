@@ -6,11 +6,11 @@ import { signInWithEmail, signUpWithEmail } from '../lib/supabase';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultMode?: 'signin' | 'signup';
+  mode?: 'signin' | 'signup';
 }
 
-export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModalProps) {
-  const [isSignUp, setIsSignUp] = useState(defaultMode === 'signup');
+export function AuthModal({ isOpen, onClose, mode = 'signup' }: AuthModalProps) {
+  const [isSignUp, setIsSignUp] = useState(mode === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,8 +19,8 @@ export function AuthModal({ isOpen, onClose, defaultMode = 'signup' }: AuthModal
 
   // Update mode when defaultMode prop changes
   useEffect(() => {
-    setIsSignUp(defaultMode === 'signup');
-  }, [defaultMode]);
+    setIsSignUp(mode === 'signup');
+  }, [mode]);
 
   // Handle Escape key press and body scroll lock
   useEffect(() => {
