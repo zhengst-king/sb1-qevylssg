@@ -32,10 +32,7 @@ export function LandingPage({ onShowAuth }: LandingPageProps) {
       {/* Structured Data for Search Engines */}
       <AppStructuredData />
       
-      <LandingHeader 
-        onLoginClick={() => onShowAuth('signin')}
-        onSignUpClick={() => onShowAuth('signup')}
-      />
+      <LandingHeader onShowAuth={onShowAuth} />
       
       <main className="pt-16">
         {/* Hero Section */}
