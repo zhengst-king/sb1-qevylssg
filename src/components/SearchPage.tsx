@@ -209,7 +209,7 @@ export function SearchPage() {
             <Film className="h-12 w-12 text-blue-600" />
             <h1 className="text-4xl font-bold text-slate-900">Discover Movies</h1>
           </div>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-5xl mx-auto">
             Search for specific movies or get instant AI recommendations based on your watchlist
           </p>
         </div>
@@ -225,7 +225,7 @@ export function SearchPage() {
               <Brain className="h-8 w-8 text-purple-600" />
               <h2 className="text-2xl font-bold text-slate-900">AI Recommendation</h2>
             </div>
-            <p className="text-slate-600 max-w-xl mx-auto mb-6">
+            <p className="text-slate-600 max-w-4xl mx-auto mb-6">
               Get instant Claude AI recommendations based on your watchlist and ratings
             </p>
 
