@@ -225,7 +225,7 @@ export function SearchPage() {
               <Brain className="h-8 w-8 text-purple-600" />
               <h2 className="text-2xl font-bold text-slate-900">AI Recommendation</h2>
             </div>
-            <p className="text-slate-600 max-w-4xl mx-auto mb-6">
+            <p className="text-slate-600 mb-6">
               Get instant Claude AI recommendations based on your watchlist and ratings
             </p>
 
