@@ -58,7 +58,7 @@ function AuthenticatedApp() {
     <div className="min-h-screen w-full overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100">
       <Navigation onSignInClick={handleShowAuth} />
       
-      <main className="w-full overflow-x-hidden pt-16">
+      <main className="w-full overflow-x-hidden pt-2">
         <Routes>
           <Route path="/search" element={<SearchPage />} />
           <Route path="/movies" element={<MovieWatchlistPage />} />
