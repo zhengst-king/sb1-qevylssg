@@ -100,7 +100,6 @@ export function SettingsPage() {
         {/* Sidebar - Fixed width, won't shrink */}
         <div className="w-full lg:w-64 flex-shrink-0">
           <nav className="space-y-1">
-          <nav className="space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
