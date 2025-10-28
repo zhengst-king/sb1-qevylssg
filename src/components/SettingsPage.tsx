@@ -97,8 +97,9 @@ export function SettingsPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar */}
-        <div className="lg:w-64 flex-shrink-0">
+        {/* Sidebar - Fixed width, won't shrink */}
+        <div className="w-full lg:w-64 flex-shrink-0">
+          <nav className="space-y-1">
           <nav className="space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -124,7 +125,7 @@ export function SettingsPage() {
         <div className="flex-1 min-w-0 space-y-6">
           {/* Account Settings */}
           {activeTab === 'account' && (
-            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
               <div className="flex items-center mb-6">
                 <User className="w-5 h-5 text-slate-600 mr-2" />
                 <h2 className="text-xl font-semibold text-slate-900">Account Information</h2>
@@ -181,17 +182,17 @@ export function SettingsPage() {
 
           {/* Collections Settings */}
           {activeTab === 'collections' && (
-            <div className="space-y-6">
-              <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div className="space-y-6 w-full max-w-full">
+              <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
                 <div className="flex items-center mb-6">
                   <Sparkles className="w-5 h-5 text-purple-600 mr-2" />
                   <h2 className="text-xl font-semibold text-slate-900">Recommendation Preferences</h2>
                 </div>
                 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center justify-between">
-                      <div>
+                <div className="space-y-6 w-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                    <div className="flex items-center justify-between min-w-0 overflow-hidden">
+                      <div className="pr-2 break-words min-w-0 flex-1">
                         <label className="text-sm font-medium text-slate-900">Include wishlist items</label>
                         <p className="text-xs text-slate-600">Show recommendations even if they're already in your wishlist</p>
                       </div>
@@ -266,7 +267,7 @@ export function SettingsPage() {
                 </div>
               </section>
 
-              <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
                 <div className="flex items-center mb-6">
                   <Disc3 className="w-5 h-5 text-blue-600 mr-2" />
                   <h2 className="text-xl font-semibold text-slate-900">Collection Management</h2>
@@ -308,7 +309,7 @@ export function SettingsPage() {
 
           {/* Notifications Settings */}
           {activeTab === 'notifications' && (
-            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
               <div className="flex items-center mb-6">
                 <Bell className="w-5 h-5 text-slate-600 mr-2" />
                 <h2 className="text-xl font-semibold text-slate-900">Notification Preferences</h2>
@@ -346,7 +347,7 @@ export function SettingsPage() {
 
           {/* Data Management Settings */}
           {activeTab === 'data' && (
-            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
               <div className="flex items-center mb-6">
                 <Download className="w-5 h-5 text-slate-600 mr-2" />
                 <h2 className="text-xl font-semibold text-slate-900">Data Management</h2>
@@ -390,7 +391,7 @@ export function SettingsPage() {
 
           {/* Display Settings */}
           {activeTab === 'display' && (
-            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
               <div className="flex items-center mb-6">
                 <Palette className="w-5 h-5 text-slate-600 mr-2" />
                 <h2 className="text-xl font-semibold text-slate-900">Display Settings</h2>
@@ -468,7 +469,7 @@ export function SettingsPage() {
 
           {/* Privacy Settings */}
           {activeTab === 'privacy' && (
-            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 w-full max-w-full overflow-hidden">
               <div className="flex items-center mb-6">
                 <Shield className="w-5 h-5 text-slate-600 mr-2" />
                 <h2 className="text-xl font-semibold text-slate-900">Security & Privacy</h2>
