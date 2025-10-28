@@ -98,7 +98,7 @@ export function SettingsPage() {
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar */}
-        <div className="lg:w-64">
+        <div className="lg:w-64 flex-shrink-0">
           <nav className="space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -121,7 +121,7 @@ export function SettingsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 space-y-6">
+        <div className="flex-1 min-w-0 space-y-6">
           {/* Account Settings */}
           {activeTab === 'account' && (
             <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
