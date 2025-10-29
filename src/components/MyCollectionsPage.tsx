@@ -32,7 +32,6 @@ import { AddToCollectionModal } from './AddToCollectionModal';
 import { ImportListsModal } from './ImportListsModal';
 import { csvExportService } from '../services/csvExportService';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
-import { CustomCollectionsModal } from './CustomCollectionsModal';
 import { TagManagementModal } from './TagManagementModal';
 import { Folder, Tag } from 'lucide-react';
 
@@ -159,7 +158,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   // Modal states - SIMPLIFIED: Only need ImportListsModal now
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showCustomCollectionsModal, setShowCustomCollectionsModal] = useState(false);
   const [showTagManagementModal, setShowTagManagementModal] = useState(false);
   
   // Filter and sort states
@@ -422,15 +420,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                 <span>Import Lists</span>
               </button>
 
-              {/* Custom Collections Button */}
-              <button
-                onClick={() => setShowCustomCollectionsModal(true)}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Folder className="h-4 w-4" />
-                <span>Collections</span>
-              </button>
-
               {/* Tags Button */}
               <button
                 onClick={() => setShowTagManagementModal(true)}
@@ -606,11 +595,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           onClose={() => setShowImportModal(false)}
           pageType="collections"
           onImportSuccess={handleImportSuccess}
-        />
-
-        <CustomCollectionsModal
-          isOpen={showCustomCollectionsModal}
-          onClose={() => setShowCustomCollectionsModal(false)}
         />
 
         <TagManagementModal
