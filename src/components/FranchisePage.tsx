@@ -171,14 +171,16 @@ export function FranchisePage() {
   
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
-              {/* Collections Button */}
-              <button
-                onClick={() => setShowCustomCollectionsModal(true)}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
-              >
-                <Folder className="h-4 w-4" />
-                <span>Manage Collections</span>
-              </button>
+              {/* Collections Button - Only show on Custom tab */}
+              {activeTab === 'custom' && (
+                <button
+                  onClick={() => setShowCustomCollectionsModal(true)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+                >
+                  <Folder className="h-4 w-4" />
+                  <span>Manage Collections</span>
+                </button>
+              )}
 
               {/* Add Franchise Button - Only show on TMDB tab */}
               {activeTab === 'tmdb' && (
@@ -348,48 +350,50 @@ export function FranchisePage() {
                 {customCollections.map((collection) => (
                   <div
                     key={collection.id}
-                    className="group relative rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer bg-white border border-slate-200"
+                    className="group relative rounded-lg overflow-hidden hover:shadow-lg transition-all cursor-pointer"
                     onClick={() => handleCustomCollectionClick(collection)}
                   >
-                    {/* Generic Poster Background */}
+                    {/* Poster-style Background with Icon */}
                     <div 
                       className="w-full h-64 flex items-center justify-center relative"
-                      style={{ backgroundColor: `${collection.color}15` }}
+                      style={{ 
+                        background: `linear-gradient(135deg, ${collection.color}20 0%, ${collection.color}40 100%)` 
+                      }}
                     >
-                      {/* Icon */}
+                      {/* Centered Icon */}
                       <div 
                         className="w-20 h-20 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: collection.color }}
                       >
                         <Package className="h-10 w-10 text-white" />
                       </div>
-                      
-                      {/* Item Count Badge */}
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-md">
-                        <span className="text-xs font-medium text-white">
-                          {collection.item_count} {collection.item_count === 1 ? 'item' : 'items'}
-                        </span>
-                      </div>
-
-                      {/* Favorite Star */}
-                      {collection.is_favorite && (
-                        <div className="absolute top-2 right-2 p-1.5 bg-yellow-500 rounded-full">
-                          <Heart className="h-3 w-3 text-white fill-current" />
-                        </div>
-                      )}
                     </div>
 
-                    {/* Collection Name */}
+                    {/* Bottom Gradient Overlay with Content */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                      <h4 className="font-semibold text-white text-sm line-clamp-2">
+                      <h4 className="font-semibold text-white text-sm line-clamp-2 mb-1">
                         {collection.name}
                       </h4>
                       {collection.description && (
-                        <p className="text-xs text-slate-300 line-clamp-1 mt-1">
+                        <p className="text-xs text-slate-300 line-clamp-1">
                           {collection.description}
                         </p>
                       )}
                     </div>
+
+                    {/* Top Left: Item Count Badge */}
+                    <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-sm rounded-md">
+                      <span className="text-xs font-medium text-white">
+                        {collection.item_count} {collection.item_count === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
+
+                    {/* Top Right: Favorite Star */}
+                    {collection.is_favorite && (
+                      <div className="absolute top-2 right-2 p-1.5 bg-yellow-500 rounded-full shadow-lg">
+                        <Heart className="h-3 w-3 text-white fill-current" />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
