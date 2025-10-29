@@ -1,6 +1,6 @@
 // src/components/FranchisePage.tsx
 import React, { useState, useEffect } from 'react';
-import { Film, Heart, Plus } from 'lucide-react';
+import { Film, Heart, Plus, Folder } from 'lucide-react';
 import { CustomCollectionsModal } from './CustomCollectionsModal';
 import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
@@ -250,11 +250,9 @@ export function FranchisePage() {
       {/* Franchise Search Modal */}
       {showSearchModal && (
         <FranchiseSearchModal
-          isOpen={!!selectedCollection}
-          onClose={() => setSelectedCollection(null)}
-          collectionId={selectedCollection.id}
-          collectionName={selectedCollection.name}
-          onMovieDetailsClick={handleMovieDetailsClick}
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          onFranchiseAdded={handleFranchiseAdded}
         />
       )}
 
