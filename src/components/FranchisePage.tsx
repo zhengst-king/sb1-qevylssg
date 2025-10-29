@@ -1,6 +1,7 @@
 // src/components/FranchisePage.tsx
 import React, { useState, useEffect } from 'react';
 import { Film, Heart, Plus } from 'lucide-react';
+import { CustomCollectionsModal } from './CustomCollectionsModal';
 import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
 import { favoriteFranchisesService, FavoriteFranchise } from '../services/favoriteFranchisesService';
@@ -12,6 +13,7 @@ export function FranchisePage() {
   const [favorites, setFavorites] = useState<FavoriteFranchise[]>([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCustomCollectionsModal, setShowCustomCollectionsModal] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<{
     id: number;
     name: string;
@@ -139,15 +141,27 @@ export function FranchisePage() {
               <Film className="h-8 w-8 text-purple-600" />
               <h1 className="text-3xl font-bold text-slate-900">My Franchises</h1>
             </div>
-            
-            {/* Add Franchise Button */}
-            <button
-              onClick={() => setShowSearchModal(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Franchise</span>
-            </button>
+  
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
+              {/* Collections Button */}
+              <button
+                onClick={() => setShowCustomCollectionsModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+              >
+                <Folder className="h-4 w-4" />
+                <span>Collections</span>
+              </button>
+
+              {/* Add Franchise Button */}
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Franchise</span>
+              </button>
+            </div>
           </div>
           <p className="text-slate-600">
             Track and explore your favorite movie collections and franchises
@@ -265,6 +279,12 @@ export function FranchisePage() {
           </div>
         </div>
       )}
+
+      {/* Custom Collections Modal */}
+      <CustomCollectionsModal
+        isOpen={showCustomCollectionsModal}
+        onClose={() => setShowCustomCollectionsModal(false)}
+      />
     </div>
   );
 }
