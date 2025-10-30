@@ -8,6 +8,7 @@ import type {
   UpdateCustomCollectionDTO,
   CustomCollectionStats
 } from '../types/customCollections';
+import { tmdbCacheService } from './tmdbCacheService';
 
 export const customCollectionsService = {
   /**
@@ -72,41 +73,77 @@ export const customCollectionsService = {
   /**
    * Get items in a specific custom collection
    */
+  // Update getItemsInCollection
   async getItemsInCollection(customCollectionId: string): Promise<any[]> {
-    // Step 1: Get collection item IDs
     const { data, error } = await supabase
       .from('collection_items_custom_collections')
-      .select('collection_item_id')
+      .select('*')
       .eq('custom_collection_id', customCollectionId)
       .order('added_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching collection item IDs:', error);
+      console.error('Error fetching collection items:', error);
       throw error;
     }
 
     if (!data || data.length === 0) {
-      console.log('[getItemsInCollection] No items found for collection:', customCollectionId);
       return [];
     }
 
-    // Step 2: Extract movie IDs
-    const movieIds = data.map(item => item.collection_item_id);
-    console.log('[getItemsInCollection] Found movie IDs:', movieIds);
+    // Separate watchlist items from TMDB-only items
+    const watchlistItemIds = data
+      .filter(item => item.collection_item_id)
+      .map(item => item.collection_item_id);
 
-    // Step 3: Fetch the actual movies
-    const { data: movies, error: moviesError } = await supabase
-      .from('movies')
-      .select('*')
-      .in('id', movieIds);
+    const tmdbOnlyIds = data
+      .filter(item => !item.collection_item_id && item.tmdb_id)
+      .map(item => item.tmdb_id);
 
-    if (moviesError) {
-      console.error('Error fetching movies:', moviesError);
-      throw moviesError;
+    // Fetch watchlist items
+    let watchlistItems: any[] = [];
+    if (watchlistItemIds.length > 0) {
+      const { data: movies, error: moviesError } = await supabase
+        .from('movies')
+        .select('*')
+        .in('id', watchlistItemIds);
+
+      if (!moviesError && movies) {
+        watchlistItems = movies;
+      }
     }
 
-    console.log('[getItemsInCollection] Fetched movies:', movies);
-    return movies || [];
+    // Fetch TMDB-only items from cache
+    let tmdbItems: any[] = [];
+    if (tmdbOnlyIds.length > 0) {
+      tmdbItems = await tmdbCacheService.getMoviesDetails(tmdbOnlyIds);
+    }
+
+    // Combine results
+    const results = data.map(item => {
+      if (item.collection_item_id) {
+        const watchlistItem = watchlistItems.find(m => m.id === item.collection_item_id);
+        return watchlistItem ? { ...watchlistItem, in_watchlist: true } : null;
+      } else if (item.tmdb_id) {
+        const tmdbItem = tmdbItems.find(m => m.id === item.tmdb_id);
+        if (tmdbItem) {
+          return {
+            id: `tmdb_${item.tmdb_id}`,
+            tmdb_id: item.tmdb_id,
+            title: tmdbItem.title || tmdbItem.name,
+            poster_url: tmdbItem.poster_path 
+              ? `https://image.tmdb.org/t/p/w500${tmdbItem.poster_path}`
+              : null,
+            media_type: tmdbItem.media_type || 'movie',
+            year: tmdbItem.release_date ? parseInt(tmdbItem.release_date.split('-')[0]) : null,
+            imdb_score: tmdbItem.vote_average,
+            in_watchlist: false,
+          };
+        }
+      }
+      return null;
+    }).filter(Boolean);
+
+    return results;
   },
 
   /**
