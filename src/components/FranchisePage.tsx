@@ -418,7 +418,10 @@ export function FranchisePage() {
       {selectedCustomCollection && (
         <CustomCollectionDetailModal
           isOpen={!!selectedCustomCollection}
-          onClose={() => setSelectedCustomCollection(null)}
+          onClose={() => {
+            setSelectedCustomCollection(null);
+            refetchCustomCollections(); // Refresh collection counts
+          }}
           collection={selectedCustomCollection}
           onMovieClick={handleMovieDetailsClick}
         />
