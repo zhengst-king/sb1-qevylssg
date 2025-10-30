@@ -1,6 +1,6 @@
 // src/components/CustomCollectionDetailModal.tsx
 import React, { useEffect, useState } from 'react';
-import { X, Package, Calendar, Star, Film, Tv, Plus } from 'lucide-react';
+import { X, Package, Calendar, Star, Film, Tv, Plus, Trash2 } from 'lucide-react';
 import { customCollectionsService } from '../services/customCollectionsService';
 import { Movie } from '../lib/supabase';
 import { tmdbService } from '../lib/tmdb';
