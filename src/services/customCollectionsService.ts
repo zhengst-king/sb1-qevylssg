@@ -76,7 +76,7 @@ export const customCollectionsService = {
     const { data, error } = await supabase
       .from('collection_items_custom_collections')
       .select(`
-        movie_id,
+        collection_item_id,
         display_order,
         added_at,
         movie:movies(*)
@@ -174,7 +174,7 @@ export const customCollectionsService = {
     const { error } = await supabase
       .from('collection_items_custom_collections')
       .insert({
-        movie_id: collectionItemId,
+        collection_item_id: collectionItemId,
         custom_collection_id: customCollectionId,
       });
 
@@ -194,7 +194,7 @@ export const customCollectionsService = {
     customCollectionId: string
   ): Promise<void> {
     const insertData = collectionItemIds.map(itemId => ({
-      movie_id: itemId,
+      collection_item_id: itemId,
       custom_collection_id: customCollectionId,
     }));
 
@@ -220,7 +220,7 @@ export const customCollectionsService = {
     const { error } = await supabase
       .from('collection_items_custom_collections')
       .delete()
-      .eq('movie_id', collectionItemId)
+      .eq('collection_item_id', collectionItemId)
       .eq('custom_collection_id', customCollectionId);
 
     if (error) {
@@ -239,7 +239,7 @@ export const customCollectionsService = {
       .select(`
         custom_collection:custom_collections(*)
       `)
-      .eq('movie_id', collectionItemId);
+      .eq('collection_item_id', collectionItemId);
 
     if (error) {
       console.error('Error fetching collections for item:', error);
@@ -329,7 +329,7 @@ export const customCollectionsService = {
     // Get items in source collection
     const { data: items, error: itemsError } = await supabase
       .from('collection_items_custom_collections')
-      .select('movie_id')
+      .select('collection_item_id')
       .eq('custom_collection_id', sourceCollectionId);
 
     if (itemsError) {
@@ -348,7 +348,7 @@ export const customCollectionsService = {
     // Add items to new collection
     if (items && items.length > 0) {
       await this.addItemsToCollection(
-        items.map(item => item.movie_id),
+        items.map(item => item.collection_item_id),
         newCollection.id
       );
     }
