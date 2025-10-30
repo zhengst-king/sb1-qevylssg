@@ -2,13 +2,15 @@
 // COMPLETE FIXED VERSION - Fetches OMDb data before insert + fixes click handler
 
 import React, { useEffect, useState } from 'react';
-import { X, Film, Plus, Calendar, Star } from 'lucide-react';
+import { X, Film, Plus, Calendar, Star, Layers, Check } from 'lucide-react';
 import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
 import { omdbApi } from '../lib/omdb';
 import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
+import { useCustomCollections } from '../hooks/useCustomCollections';
+import type { CustomCollection } from '../types/customCollections';
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
@@ -30,6 +32,11 @@ export function CollectionDetailModal({
   const { movies, addMovie, refetch } = useMovies('movie'); // ✅ ADD refetch
   const [addingMovies, setAddingMovies] = useState<Set<number>>(new Set());
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
+  // Custom Collections state
+  const { collections: customCollections } = useCustomCollections();
+  const [showCollectionSelector, setShowCollectionSelector] = useState(false);
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
+  const [addingToCollections, setAddingToCollections] = useState(false);
 
   // Get set of movies already in watchlist by IMDb ID
   const watchlistImdbIds = new Set(movies.map(m => m.imdb_id).filter(Boolean));
@@ -185,6 +192,134 @@ export function CollectionDetailModal({
     }
   };
 
+  const handleToggleCollection = (collectionId: string) => {
+    const newSelected = new Set(selectedCollections);
+    if (newSelected.has(collectionId)) {
+      newSelected.delete(collectionId);
+    } else {
+      newSelected.add(collectionId);
+    }
+    setSelectedCollections(newSelected);
+  };
+
+  const handleAddTitlesToCollections = async () => {
+    if (selectedCollections.size === 0 || !collection?.parts || collection.parts.length === 0) return;
+
+    setAddingToCollections(true);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('You must be logged in to add items to collections');
+        return;
+      }
+
+      // Extract TMDB IDs from collection parts
+      const tmdbIds = collection.parts.map(part => part.id);
+      
+      // Check which titles already exist in user's watchlist
+      const { data: existingMovies, error: queryError } = await supabase
+        .from('movies')
+        .select('id, tmdb_id, title')
+        .eq('user_id', user.id)
+        .in('tmdb_id', tmdbIds);
+
+      if (queryError) {
+        console.error('Error querying existing movies:', queryError);
+        alert('Failed to check existing movies. Please try again.');
+        return;
+      }
+
+      // Separate existing and new titles
+      const existingTmdbIds = new Set(existingMovies?.map(m => m.tmdb_id) || []);
+      const titlesToAdd = collection.parts.filter(part => !existingTmdbIds.has(part.id));
+
+      // Add new titles to watchlist first
+      const newMovieIds: string[] = [];
+      if (titlesToAdd.length > 0) {
+        const moviesToInsert = titlesToAdd.map(part => ({
+          user_id: user.id,
+          tmdb_id: part.id,
+          title: part.title,
+          media_type: 'movie',
+          status: 'To Watch',
+          poster_url: part.poster_path ? tmdbService.getImageUrl(part.poster_path, 'w500') : null,
+          year: part.release_date ? parseInt(part.release_date.split('-')[0]) : null,
+        }));
+
+        const { data: insertedMovies, error: insertError } = await supabase
+          .from('movies')
+          .insert(moviesToInsert)
+          .select('id, tmdb_id');
+
+        if (insertError) {
+          console.error('Error adding movies to watchlist:', insertError);
+          alert('Failed to add some titles to your watchlist. Please try again.');
+          return;
+        }
+
+        newMovieIds.push(...(insertedMovies?.map(m => m.id) || []));
+      }
+
+      // Combine existing and new movie IDs
+      const allMovieIds = [
+        ...(existingMovies?.map(m => m.id) || []),
+        ...newMovieIds
+      ];
+
+      // Prepare bulk insert data for all selected collections
+      const insertData: Array<{ collection_item_id: string; custom_collection_id: string }> = [];
+      
+      for (const collectionId of selectedCollections) {
+        for (const movieId of allMovieIds) {
+          insertData.push({
+            collection_item_id: movieId,
+            custom_collection_id: collectionId
+          });
+        }
+      }
+
+      // Insert all associations (with conflict handling to avoid duplicates)
+      const { error: insertError } = await supabase
+        .from('collection_items_custom_collections')
+        .upsert(insertData, { 
+          onConflict: 'collection_item_id,custom_collection_id',
+          ignoreDuplicates: true 
+        });
+
+      if (insertError) {
+        console.error('Error adding items to collections:', insertError);
+        alert('Failed to add items to collections. Please try again.');
+        return;
+      }
+
+      // Success feedback
+      const collectionsText = selectedCollections.size === 1 ? 'collection' : 'collections';
+      const totalTitles = collection.parts.length;
+      const addedToWatchlist = titlesToAdd.length;
+      
+      let message = `Successfully added ${totalTitles} ${totalTitles === 1 ? 'title' : 'titles'} to ${selectedCollections.size} ${collectionsText}!`;
+      
+      if (addedToWatchlist > 0) {
+        message += `\n\n${addedToWatchlist} ${addedToWatchlist === 1 ? 'title was' : 'titles were'} also added to your watchlist.`;
+      }
+      
+      alert(message);
+      
+      setShowCollectionSelector(false);
+      setSelectedCollections(new Set());
+      
+      // Refresh the watchlist
+      await refetch();
+      await loadWatchlistMovieIds();
+    } catch (error) {
+      console.error('Error adding titles:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setAddingToCollections(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -201,15 +336,33 @@ export function CollectionDetailModal({
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
             <div className="flex items-center space-x-3">
-              <Film className="h-6 w-6 text-purple-600" />
-              <h2 className="text-2xl font-bold text-slate-900">{collectionName}</h2>
+              <Layers className="h-6 w-6 text-purple-600" />
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">{collectionName}</h2>
+                {collection && (
+                  <p className="text-sm text-slate-500">{collection.parts?.length || 0} titles</p>
+                )}
+              </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5 text-slate-500" />
-            </button>
+            
+            <div className="flex items-center space-x-2">
+              {collection && collection.parts && collection.parts.length > 0 && (
+                <button
+                  onClick={() => setShowCollectionSelector(true)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Titles to Collection</span>
+                </button>
+              )}
+              
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-slate-500" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -435,5 +588,108 @@ export function CollectionDetailModal({
         </div>
       </div>
     </div>
+
+    {/* Collection Selector Popup */}
+    {showCollectionSelector && (
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowCollectionSelector(false);
+          }
+        }}
+      >
+        <div 
+          className="bg-white rounded-xl max-w-md w-full max-h-[70vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Popup Header */}
+          <div className="flex items-center justify-between p-6 border-b border-slate-200">
+            <h3 className="text-xl font-bold text-slate-900">Select Collections</h3>
+            <button
+              onClick={() => setShowCollectionSelector(false)}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Collections List */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {customCollections.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-slate-600 mb-2">No custom collections yet</p>
+                <p className="text-sm text-slate-500">
+                  Create a custom collection first to add titles
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {customCollections.map((collection) => (
+                  <label
+                    key={collection.id}
+                    className="flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollections.has(collection.id)}
+                      onChange={() => handleToggleCollection(collection.id)}
+                      className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
+                    />
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: collection.color }}
+                    >
+                      <span className="text-white text-xs font-semibold">
+                        {collection.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 truncate">{collection.name}</p>
+                      {collection.description && (
+                        <p className="text-xs text-slate-500 truncate">{collection.description}</p>
+                      )}
+                    </div>
+                    {selectedCollections.has(collection.id) && (
+                      <Check className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Popup Footer */}
+          <div className="p-4 border-t border-slate-200 flex justify-end space-x-2">
+            <button
+              onClick={() => {
+                setShowCollectionSelector(false);
+                setSelectedCollections(new Set());
+              }}
+              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddTitlesToCollections}
+              disabled={selectedCollections.size === 0 || addingToCollections}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+            >
+              {addingToCollections ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Adding...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  <span>Done ({selectedCollections.size} selected)</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }
