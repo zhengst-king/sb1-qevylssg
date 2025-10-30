@@ -222,23 +222,47 @@ export function CollectionDetailModal({
         return;
       }
 
-      // Only use movies that are already in the watchlist
-      const existingMovieIds = existingMovies?.map(m => m.id) || [];
       const existingTmdbIds = new Set(existingMovies?.map(m => m.tmdb_id) || []);
-      
-      // Count titles not in watchlist
-      const titlesNotInWatchlist = collection.parts.filter(part => !existingTmdbIds.has(part.id));
+      const titlesToAdd = collection.parts.filter(part => !existingTmdbIds.has(part.id));
 
-      if (existingMovieIds.length === 0) {
-        alert('None of these titles are in your watchlist yet. Please add them to your watchlist first before adding to collections.');
-        return;
+      // Add new titles to watchlist first (if any)
+      const newMovieIds: string[] = [];
+      if (titlesToAdd.length > 0) {
+        const moviesToInsert = titlesToAdd.map(part => ({
+          user_id: user.id,
+          tmdb_id: part.id,
+          title: part.title,
+          media_type: 'movie',
+          status: 'To Watch',
+          poster_url: part.poster_path ? tmdbService.getImageUrl(part.poster_path, 'w500') : null,
+          year: part.release_date ? parseInt(part.release_date.split('-')[0]) : null,
+        }));
+
+        const { data: insertedMovies, error: insertError } = await supabase
+          .from('movies')
+          .insert(moviesToInsert)
+          .select('id, tmdb_id');
+
+        if (insertError) {
+          console.error('Error adding movies to watchlist:', insertError);
+          alert('Failed to add some titles to your watchlist. Please try again.');
+          return;
+        }
+
+        newMovieIds.push(...(insertedMovies?.map(m => m.id) || []));
       }
 
-      // Prepare bulk insert data for all selected collections (only for existing movies)
+      // Combine existing and new movie IDs
+      const allMovieIds = [
+        ...(existingMovies?.map(m => m.id) || []),
+        ...newMovieIds
+      ];
+
+      // Prepare bulk insert data for all selected collections
       const insertData: Array<{ collection_item_id: string; custom_collection_id: string }> = [];
 
       for (const collectionId of selectedCollections) {
-        for (const movieId of existingMovieIds) {
+        for (const movieId of allMovieIds) {
           insertData.push({
             collection_item_id: movieId,
             custom_collection_id: collectionId
@@ -262,13 +286,13 @@ export function CollectionDetailModal({
 
       // Success feedback
       const collectionsText = selectedCollections.size === 1 ? 'collection' : 'collections';
-      const addedCount = existingMovieIds.length;
-      const skippedCount = titlesNotInWatchlist.length;
+      const totalTitles = collection.parts.length;
+      const addedToWatchlist = titlesToAdd.length;
       
-      let message = `Successfully added ${addedCount} ${addedCount === 1 ? 'title' : 'titles'} to ${selectedCollections.size} ${collectionsText}!`;
+      let message = `Successfully added ${totalTitles} ${totalTitles === 1 ? 'title' : 'titles'} to ${selectedCollections.size} ${collectionsText}!`;
       
-      if (skippedCount > 0) {
-        message += `\n\n${skippedCount} ${skippedCount === 1 ? 'title was' : 'titles were'} skipped (not in your watchlist yet).`;
+      if (addedToWatchlist > 0) {
+        message += `\n\n${addedToWatchlist} ${addedToWatchlist === 1 ? 'title was' : 'titles were'} also added to your watchlist.`;
       }
       
       alert(message);
