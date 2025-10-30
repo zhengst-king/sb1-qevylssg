@@ -170,7 +170,7 @@ export function CustomCollectionDetailModal({
 
                           {/* Upper Left: Rating Badge */}
                           {item.imdb_score && item.imdb_score > 0 && (
-                            <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/75 backdrop-blur-sm">
+                            <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
                               <div className="flex items-center space-x-1">
                                 <Star className="h-3 w-3 text-yellow-400 fill-current" />
                                 <span className="text-white text-xs font-semibold">
@@ -194,18 +194,9 @@ export function CustomCollectionDetailModal({
                             <X className="h-4 w-4 text-white" />
                           </button>
 
-                          {/* Lower Right: Media Type Badge */}
-                          <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/75 backdrop-blur-sm">
-                            <div className="flex items-center space-x-1">
-                              {item.media_type === 'tv' ? (
-                                <Tv className="h-3 w-3 text-white" />
-                              ) : (
-                                <Film className="h-3 w-3 text-white" />
-                              )}
-                              <span className="text-white text-xs font-semibold uppercase">
-                                {item.media_type === 'tv' ? 'TV' : 'Movie'}
-                              </span>
-                            </div>
+                          {/* Lower Right: Media Type Badge - MATCHES PERSON DETAILS MODAL */}
+                          <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
+                            {item.media_type === 'tv' ? 'TV' : 'Movie'}
                           </div>
                         </div>
 
