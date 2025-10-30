@@ -478,7 +478,7 @@ export function CollectionDetailModal({
                             );
                           } else {
                             return (
-                              
+                              <a
                                 key={movie.id}
                                 href={tmdbUrl}
                                 target="_blank"
