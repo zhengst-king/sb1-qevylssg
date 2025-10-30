@@ -11,6 +11,7 @@ import { omdbApi } from '../lib/omdb';
 import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
+import { tmdbCacheService } from '../services/tmdbCacheService';
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
@@ -67,10 +68,19 @@ export function CollectionDetailModal({
     console.log('[CollectionDetailModal] Loaded', tmdbIds.size, 'watchlist TMDB IDs');
   };
 
+  // Update fetchCollectionDetails
   const fetchCollectionDetails = async () => {
     setLoading(true);
     const data = await tmdbService.getCollectionDetails(collectionId);
     setCollection(data);
+  
+    // Cache all movies in this collection for future use
+    if (data?.parts) {
+      tmdbCacheService.cacheCollectionMovies(collectionId).catch(err => 
+        console.error('Background cache failed:', err)
+      );
+    }
+  
     setLoading(false);
   };
 
