@@ -185,12 +185,46 @@ export function CustomCollectionDetailModal({
                             <button
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                if (window.confirm(`Remove "${item.title}" from your watchlist?\n\nNote: This will also remove it from all custom collections.`)) {
+                                if (window.confirm(`Remove "${item.title}" from your watchlist?\n\nNote: This will keep it in custom collections as a TMDB reference.`)) {
                                   try {
                                     const { data: { user } } = await supabase.auth.getUser();
                                     if (!user) return;
 
-                                    // Delete from watchlist (will cascade to collection items)
+                                    // First, convert all collection references to TMDB references
+                                    const { data: collectionItems, error: fetchError } = await supabase
+                                      .from('collection_items_custom_collections')
+                                      .select('id, custom_collection_id')
+                                      .eq('collection_item_id', item.id);
+
+                                    if (fetchError) {
+                                      console.error('Error fetching collection items:', fetchError);
+                                      alert('Failed to update collections. Please try again.');
+                                      return;
+                                    }
+
+                                    // Update each collection item to use tmdb_id instead
+                                    if (collectionItems && collectionItems.length > 0 && item.tmdb_id) {
+                                      const updatePromises = collectionItems.map(ci => 
+                                        supabase
+                                          .from('collection_items_custom_collections')
+                                          .update({
+                                            collection_item_id: null,
+                                            tmdb_id: item.tmdb_id
+                                          })
+                                          .eq('id', ci.id)
+                                      );
+
+                                      const results = await Promise.all(updatePromises);
+                                      const failed = results.find(r => r.error);
+                                      
+                                      if (failed) {
+                                        console.error('Error updating collection items:', failed.error);
+                                        alert('Failed to update some collections. Please try again.');
+                                        return;
+                                      }
+                                    }
+
+                                    // Now delete from watchlist
                                     const { error } = await supabase
                                       .from('movies')
                                       .delete()
