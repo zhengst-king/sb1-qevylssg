@@ -269,13 +269,20 @@ export function CollectionDetailModal({
       ];
 
       // Prepare bulk insert data for all selected collections
-      const insertData: Array<{ collection_item_id: string; custom_collection_id: string }> = [];
+      const insertData: Array<{
+        collection_item_id: string | null;
+        custom_collection_id: string;
+        tmdb_id: number | null;
+      }> = [];
 
       for (const collectionId of selectedCollections) {
-        for (const movieId of allMovieIds) {
+        for (const part of collection.parts) {
+          const watchlistMovie = existingMovies?.find(m => m.tmdb_id === part.id);
+          
           insertData.push({
-            collection_item_id: movieId,
-            custom_collection_id: collectionId
+            custom_collection_id: collectionId,
+            collection_item_id: watchlistMovie?.id || null,
+            tmdb_id: watchlistMovie ? null : part.id, // Store TMDB ID if not in watchlist
           });
         }
       }
@@ -284,7 +291,7 @@ export function CollectionDetailModal({
       const { error: insertError } = await supabase
         .from('collection_items_custom_collections')
         .upsert(insertData, { 
-          onConflict: 'collection_item_id,custom_collection_id',
+          onConflict: 'custom_collection_id,collection_item_id,tmdb_id',
           ignoreDuplicates: true 
         });
 
