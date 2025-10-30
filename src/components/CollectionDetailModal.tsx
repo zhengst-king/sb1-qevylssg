@@ -29,9 +29,10 @@ export function CollectionDetailModal({
 }: CollectionDetailModalProps) {
   const [collection, setCollection] = useState<TMDBCollection | null>(null);
   const [loading, setLoading] = useState(true);
-  const { movies, addMovie, refetch } = useMovies('movie'); // ✅ ADD refetch
+  const { movies, addMovie, refetch } = useMovies('movie');
   const [addingMovies, setAddingMovies] = useState<Set<number>>(new Set());
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
+  
   // Custom Collections state
   const { collections: customCollections } = useCustomCollections();
   const [showCollectionSelector, setShowCollectionSelector] = useState(false);
@@ -73,7 +74,6 @@ export function CollectionDetailModal({
     setLoading(false);
   };
 
-  // ✅ FIXED: Fetch complete OMDb data BEFORE inserting
   const handleAddToWatchlist = async (movie: TMDBCollectionPart) => {
     setAddingMovies(prev => new Set([...prev, movie.id]));
     
@@ -85,7 +85,6 @@ export function CollectionDetailModal({
       
       if (!imdbId) {
         console.warn('[CollectionDetailModal] No IMDb ID found for:', movie.title);
-        // ✅ Continue anyway with TMDB ID fallback
       }
       
       // Fetch OMDb enrichment (if IMDb ID available)
@@ -96,11 +95,9 @@ export function CollectionDetailModal({
           omdbDetails = await omdbApi.getMovieDetails(imdbId);
         } catch (omdbError) {
           console.error('[CollectionDetailModal] OMDb fetch failed:', omdbError);
-          // Continue without OMDb data
         }
       }
       
-      // ✅ USE CENTRALIZED BUILDER
       const movieData = buildMovieFromOMDb(
         {
           title: movie.title,
@@ -111,12 +108,11 @@ export function CollectionDetailModal({
           plot: movie.overview,
           imdb_score: movie.vote_average,
           media_type: 'movie',
-          status: 'To Watch' // ✅ FIX: Changed from 'Plan to Watch' to match DB constraint
+          status: 'To Watch'
         },
         omdbDetails
       );
 
-      // ✅ USE HOOK FOR INSERT
       await addMovie(movieData);
       
       console.log('[CollectionDetailModal] ✅ Movie added with complete data');
@@ -141,7 +137,6 @@ export function CollectionDetailModal({
     return watchlistMovieIds.has(movie.id);
   };
 
-  // ✅ FIXED: Proper click handler for watchlist movies
   const handleCardClick = async (e: React.MouseEvent, movie: TMDBCollectionPart) => {
     e.preventDefault();
     e.stopPropagation();
@@ -153,7 +148,6 @@ export function CollectionDetailModal({
     
     console.log('[CollectionDetailModal] Clicked watchlist title:', movie.title);
     
-    // Fetch the movie from database to get full details
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -207,17 +201,14 @@ export function CollectionDetailModal({
 
     setAddingToCollections(true);
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         alert('You must be logged in to add items to collections');
         return;
       }
 
-      // Extract TMDB IDs from collection parts
       const tmdbIds = collection.parts.map(part => part.id);
       
-      // Check which titles already exist in user's watchlist
       const { data: existingMovies, error: queryError } = await supabase
         .from('movies')
         .select('id, tmdb_id, title')
@@ -230,11 +221,9 @@ export function CollectionDetailModal({
         return;
       }
 
-      // Separate existing and new titles
       const existingTmdbIds = new Set(existingMovies?.map(m => m.tmdb_id) || []);
       const titlesToAdd = collection.parts.filter(part => !existingTmdbIds.has(part.id));
 
-      // Add new titles to watchlist first
       const newMovieIds: string[] = [];
       if (titlesToAdd.length > 0) {
         const moviesToInsert = titlesToAdd.map(part => ({
@@ -261,13 +250,11 @@ export function CollectionDetailModal({
         newMovieIds.push(...(insertedMovies?.map(m => m.id) || []));
       }
 
-      // Combine existing and new movie IDs
       const allMovieIds = [
         ...(existingMovies?.map(m => m.id) || []),
         ...newMovieIds
       ];
 
-      // Prepare bulk insert data for all selected collections
       const insertData: Array<{ collection_item_id: string; custom_collection_id: string }> = [];
       
       for (const collectionId of selectedCollections) {
@@ -279,7 +266,6 @@ export function CollectionDetailModal({
         }
       }
 
-      // Insert all associations (with conflict handling to avoid duplicates)
       const { error: insertError } = await supabase
         .from('collection_items_custom_collections')
         .upsert(insertData, { 
@@ -293,7 +279,6 @@ export function CollectionDetailModal({
         return;
       }
 
-      // Success feedback
       const collectionsText = selectedCollections.size === 1 ? 'collection' : 'collections';
       const totalTitles = collection.parts.length;
       const addedToWatchlist = titlesToAdd.length;
@@ -309,7 +294,6 @@ export function CollectionDetailModal({
       setShowCollectionSelector(false);
       setSelectedCollections(new Set());
       
-      // Refresh the watchlist
       await refetch();
       await loadWatchlistMovieIds();
     } catch (error) {
@@ -323,373 +307,361 @@ export function CollectionDetailModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={onClose}
-      />
+    <>
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        {/* Backdrop */}
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+          onClick={onClose}
+        />
 
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-          {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
-            <div className="flex items-center space-x-3">
-              <Layers className="h-6 w-6 text-purple-600" />
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">{collectionName}</h2>
-                {collection && (
-                  <p className="text-sm text-slate-500">{collection.parts?.length || 0} titles</p>
+        {/* Modal */}
+        <div className="flex min-h-full items-center justify-center p-4">
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
+              <div className="flex items-center space-x-3">
+                <Layers className="h-6 w-6 text-purple-600" />
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">{collectionName}</h2>
+                  {collection && (
+                    <p className="text-sm text-slate-500">{collection.parts?.length || 0} titles</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {collection && collection.parts && collection.parts.length > 0 && (
+                  <button
+                    onClick={() => setShowCollectionSelector(true)}
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Titles to Collection</span>
+                  </button>
                 )}
+                
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5 text-slate-500" />
+                </button>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              {collection && collection.parts && collection.parts.length > 0 && (
-                <button
-                  onClick={() => setShowCollectionSelector(true)}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Titles to Collection</span>
-                </button>
+
+            {/* Content */}
+            <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                </div>
+              ) : collection ? (
+                <div className="p-6">
+                  {/* Collection Overview */}
+                  {collection.overview && (
+                    <div className="mb-8">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">About This Collection</h3>
+                      <p className="text-slate-600 leading-relaxed">{collection.overview}</p>
+                    </div>
+                  )}
+
+                  {/* Movies Grid */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                      Movies in Collection ({collection.parts?.length || 0})
+                    </h3>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {collection.parts
+                        .sort((a, b) => {
+                          const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
+                          const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
+                          return dateA - dateB;
+                        })
+                        .map((movie) => {
+                          const inWatchlist = isInWatchlist(movie);
+                          const isAdding = addingMovies.has(movie.id);
+                          const tmdbUrl = `https://www.themoviedb.org/movie/${movie.id}`;
+                          
+                          if (inWatchlist) {
+                            return (
+                              <div
+                                key={movie.id}
+                                onClick={(e) => handleCardClick(e, movie)}
+                                className="group relative cursor-pointer"
+                              >
+                                <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+                                  <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+                                    {movie.poster_path ? (
+                                      <img
+                                        src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
+                                        alt={movie.title}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Film className="h-12 w-12 text-slate-400" />
+                                      </div>
+                                    )}
+
+                                    <button
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        
+                                        if (isAdding) return;
+                                        
+                                        setAddingMovies(prev => new Set([...prev, movie.id]));
+                                        
+                                        try {
+                                          const { data: { user } } = await supabase.auth.getUser();
+                                          if (!user) return;
+                                          
+                                          const { error } = await supabase
+                                            .from('movies')
+                                            .delete()
+                                            .eq('user_id', user.id)
+                                            .eq('title', movie.title)
+                                            .eq('media_type', 'movie');
+                                          
+                                          if (error) throw error;
+                                          
+                                          await refetch();
+                                          await loadWatchlistMovieIds();
+                                        } catch (error) {
+                                          console.error('Error removing from watchlist:', error);
+                                        } finally {
+                                          setAddingMovies(prev => {
+                                            const newSet = new Set(prev);
+                                            newSet.delete(movie.id);
+                                            return newSet;
+                                          });
+                                        }
+                                      }}
+                                      disabled={isAdding}
+                                      className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-red-500 hover:bg-red-600"
+                                      title="Remove from watchlist"
+                                    >
+                                      {isAdding ? (
+                                        <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <X className="h-4 w-4 text-white" />
+                                      )}
+                                    </button>
+
+                                    {movie.vote_average > 0 && (
+                                      <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                                        <div className="flex items-center space-x-1">
+                                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                          <span className="text-white text-xs font-semibold">
+                                            {movie.vote_average.toFixed(1)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="p-3">
+                                    <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
+                                      {movie.title}
+                                    </h4>
+                                    {movie.release_date && (
+                                      <div className="flex items-center text-xs text-slate-500">
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        {new Date(movie.release_date).getFullYear()}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              
+                                key={movie.id}
+                                href={tmdbUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group relative block"
+                              >
+                                <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
+                                  <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+                                    {movie.poster_path ? (
+                                      <img
+                                        src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
+                                        alt={movie.title}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Film className="h-12 w-12 text-slate-400" />
+                                      </div>
+                                    )}
+
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (!isAdding) {
+                                          handleAddToWatchlist(movie);
+                                        }
+                                      }}
+                                      disabled={isAdding}
+                                      className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
+                                        isAdding
+                                          ? 'bg-slate-400 cursor-wait'
+                                          : 'bg-white/90 hover:bg-white'
+                                      }`}
+                                      title={isAdding ? 'Adding...' : 'Add to watchlist'}
+                                    >
+                                      {isAdding ? (
+                                        <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+                                      ) : (
+                                        <Plus className="h-4 w-4 text-slate-600" />
+                                      )}
+                                    </button>
+
+                                    {movie.vote_average > 0 && (
+                                      <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                                        <div className="flex items-center space-x-1">
+                                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                          <span className="text-white text-xs font-semibold">
+                                            {movie.vote_average.toFixed(1)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="p-3">
+                                    <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
+                                      {movie.title}
+                                    </h4>
+                                    {movie.release_date && (
+                                      <div className="flex items-center text-xs text-slate-500">
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        {new Date(movie.release_date).getFullYear()}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </a>
+                            );
+                          }
+                        })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-slate-500">Failed to load collection details.</p>
+                </div>
               )}
-              
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Collection Selector Popup */}
+      {showCollectionSelector && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCollectionSelector(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl max-w-md w-full max-h-[70vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">Select Collections</h3>
               <button
-                onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                onClick={() => setShowCollectionSelector(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
               >
-                <X className="h-5 w-5 text-slate-500" />
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {customCollections.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-slate-600 mb-2">No custom collections yet</p>
+                  <p className="text-sm text-slate-500">
+                    Create a custom collection first to add titles
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {customCollections.map((collection) => (
+                    <label
+                      key={collection.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCollections.has(collection.id)}
+                        onChange={() => handleToggleCollection(collection.id)}
+                        className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
+                      />
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: collection.color }}
+                      >
+                        <span className="text-white text-xs font-semibold">
+                          {collection.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 truncate">{collection.name}</p>
+                        {collection.description && (
+                          <p className="text-xs text-slate-500 truncate">{collection.description}</p>
+                        )}
+                      </div>
+                      {selectedCollections.has(collection.id) && (
+                        <Check className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-200 flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowCollectionSelector(false);
+                  setSelectedCollections(new Set());
+                }}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddTitlesToCollections}
+                disabled={selectedCollections.size === 0 || addingToCollections}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                {addingToCollections ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>Done ({selectedCollections.size} selected)</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
-
-          {/* Content */}
-          <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-              </div>
-            ) : collection ? (
-              <div className="p-6">
-                {/* Collection Overview */}
-                {collection.overview && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">About This Collection</h3>
-                    <p className="text-slate-600 leading-relaxed">{collection.overview}</p>
-                  </div>
-                )}
-
-                {/* Movies Grid */}
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                    Movies in Collection ({collection.parts?.length || 0})
-                  </h3>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {collection.parts
-                      .sort((a, b) => {
-                        const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
-                        const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
-                        return dateA - dateB;
-                      })
-                      .map((movie) => {
-                        const inWatchlist = isInWatchlist(movie);
-                        const isAdding = addingMovies.has(movie.id);
-                        const tmdbUrl = `https://www.themoviedb.org/movie/${movie.id}`;
-                        
-                        // ✅ FIX: Use conditional rendering like MovieRecommendations
-                        if (inWatchlist) {
-                          // Watchlist movie - clickable div
-                          return (
-                            <div
-                              key={movie.id}
-                              onClick={(e) => handleCardClick(e, movie)}
-                              className="group relative cursor-pointer"
-                            >
-                              <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
-                                {/* Poster */}
-                                <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
-                                  {movie.poster_path ? (
-                                    <img
-                                      src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
-                                      alt={movie.title}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <Film className="h-12 w-12 text-slate-400" />
-                                    </div>
-                                  )}
-
-                                  {/* Remove from Watchlist Button */}
-                                  <button
-                                    onClick={async (e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      
-                                      if (isAdding) return;
-                                      
-                                      setAddingMovies(prev => new Set([...prev, movie.id]));
-                                      
-                                      try {
-                                        const { data: { user } } = await supabase.auth.getUser();
-                                        if (!user) return;
-                                        
-                                        const { error } = await supabase
-                                          .from('movies')
-                                          .delete()
-                                          .eq('user_id', user.id)
-                                          .eq('title', movie.title)
-                                          .eq('media_type', 'movie');
-                                        
-                                        if (error) throw error;
-                                        
-                                        await refetch();
-                                        await loadWatchlistMovieIds();
-                                      } catch (error) {
-                                        console.error('Error removing from watchlist:', error);
-                                      } finally {
-                                        setAddingMovies(prev => {
-                                          const newSet = new Set(prev);
-                                          newSet.delete(movie.id);
-                                          return newSet;
-                                        });
-                                      }
-                                    }}
-                                    disabled={isAdding}
-                                    className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-red-500 hover:bg-red-600"
-                                    title="Remove from watchlist"
-                                  >
-                                    {isAdding ? (
-                                      <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <X className="h-4 w-4 text-white" />
-                                    )}
-                                  </button>
-
-                                  {/* Rating Badge */}
-                                  {movie.vote_average > 0 && (
-                                    <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
-                                      <div className="flex items-center space-x-1">
-                                        <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                                        <span className="text-white text-xs font-semibold">
-                                          {movie.vote_average.toFixed(1)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Movie Info */}
-                                <div className="p-3">
-                                  <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
-                                    {movie.title}
-                                  </h4>
-                                  {movie.release_date && (
-                                    <div className="flex items-center text-xs text-slate-500">
-                                      <Calendar className="h-3 w-3 mr-1" />
-                                      {new Date(movie.release_date).getFullYear()}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        } else {
-                          // Not in watchlist - external link
-                          return (
-                            <a
-                              key={movie.id}
-                              href={tmdbUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group relative block"
-                            >
-                              <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
-                                {/* Poster */}
-                                <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
-                                  {movie.poster_path ? (
-                                    <img
-                                      src={tmdbService.getImageUrl(movie.poster_path, 'w342')}
-                                      alt={movie.title}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <Film className="h-12 w-12 text-slate-400" />
-                                    </div>
-                                  )}
-
-                                  {/* Add to Watchlist Button */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      if (!isAdding) {
-                                        handleAddToWatchlist(movie);
-                                      }
-                                    }}
-                                    disabled={isAdding}
-                                    className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
-                                      isAdding
-                                        ? 'bg-slate-400 cursor-wait'
-                                        : 'bg-white/90 hover:bg-white'
-                                    }`}
-                                    title={isAdding ? 'Adding...' : 'Add to watchlist'}
-                                  >
-                                    {isAdding ? (
-                                      <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-                                    ) : (
-                                      <Plus className="h-4 w-4 text-slate-600" />
-                                    )}
-                                  </button>
-
-                                  {/* Rating Badge */}
-                                  {movie.vote_average > 0 && (
-                                    <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
-                                      <div className="flex items-center space-x-1">
-                                        <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                                        <span className="text-white text-xs font-semibold">
-                                          {movie.vote_average.toFixed(1)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Movie Info */}
-                                <div className="p-3">
-                                  <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
-                                    {movie.title}
-                                  </h4>
-                                  {movie.release_date && (
-                                    <div className="flex items-center text-xs text-slate-500">
-                                      <Calendar className="h-3 w-3 mr-1" />
-                                      {new Date(movie.release_date).getFullYear()}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </a>
-                          );
-                        }
-                      })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-slate-500">Failed to load collection details.</p>
-              </div>
-            )}
-          </div>
         </div>
-      </div>
-    </div>
-
-    {/* Collection Selector Popup */}
-    {showCollectionSelector && (
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            setShowCollectionSelector(false);
-          }
-        }}
-      >
-        <div 
-          className="bg-white rounded-xl max-w-md w-full max-h-[70vh] overflow-hidden flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Popup Header */}
-          <div className="flex items-center justify-between p-6 border-b border-slate-200">
-            <h3 className="text-xl font-bold text-slate-900">Select Collections</h3>
-            <button
-              onClick={() => setShowCollectionSelector(false)}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Collections List */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {customCollections.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-slate-600 mb-2">No custom collections yet</p>
-                <p className="text-sm text-slate-500">
-                  Create a custom collection first to add titles
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {customCollections.map((collection) => (
-                  <label
-                    key={collection.id}
-                    className="flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedCollections.has(collection.id)}
-                      onChange={() => handleToggleCollection(collection.id)}
-                      className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
-                    />
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: collection.color }}
-                    >
-                      <span className="text-white text-xs font-semibold">
-                        {collection.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 truncate">{collection.name}</p>
-                      {collection.description && (
-                        <p className="text-xs text-slate-500 truncate">{collection.description}</p>
-                      )}
-                    </div>
-                    {selectedCollections.has(collection.id) && (
-                      <Check className="h-5 w-5 text-purple-600 flex-shrink-0" />
-                    )}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Popup Footer */}
-          <div className="p-4 border-t border-slate-200 flex justify-end space-x-2">
-            <button
-              onClick={() => {
-                setShowCollectionSelector(false);
-                setSelectedCollections(new Set());
-              }}
-              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAddTitlesToCollections}
-              disabled={selectedCollections.size === 0 || addingToCollections}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-            >
-              {addingToCollections ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Adding...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  <span>Done ({selectedCollections.size} selected)</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+      )}
+    </>
   );
 }
