@@ -73,23 +73,40 @@ export const customCollectionsService = {
    * Get items in a specific custom collection
    */
   async getItemsInCollection(customCollectionId: string): Promise<any[]> {
+    // Step 1: Get collection item IDs
     const { data, error } = await supabase
       .from('collection_items_custom_collections')
-      .select(`
-        collection_item_id,
-        display_order,
-        added_at,
-        movie:movies(*)
-      `)
+      .select('collection_item_id')
       .eq('custom_collection_id', customCollectionId)
-      .order('added_at', { ascending: false }); // Newest first
+      .order('added_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching items in collection:', error);
+      console.error('Error fetching collection item IDs:', error);
       throw error;
     }
 
-    return data?.map(item => item.movie).filter(Boolean) || [];
+    if (!data || data.length === 0) {
+      console.log('[getItemsInCollection] No items found for collection:', customCollectionId);
+      return [];
+    }
+
+    // Step 2: Extract movie IDs
+    const movieIds = data.map(item => item.collection_item_id);
+    console.log('[getItemsInCollection] Found movie IDs:', movieIds);
+
+    // Step 3: Fetch the actual movies
+    const { data: movies, error: moviesError } = await supabase
+      .from('movies')
+      .select('*')
+      .in('id', movieIds);
+
+    if (moviesError) {
+      console.error('Error fetching movies:', moviesError);
+      throw moviesError;
+    }
+
+    console.log('[getItemsInCollection] Fetched movies:', movies);
+    return movies || [];
   },
 
   /**
