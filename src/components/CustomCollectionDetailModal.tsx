@@ -219,7 +219,7 @@ export function CustomCollectionDetailModal({
 
                           {/* Upper Right: Add to Watchlist Button (+) - Only show if NOT in watchlist */}
                           {!isInWatchlist && tmdbUrl && (
-                            
+                            <a
                               href={tmdbUrl}
                               target="_blank"
                               rel="noopener noreferrer"
