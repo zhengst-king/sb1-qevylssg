@@ -256,12 +256,12 @@ export function CollectionDetailModal({
       ];
 
       // Prepare bulk insert data for all selected collections
-      const insertData: Array<{ movie_id: string; custom_collection_id: string }> = [];
+      const insertData: Array<{ collection_item_id: string; custom_collection_id: string }> = [];
 
       for (const collectionId of selectedCollections) {
         for (const movieId of allMovieIds) {
           insertData.push({
-            movie_id: movieId,
+            collection_item_id: movieId,
             custom_collection_id: collectionId
           });
         }
@@ -271,7 +271,7 @@ export function CollectionDetailModal({
       const { error: insertError } = await supabase
         .from('collection_items_custom_collections')
         .upsert(insertData, { 
-          onConflict: 'movie_id,custom_collection_id',
+          onConflict: 'collection_item_id,custom_collection_id',
           ignoreDuplicates: true 
         });
 
