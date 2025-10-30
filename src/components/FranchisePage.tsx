@@ -10,6 +10,7 @@ import { MovieDetailsPage } from './MovieDetailsPage';
 import { Movie } from '../lib/supabase';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
+import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
 
 type CollectionTab = 'tmdb' | 'custom';
 
@@ -413,45 +414,14 @@ export function FranchisePage() {
         />
       )}
 
-      {/* Custom Collection Detail Modal - TODO: Create this component */}
+      {/* Custom Collection Detail Modal */}
       {selectedCustomCollection && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50" 
-            onClick={() => setSelectedCustomCollection(null)}
-          />
-          <div className="fixed inset-4 md:inset-20 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-slate-200">
-              <h2 className="text-2xl font-bold text-slate-900">{selectedCustomCollection.name}</h2>
-              {selectedCustomCollection.description && (
-                <p className="text-slate-600 mt-1">{selectedCustomCollection.description}</p>
-              )}
-              <p className="text-sm text-slate-500 mt-2">
-                {selectedCustomCollection.item_count} {selectedCustomCollection.item_count === 1 ? 'item' : 'items'}
-              </p>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="text-center py-12">
-                <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600 mb-2">Custom Collection Detail View</p>
-                <p className="text-sm text-slate-500">
-                  This will show all titles in "{selectedCustomCollection.name}"
-                </p>
-                <p className="text-xs text-slate-400 mt-4">
-                  Coming in Item 3 implementation
-                </p>
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-200 flex justify-end">
-              <button
-                onClick={() => setSelectedCustomCollection(null)}
-                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <CustomCollectionDetailModal
+          isOpen={!!selectedCustomCollection}
+          onClose={() => setSelectedCustomCollection(null)}
+          collection={selectedCustomCollection}
+          onMovieClick={handleMovieDetailsClick}
+        />
       )}
 
       {/* Franchise Search Modal */}
