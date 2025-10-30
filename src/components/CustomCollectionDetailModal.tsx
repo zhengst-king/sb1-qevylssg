@@ -137,7 +137,7 @@ export function CustomCollectionDetailModal({
               <div className="p-6">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {items.map((item) => {
-                    const isInWatchlist = watchlistMovieIds.has(item.id);
+                    const isInWatchlist = item.in_watchlist !== false;
                     const tmdbUrl = item.tmdb_id 
                       ? `https://www.themoviedb.org/${item.media_type === 'tv' ? 'tv' : 'movie'}/${item.tmdb_id}`
                       : null;
@@ -180,21 +180,72 @@ export function CustomCollectionDetailModal({
                             </div>
                           )}
 
-                          {/* Upper Right: Remove from Collection Button */}
+                          {/* Upper Right: Remove from Watchlist Button (X) - Only show if in watchlist */}
+                          {isInWatchlist && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Remove "${item.title}" from your watchlist?\n\nNote: This will also remove it from all custom collections.`)) {
+                                  try {
+                                    const { data: { user } } = await supabase.auth.getUser();
+                                    if (!user) return;
+
+                                    // Delete from watchlist (will cascade to collection items)
+                                    const { error } = await supabase
+                                      .from('movies')
+                                      .delete()
+                                      .eq('id', item.id)
+                                      .eq('user_id', user.id);
+
+                                    if (error) {
+                                      console.error('Error removing from watchlist:', error);
+                                      alert('Failed to remove from watchlist.');
+                                    } else {
+                                      // Refresh the collection items
+                                      await fetchCollectionItems();
+                                    }
+                                  } catch (error) {
+                                    console.error('Error:', error);
+                                    alert('An error occurred.');
+                                  }
+                                }
+                              }}
+                              className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full shadow-md transition-colors z-10"
+                              title="Remove from watchlist"
+                            >
+                              <X className="h-4 w-4 text-white" />
+                            </button>
+                          )}
+
+                          {/* Upper Right: Add to Watchlist Button (+) - Only show if NOT in watchlist */}
+                          {!isInWatchlist && tmdbUrl && (
+                            
+                              href={tmdbUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors z-10"
+                              title="View on TMDB"
+                            >
+                              <Plus className="h-4 w-4 text-slate-600 hover:text-purple-500" />
+                            </a>
+                          )}
+
+                          {/* Lower Left: Remove from Collection Button (Trash) */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Remove "${item.title}" from this collection?`)) {
+                              if (window.confirm(`Remove "${item.title}" from this collection?${!isInWatchlist ? '\n\nNote: This title is not in your watchlist.' : ''}`)) {
                                 handleRemoveFromCollection(item.id);
                               }
                             }}
-                            className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full shadow-md transition-colors z-10"
+                            className="absolute bottom-2 left-2 p-1.5 bg-slate-800/80 hover:bg-slate-900 backdrop-blur-sm rounded-full shadow-md transition-colors z-10"
                             title="Remove from collection"
                           >
-                            <X className="h-4 w-4 text-white" />
+                            <Trash2 className="h-4 w-4 text-white" />
                           </button>
 
-                          {/* Lower Right: Media Type Badge - MATCHES PERSON DETAILS MODAL */}
+                          {/* Lower Right: Media Type Badge */}
                           <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
                             {item.media_type === 'tv' ? 'TV' : 'Movie'}
                           </div>
