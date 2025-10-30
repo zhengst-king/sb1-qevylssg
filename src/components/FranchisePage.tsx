@@ -411,6 +411,7 @@ export function FranchisePage() {
           collectionId={selectedCollection.id}
           collectionName={selectedCollection.name}
           onMovieDetailsClick={handleMovieDetailsClick}
+          onCollectionsUpdated={refetchCustomCollections}
         />
       )}
 
