@@ -55,7 +55,7 @@ export const customCollectionsService = {
       .select(`
         *,
         collection_items:collection_items_custom_collections(
-          collection_item:physical_media_collection(*)
+          movie:movies(*)
         )
       `)
       .order('display_order', { ascending: true })
@@ -79,7 +79,7 @@ export const customCollectionsService = {
         collection_item_id,
         display_order,
         added_at,
-        collection_item:physical_media_collection(*)
+        movie:movies(*)
       `)
       .eq('custom_collection_id', customCollectionId)
       .order('display_order', { ascending: true })
@@ -90,7 +90,7 @@ export const customCollectionsService = {
       throw error;
     }
 
-    return data?.map(item => item.collection_item) || [];
+    return data?.map(item => item.movie) || [];
   },
 
   /**
@@ -163,7 +163,9 @@ export const customCollectionsService = {
   },
 
   /**
-   * Add an item to a custom collection
+   * Add a movie to a custom collection
+   * @param movieId - ID from the movies table (watchlist)
+   * @param customCollectionId - ID of the custom collection
    */
   async addItemToCollection(
     collectionItemId: string,
@@ -183,7 +185,9 @@ export const customCollectionsService = {
   },
 
   /**
-   * Add multiple items to a custom collection (bulk operation)
+   * Add multiple movies to a custom collection (bulk operation)
+   * @param movieIds - Array of IDs from the movies table (watchlist)
+   * @param customCollectionId - ID of the custom collection
    */
   async addItemsToCollection(
     collectionItemIds: string[],
@@ -205,7 +209,9 @@ export const customCollectionsService = {
   },
 
   /**
-   * Remove an item from a custom collection
+   * Remove a movie from a custom collection
+   * @param movieId - ID from the movies table
+   * @param customCollectionId - ID of the custom collection
    */
   async removeItemFromCollection(
     collectionItemId: string,
@@ -224,7 +230,8 @@ export const customCollectionsService = {
   },
 
   /**
-   * Get custom collections that contain a specific item
+   * Get custom collections that contain a specific movie
+   * @param movieId - ID from the movies table
    */
   async getCollectionsForItem(collectionItemId: string): Promise<CustomCollection[]> {
     const { data, error } = await supabase
