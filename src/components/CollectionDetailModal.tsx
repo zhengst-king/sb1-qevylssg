@@ -232,42 +232,6 @@ export function CollectionDetailModal({
         return;
       }
 
-      const existingTmdbIds = new Set(existingMovies?.map(m => m.tmdb_id) || []);
-      const titlesToAdd = collection.parts.filter(part => !existingTmdbIds.has(part.id));
-
-      // Add new titles to watchlist first (if any)
-      const newMovieIds: string[] = [];
-      if (titlesToAdd.length > 0) {
-        const moviesToInsert = titlesToAdd.map(part => ({
-          user_id: user.id,
-          tmdb_id: part.id,
-          title: part.title,
-          media_type: 'movie',
-          status: 'To Watch',
-          poster_url: part.poster_path ? tmdbService.getImageUrl(part.poster_path, 'w500') : null,
-          year: part.release_date ? parseInt(part.release_date.split('-')[0]) : null,
-        }));
-
-        const { data: insertedMovies, error: insertError } = await supabase
-          .from('movies')
-          .insert(moviesToInsert)
-          .select('id, tmdb_id');
-
-        if (insertError) {
-          console.error('Error adding movies to watchlist:', insertError);
-          alert('Failed to add some titles to your watchlist. Please try again.');
-          return;
-        }
-
-        newMovieIds.push(...(insertedMovies?.map(m => m.id) || []));
-      }
-
-      // Combine existing and new movie IDs
-      const allMovieIds = [
-        ...(existingMovies?.map(m => m.id) || []),
-        ...newMovieIds
-      ];
-
       // Prepare bulk insert data for all selected collections
       const insertData: Array<{
         collection_item_id: string | null;
@@ -304,12 +268,13 @@ export function CollectionDetailModal({
       // Success feedback
       const collectionsText = selectedCollections.size === 1 ? 'collection' : 'collections';
       const totalTitles = collection.parts.length;
-      const addedToWatchlist = titlesToAdd.length;
+      const watchlistedCount = existingMovies?.length || 0;
+      const unwatchlistedCount = totalTitles - watchlistedCount;
       
       let message = `Successfully added ${totalTitles} ${totalTitles === 1 ? 'title' : 'titles'} to ${selectedCollections.size} ${collectionsText}!`;
       
-      if (addedToWatchlist > 0) {
-        message += `\n\n${addedToWatchlist} ${addedToWatchlist === 1 ? 'title was' : 'titles were'} also added to your watchlist.`;
+      if (unwatchlistedCount > 0) {
+        message += `\n\n${watchlistedCount} on watchlist, ${unwatchlistedCount} not on watchlist.`;
       }
       
       alert(message);
