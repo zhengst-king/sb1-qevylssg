@@ -1,9 +1,10 @@
 // src/components/CustomCollectionDetailModal.tsx
 import React, { useEffect, useState } from 'react';
-import { X, Package, Calendar, Star, Film, Tv } from 'lucide-react';
+import { X, Package, Calendar, Star, Film, Tv, Plus } from 'lucide-react';
 import { customCollectionsService } from '../services/customCollectionsService';
 import { Movie } from '../lib/supabase';
 import { tmdbService } from '../lib/tmdb';
+import { supabase } from '../lib/supabase';
 import type { CustomCollection } from '../types/customCollections';
 
 interface CustomCollectionDetailModalProps {
@@ -23,6 +24,7 @@ export function CustomCollectionDetailModal({
 }: CustomCollectionDetailModalProps) {
   const [items, setItems] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen && collection) {
@@ -33,20 +35,42 @@ export function CustomCollectionDetailModal({
   const fetchCollectionItems = async () => {
     setLoading(true);
     try {
+      console.log('[CustomCollectionDetailModal] Fetching items for collection:', collection.id);
+      
       const fetchedItems = await customCollectionsService.getItemsInCollection(collection.id);
+      
+      console.log('[CustomCollectionDetailModal] Fetched items:', fetchedItems);
+      console.log('[CustomCollectionDetailModal] Number of items:', fetchedItems.length);
+      
       setItems(fetchedItems);
+      
+      // Build set of watchlist movie IDs (all fetched items are in watchlist by definition)
+      const movieIds = new Set(fetchedItems.map(item => item.id));
+      setWatchlistMovieIds(movieIds);
       
       // Update collection poster with newest item's poster
       if (fetchedItems.length > 0 && onUpdatePoster) {
-        const newestItem = fetchedItems[0]; // Already sorted by added_at desc
+        const newestItem = fetchedItems[0];
+        console.log('[CustomCollectionDetailModal] Newest item:', newestItem);
         if (newestItem.poster_url) {
           onUpdatePoster(collection.id, newestItem.poster_url);
         }
       }
     } catch (error) {
-      console.error('Error fetching collection items:', error);
+      console.error('[CustomCollectionDetailModal] Error fetching collection items:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemoveFromCollection = async (itemId: string) => {
+    try {
+      await customCollectionsService.removeItemFromCollection(itemId, collection.id);
+      // Refresh items
+      await fetchCollectionItems();
+    } catch (error) {
+      console.error('Error removing item from collection:', error);
+      alert('Failed to remove item from collection.');
     }
   };
 
@@ -112,15 +136,22 @@ export function CustomCollectionDetailModal({
             ) : (
               <div className="p-6">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {items.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className="group relative cursor-pointer"
-                    >
-                      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
-                        {/* Poster */}
-                        <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+                  {items.map((item) => {
+                    const isInWatchlist = watchlistMovieIds.has(item.id);
+                    const tmdbUrl = item.tmdb_id 
+                      ? `https://www.themoviedb.org/${item.media_type === 'tv' ? 'tv' : 'movie'}/${item.tmdb_id}`
+                      : null;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all"
+                      >
+                        {/* Poster - Clickable if in watchlist */}
+                        <div 
+                          className={`aspect-[2/3] bg-slate-200 relative overflow-hidden ${isInWatchlist ? 'cursor-pointer' : ''}`}
+                          onClick={isInWatchlist ? () => handleItemClick(item) : undefined}
+                        >
                           {item.poster_url ? (
                             <img
                               src={item.poster_url}
@@ -137,16 +168,9 @@ export function CustomCollectionDetailModal({
                             </div>
                           )}
 
-                          {/* Media Type Badge */}
-                          <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/75 backdrop-blur-sm">
-                            <span className="text-white text-xs font-semibold uppercase">
-                              {item.media_type === 'tv' ? 'TV' : 'Movie'}
-                            </span>
-                          </div>
-
-                          {/* Rating Badge */}
+                          {/* Upper Left: Rating Badge */}
                           {item.imdb_score && item.imdb_score > 0 && (
-                            <div className="absolute top-2 right-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                            <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/75 backdrop-blur-sm">
                               <div className="flex items-center space-x-1">
                                 <Star className="h-3 w-3 text-yellow-400 fill-current" />
                                 <span className="text-white text-xs font-semibold">
@@ -155,11 +179,39 @@ export function CustomCollectionDetailModal({
                               </div>
                             </div>
                           )}
+
+                          {/* Upper Right: Remove from Collection Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Remove "${item.title}" from this collection?`)) {
+                                handleRemoveFromCollection(item.id);
+                              }
+                            }}
+                            className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full shadow-md transition-colors z-10"
+                            title="Remove from collection"
+                          >
+                            <X className="h-4 w-4 text-white" />
+                          </button>
+
+                          {/* Lower Right: Media Type Badge */}
+                          <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-black/75 backdrop-blur-sm">
+                            <div className="flex items-center space-x-1">
+                              {item.media_type === 'tv' ? (
+                                <Tv className="h-3 w-3 text-white" />
+                              ) : (
+                                <Film className="h-3 w-3 text-white" />
+                              )}
+                              <span className="text-white text-xs font-semibold uppercase">
+                                {item.media_type === 'tv' ? 'TV' : 'Movie'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Item Info */}
-                        <div className="p-3">
-                          <h4 className="font-semibold text-slate-900 line-clamp-2 mb-1">
+                        <div className="p-3 bg-white">
+                          <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 mb-1">
                             {item.title}
                           </h4>
                           {item.year && (
@@ -170,8 +222,8 @@ export function CustomCollectionDetailModal({
                           )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
