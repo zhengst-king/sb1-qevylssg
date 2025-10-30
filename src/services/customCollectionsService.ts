@@ -82,15 +82,14 @@ export const customCollectionsService = {
         movie:movies(*)
       `)
       .eq('custom_collection_id', customCollectionId)
-      .order('display_order', { ascending: true })
-      .order('added_at', { ascending: false });
+      .order('added_at', { ascending: false }); // Newest first
 
     if (error) {
       console.error('Error fetching items in collection:', error);
       throw error;
     }
 
-    return data?.map(item => item.movie) || [];
+    return data?.map(item => item.movie).filter(Boolean) || [];
   },
 
   /**
