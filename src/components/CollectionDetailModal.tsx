@@ -282,7 +282,7 @@ export function CollectionDetailModal({
       setShowCollectionSelector(false);
       setSelectedCollections(new Set());
       
-      await refetch();
+      // Refresh watchlist status but DON'T close the collection modal
       await loadWatchlistMovieIds();
     } catch (error) {
       console.error('Error adding titles:', error);
