@@ -65,7 +65,27 @@ export function CustomCollectionDetailModal({
 
   const handleRemoveFromCollection = async (itemId: string) => {
     try {
-      await customCollectionsService.removeItemFromCollection(itemId, collection.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Determine if this is a watchlist item or TMDB item
+      const isWatchlistItem = !itemId.startsWith('tmdb_');
+
+      if (isWatchlistItem) {
+        // Remove by collection_item_id (watchlist item)
+        await customCollectionsService.removeItemFromCollection(itemId, collection.id);
+      } else {
+        // Remove by tmdb_id (non-watchlist item)
+        const tmdbId = parseInt(itemId.replace('tmdb_', ''));
+        const { error } = await supabase
+          .from('collection_items_custom_collections')
+          .delete()
+          .eq('custom_collection_id', collection.id)
+          .eq('tmdb_id', tmdbId);
+
+        if (error) throw error;
+      }
+
       // Refresh items
       await fetchCollectionItems();
     } catch (error) {
