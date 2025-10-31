@@ -28,7 +28,6 @@ import { tmdbService, TMDBMovieDetails } from '../lib/tmdb';
 import WatchProvidersDisplay from './WatchProvidersDisplay';
 import { favoriteFranchisesService } from '../services/favoriteFranchisesService';
 import { PersonDetailsModal } from './PersonDetailsModal';
-import { Package, Check } from 'lucide-react'; // Add these two icons
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import { customCollectionsService } from '../services/customCollectionsService';
 import type { CustomCollection } from '../types/customCollections';
