@@ -16,7 +16,7 @@ import {
   Film,
   Heart
 } from 'lucide-react';
-import { Movie } from '../lib/supabase';
+import { Movie, supabase } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
 import { formatRelativeTime, formatExactTimestamp, formatDateWatched, getTodayDateString, isValidWatchDate } from '../utils/dateUtils';
 import { MovieCastSection } from './MovieCastSection';
