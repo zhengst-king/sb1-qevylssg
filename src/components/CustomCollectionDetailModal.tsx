@@ -92,7 +92,7 @@ export function CustomCollectionDetailModal({
         if (error) throw error;
       }
 
-      // Refresh items
+      // Refresh items and update poster
       await fetchCollectionItems();
     } catch (error) {
       console.error('Error removing item from collection:', error);
