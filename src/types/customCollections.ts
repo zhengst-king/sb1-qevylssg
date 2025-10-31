@@ -22,6 +22,7 @@ export interface CustomCollection {
   item_count: number;
   is_favorite: boolean;
   display_order: number;
+  poster_url: string | null;
   created_at: string;
   updated_at: string;
 }
