@@ -264,10 +264,8 @@ export function MovieDetailsPage({
       // Add movie to each selected collection
       for (const collectionId of selectedCollections) {
         if (movie.id) {
-          await customCollectionsService.addItemToCollection({
-            custom_collection_id: collectionId,
-            collection_item_id: movie.id
-          });
+          // Correct parameter order: (movieId, collectionId)
+          await customCollectionsService.addItemToCollection(movie.id, collectionId);
         }
       }
 
