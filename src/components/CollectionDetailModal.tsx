@@ -287,6 +287,9 @@ export function CollectionDetailModal({
       // Refresh watchlist status
       await loadWatchlistMovieIds();
       
+      // Update collection posters with newest titles
+      await updateCustomCollectionPosters();
+      
       // Notify parent to refresh collection counts
       if (onCollectionsUpdated) {
         onCollectionsUpdated();
@@ -297,6 +300,34 @@ export function CollectionDetailModal({
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setAddingToCollections(false);
+    }
+  };
+
+  const updateCustomCollectionPosters = async () => {
+    // Get all custom collections that were just updated
+    for (const collectionId of selectedCollections) {
+      try {
+        // Fetch items in this collection
+        const items = await customCollectionsService.getItemsInCollection(collectionId);
+        
+        if (items.length > 0) {
+          // Find newest item by release year
+          const newestItem = items.reduce((latest, current) => {
+            const latestYear = latest.year || 0;
+            const currentYear = current.year || 0;
+            return currentYear > latestYear ? current : latest;
+          }, items[0]);
+          
+          // Update collection poster
+          if (newestItem.poster_url) {
+            await customCollectionsService.updateCustomCollection(collectionId, {
+              poster_url: newestItem.poster_url
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error updating collection poster:', error);
+      }
     }
   };
 
