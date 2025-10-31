@@ -39,6 +39,11 @@ import { SeriesRecommendations } from './SeriesRecommendations';
 import WatchProvidersDisplay from './WatchProvidersDisplay';
 import { TMDBTVSeriesDetails } from '../lib/tmdb';
 import { PersonDetailsModal } from './PersonDetailsModal';
+import { Package, Check } from 'lucide-react';
+import { useCustomCollections } from '../hooks/useCustomCollections';
+import { customCollectionsService } from '../services/customCollectionsService';
+import type { CustomCollection } from '../types/customCollections';
+import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -107,6 +112,15 @@ export function EnhancedEpisodesBrowserPage({
   });
 
   const [debugTmdbData, setDebugTmdbData] = useState<any>(null);
+
+  // Custom Collections state
+  const { collections: customCollections } = useCustomCollections();
+  const [showCollectionSelector, setShowCollectionSelector] = useState(false);
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
+  const [addingToCollections, setAddingToCollections] = useState(false);
+  const [seriesCollections, setSeriesCollections] = useState<CustomCollection[]>([]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+  const [selectedCollectionToView, setSelectedCollectionToView] = useState<CustomCollection | null>(null);
   
   // Add this handler function after your state declarations
   const handleRecommendationClick = (clickedSeries: Movie) => {
@@ -172,6 +186,25 @@ export function EnhancedEpisodesBrowserPage({
 
     fetchTMDBData();
   }, [series.imdb_id]);
+
+  // Fetch collections that contain this series
+  useEffect(() => {
+    const fetchSeriesCollections = async () => {
+      if (!series.id) return;
+      
+      setLoadingCollections(true);
+      try {
+        const collections = await customCollectionsService.getCollectionsForItem(series.id);
+        setSeriesCollections(collections);
+      } catch (error) {
+        console.error('Error fetching series collections:', error);
+      } finally {
+        setLoadingCollections(false);
+      }
+    };
+
+    fetchSeriesCollections();
+  }, [series.id]);
   
   // Load episodes for current season from background cache
   useEffect(() => {
@@ -472,6 +505,63 @@ export function EnhancedEpisodesBrowserPage({
     }
   };
 
+  const handleToggleCollection = (collectionId: string) => {
+    setSelectedCollections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(collectionId)) {
+        newSet.delete(collectionId);
+      } else {
+        newSet.add(collectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddToCollections = async () => {
+    if (selectedCollections.size === 0) return;
+
+    setAddingToCollections(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Add series to each selected collection
+      for (const collectionId of selectedCollections) {
+        if (series.id) {
+          await customCollectionsService.addItemToCollection(series.id, collectionId);
+        }
+      }
+
+      // Refresh the collections list
+      const updatedCollections = await customCollectionsService.getCollectionsForItem(series.id!);
+      setSeriesCollections(updatedCollections);
+
+      alert(`Added "${series.title}" to ${selectedCollections.size} collection(s)!`);
+      setShowCollectionSelector(false);
+      setSelectedCollections(new Set());
+    } catch (error) {
+      console.error('Error adding to collections:', error);
+      alert('Failed to add to collections. Please try again.');
+    } finally {
+      setAddingToCollections(false);
+    }
+  };
+
+  const handleRemoveFromCollection = async (collectionId: string) => {
+    if (!series.id) return;
+
+    try {
+      await customCollectionsService.removeItemFromCollection(series.id, collectionId);
+      
+      // Refresh the collections list
+      const updatedCollections = await customCollectionsService.getCollectionsForItem(series.id);
+      setSeriesCollections(updatedCollections);
+    } catch (error) {
+      console.error('Error removing from collection:', error);
+      alert('Failed to remove from collection.');
+    }
+  };
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
@@ -743,7 +833,8 @@ export function EnhancedEpisodesBrowserPage({
 
             {/* User Actions Section - OUTSIDE the white card for full-width layout below */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
-              <div className="flex flex-wrap items-center gap-4">
+              {/* Row 1: Rating, Status, Date Watched, Edit Review */}
+              <div className="flex flex-wrap items-center gap-4 mb-4">
                   
                 {/* My Rating */}
                 <div className="flex items-center space-x-2">
@@ -843,6 +934,63 @@ export function EnhancedEpisodesBrowserPage({
                   <MessageSquare className="h-3.5 w-3.5" />
                   <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
                 </button>
+              </div>
+
+              {/* Row 2: Add to Collection + Collection Badges */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Add to Collection Button */}
+                <button
+                  onClick={() => setShowCollectionSelector(true)}
+                  disabled={isUpdating}
+                  className="inline-flex items-center space-x-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  style={{ 
+                    fontSize: '12px', 
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  <span>Add to Collection</span>
+                </button>
+
+                {/* Collection Badges */}
+                {loadingCollections ? (
+                  <div className="flex items-center space-x-2 text-sm text-slate-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                    <span>Loading collections...</span>
+                  </div>
+                ) : seriesCollections.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-slate-600">In collections:</span>
+                    {seriesCollections.map((collection) => (
+                      <button
+                        key={collection.id}
+                        onClick={() => setSelectedCollectionToView(collection)}
+                        className="group relative inline-flex items-center space-x-2 px-3 py-1 rounded-lg border border-slate-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
+                      >
+                        <div 
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: collection.color }}
+                        />
+                        <span className="text-slate-700 group-hover:text-purple-700">
+                          {collection.name}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Remove "${series.title}" from "${collection.name}"?`)) {
+                              handleRemoveFromCollection(collection.id);
+                            }
+                          }}
+                          className="ml-1 text-slate-400 hover:text-red-600 transition-colors"
+                          title="Remove from collection"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               {/* Review Display */}
