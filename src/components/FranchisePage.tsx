@@ -108,6 +108,19 @@ export function FranchisePage() {
     setSelectedCustomCollection(collection);
   };
 
+  const handleUpdateCollectionPoster = async (collectionId: string, posterUrl: string) => {
+    try {
+      await customCollectionsService.updateCustomCollection(collectionId, {
+        poster_url: posterUrl
+      });
+      
+      // Refresh collections to show new poster
+      await refetchCustomCollections();
+    } catch (error) {
+      console.error('Error updating collection poster:', error);
+    }
+  };
+
   const handleFranchiseAdded = async (collection: TMDBCollectionSearchResult) => {
     await handleToggleFavorite(collection);
   };
