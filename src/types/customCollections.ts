@@ -23,6 +23,7 @@ export interface CustomCollection {
   is_favorite: boolean;
   display_order: number;
   poster_url: string | null;
+  privacy: 'private' | 'public';
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +61,7 @@ export interface CreateCustomCollectionDTO {
   color?: string;
   icon?: string;
   is_favorite?: boolean;
+  privacy?: 'private' | 'public';
 }
 
 export interface UpdateCustomCollectionDTO {
@@ -69,6 +71,7 @@ export interface UpdateCustomCollectionDTO {
   icon?: string;
   is_favorite?: boolean;
   display_order?: number;
+  privacy?: 'private' | 'public';
 }
 
 export interface CreateTagDTO {
