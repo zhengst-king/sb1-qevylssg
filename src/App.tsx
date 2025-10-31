@@ -12,6 +12,7 @@ import { SmartRecommendationsContainer } from './components/SmartRecommendations
 import { MyStarsPage } from './components/MyStarsPage';
 import { CharactersPage } from './components/CharactersPage';
 import { MyTagsPage } from './components/MyTagsPage';
+import { TagCategoryPage } from './components/TagCategoryPage';
 import { CalendarsPage } from './components/CalendarsPage';
 import { AnalyticsPage } from './components/AnalyticsPage';
 import { FranchisePage } from './components/FranchisePage';
@@ -69,6 +70,7 @@ function AuthenticatedApp() {
           <Route path="/my-stars" element={<MyStarsPage />} />
           <Route path="/characters" element={<CharactersPage />} />
           <Route path="/my-tags" element={<MyTagsPage />} />
+          <Route path="/my-tags/category/:categoryId" element={<TagCategoryPage />} />
           <Route path="/calendars" element={<CalendarsPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
