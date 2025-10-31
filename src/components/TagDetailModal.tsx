@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText } from 'lucide-react';
 import { useTags } from '../hooks/useTags';
-import { useContentTags } from '../hooks/useContentTags';
+import { useContentTags } from '../hooks/useTags';
 import type { Tag, TagWithContent } from '../types/tagging';
 
 interface TagDetailModalProps {
