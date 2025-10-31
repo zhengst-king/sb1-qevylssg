@@ -1,6 +1,6 @@
 // src/components/FranchisePage.tsx - WITH TABS FOR TMDB & CUSTOM COLLECTIONS
 import React, { useState, useEffect } from 'react';
-import { Layers, Heart, Plus, Folder, Package } from 'lucide-react';
+import { Layers, Heart, Plus, Folder, Package, X, Film } from 'lucide-react';
 import { CustomCollectionsModal } from './CustomCollectionsModal';
 import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
