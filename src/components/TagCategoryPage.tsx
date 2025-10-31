@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronRight, Search, Settings, Calendar } from 'lucide-react';
-import { useTagCategories } from '../hooks/useTagCategories';
 import { useTagSubcategories } from '../hooks/useTagSubcategories';
 import { useTags } from '../hooks/useTags';
 import { TagCard } from './TagCard';
