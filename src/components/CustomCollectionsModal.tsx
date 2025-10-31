@@ -5,8 +5,6 @@ import React, { useState } from 'react';
 import { X, Plus, Folder, Edit2, Trash2, Star, Copy, Check } from 'lucide-react';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
-import { Shuffle } from 'lucide-react';
-import { COLLECTION_ICONS, COLLECTION_COLORS, getRandomColor, getIconComponent } from '../utils/collectionHelpers';
 
 interface CustomCollectionsModalProps {
   isOpen: boolean;
@@ -33,8 +31,8 @@ export const CustomCollectionsModal: React.FC<CustomCollectionsModalProps> = ({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: getRandomColor(),
-    icon: 'folder',
+    color: '#8B5CF6',
+    icon: 'package',
     privacy: 'private' as 'private' | 'public',
   });
 
@@ -164,69 +162,6 @@ export const CustomCollectionsModal: React.FC<CustomCollectionsModalProps> = ({
                   rows={3}
                   placeholder="Optional description..."
                 />
-              </div>
-
-              {/* Color Picker */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Color
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, color: getRandomColor() })}
-                    className="inline-flex items-center space-x-1 text-sm text-purple-600 hover:text-purple-700"
-                  >
-                    <Shuffle className="h-4 w-4" />
-                    <span>Random</span>
-                  </button>
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {COLLECTION_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, color })}
-                      className={`w-10 h-10 rounded-lg transition-all ${
-                        formData.color === color
-                          ? 'ring-2 ring-offset-2 ring-purple-500 scale-110'
-                          : 'hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Icon Picker */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Icon
-                </label>
-                <div className="grid grid-cols-10 gap-2">
-                  {COLLECTION_ICONS.map((iconOption) => {
-                    const IconComponent = iconOption.icon;
-                    return (
-                      <button
-                        key={iconOption.value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, icon: iconOption.value })}
-                        className={`p-3 rounded-lg border-2 transition-all ${
-                          formData.icon === iconOption.value
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                        title={iconOption.label}
-                      >
-                        <IconComponent 
-                          className="h-5 w-5 text-slate-700" 
-                          style={{ color: formData.icon === iconOption.value ? formData.color : undefined }}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Submit Button */}
