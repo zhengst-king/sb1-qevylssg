@@ -600,9 +600,9 @@ export function MovieDetailsPage({
                     max={getTodayDateString()}
                     className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     style={{ 
-                      fontSize: '12px',
-                      height: '28px',
-                      padding: '2px 8px',
+                      fontSize: '8px',
+                      height: '20px',
+                      padding: '1px 6px',
                       minWidth: '130px',
                       maxWidth: '150px'
                     }}
