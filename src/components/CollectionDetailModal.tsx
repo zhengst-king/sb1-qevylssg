@@ -19,6 +19,7 @@ interface CollectionDetailModalProps {
   collectionId: number;
   collectionName: string;
   onMovieDetailsClick?: (movie: Movie) => void;
+  onCollectionsUpdated?: () => void;
 }
 
 export function CollectionDetailModal({
@@ -26,7 +27,8 @@ export function CollectionDetailModal({
   onClose,
   collectionId,
   collectionName,
-  onMovieDetailsClick
+  onMovieDetailsClick,
+  onCollectionsUpdated
 }: CollectionDetailModalProps) {
   const [collection, setCollection] = useState<TMDBCollection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -281,9 +283,15 @@ export function CollectionDetailModal({
       
       setShowCollectionSelector(false);
       setSelectedCollections(new Set());
-      
-      // Refresh watchlist status but DON'T close the collection modal
+
+      // Refresh watchlist status
       await loadWatchlistMovieIds();
+      
+      // Notify parent to refresh collection counts
+      if (onCollectionsUpdated) {
+        onCollectionsUpdated();
+      }
+
     } catch (error) {
       console.error('Error adding titles:', error);
       alert('An unexpected error occurred. Please try again.');
