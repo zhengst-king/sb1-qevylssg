@@ -745,6 +745,36 @@ export function EnhancedEpisodesBrowserPage({
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
               <div className="flex flex-wrap items-center gap-4">
                   
+                {/* My Rating */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-slate-700">My Rating:</span>
+                  <select
+                    value={localRating || ''}
+                    onChange={(e) => handleSeriesRatingChange(e.target.value ? parseInt(e.target.value) : null)}
+                    disabled={isUpdating}
+                    className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    style={{ 
+                      fontSize: '12px',
+                      height: '28px',
+                      padding: '2px 8px',
+                      minWidth: '90px',
+                      maxWidth: '110px'
+                    }}
+                  >
+                    <option value="">No rating</option>
+                    {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rating => (
+                      <option key={rating} value={rating}>
+                        {rating}/10
+                      </option>
+                    ))}
+                  </select>
+                  {series.rating_updated_at && (
+                    <span className="text-xs text-slate-400">
+                      {formatRelativeTime(series.rating_updated_at)}
+                    </span>
+                  )}
+                </div>
+
                 {/* Status */}
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-slate-700">Status:</span>
@@ -752,7 +782,14 @@ export function EnhancedEpisodesBrowserPage({
                     value={localStatus}
                     onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
                     disabled={isUpdating}
-                    className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    style={{ 
+                      fontSize: '12px',
+                      height: '28px',
+                      padding: '2px 8px',
+                      minWidth: '120px',
+                      maxWidth: '140px'
+                    }}
                   >
                     <option value="To Watch">To Watch</option>
                     <option value="Watching">Watching</option>
@@ -761,88 +798,57 @@ export function EnhancedEpisodesBrowserPage({
                     <option value="To Watch Again">To Watch Again</option>
                   </select>
                   {series.status_updated_at && (
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-3 w-3 text-slate-400" />
-                      <span 
-                        className="text-xs text-slate-500 cursor-help"
-                        title={`Status updated: ${formatExactTimestamp(series.status_updated_at)}`}
-                      >
-                        {formatRelativeTime(series.status_updated_at)}
-                      </span>
-                    </div>
+                    <span className="text-xs text-slate-400">
+                      {formatRelativeTime(series.status_updated_at)}
+                    </span>
                   )}
                 </div>
 
                 {/* Date Watched */}
                 {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
                   <div className="flex items-center space-x-2">
-                    <Eye className="h-4 w-4 text-green-600" />
-                    <label className="text-sm font-medium text-slate-700">Date Watched:</label>
+                    <span className="text-sm font-medium text-slate-700">Date Watched:</span>
                     <input
                       type="date"
                       value={localDateWatched || ''}
                       onChange={(e) => handleDateWatchedChange(e.target.value)}
                       disabled={isUpdating}
                       max={getTodayDateString()}
-                      className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      placeholder="Select date (optional)"
+                      className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      style={{ 
+                        fontSize: '12px',
+                        height: '28px',
+                        padding: '2px 8px',
+                        minWidth: '130px',
+                        maxWidth: '150px'
+                      }}
                     />
                     {dateWatchedError && (
-                      <span className="text-xs text-red-500">{dateWatchedError}</span>
+                      <span className="text-xs text-red-600">{dateWatchedError}</span>
                     )}
                   </div>
                 )}
 
-                {/* My Rating */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-slate-600">My Rating:</span>
-                  <select
-                    value={localRating || ''}
-                    onChange={(e) => handleSeriesRatingChange(e.target.value ? parseInt(e.target.value) : null)}
-                    disabled={isUpdating}
-                    className="text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  >
-                    <option value="">No rating</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(rating => (
-                      <option key={rating} value={rating}>
-                        {rating}/10 {'★'.repeat(Math.ceil(rating / 2))}
-                      </option>
-                    ))}
-                  </select>
-                  {series.rating_updated_at && (
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-3 w-3 text-slate-400" />
-                      <span 
-                        className="text-xs text-slate-500 cursor-help"
-                        title={`Rating updated: ${formatExactTimestamp(series.rating_updated_at)}`}
-                      >
-                        {formatRelativeTime(series.rating_updated_at)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Review Button */}
+                {/* Edit Review Button */}
                 <button
                   onClick={() => setShowSeriesReviewModal(true)}
                   disabled={isUpdating}
-                  className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className="inline-flex items-center space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  style={{ 
+                    fontSize: '12px', 
+                    height: '28px',
+                    padding: '0 12px'
+                  }}
                 >
-                  <MessageSquare className="h-4 w-4" />
+                  <MessageSquare className="h-3.5 w-3.5" />
                   <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
                 </button>
               </div>
 
-              {/* User Review Display */}
+              {/* Review Display */}
               {localReview && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-start space-x-2">
-                    <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">My Review</p>
-                      <p className="text-sm text-blue-700 mt-1">{localReview}</p>
-                    </div>
-                  </div>
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-blue-900 text-sm leading-relaxed">{localReview}</p>
                 </div>
               )}
             </div>
