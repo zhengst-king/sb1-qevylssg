@@ -14,7 +14,10 @@ import {
   MessageSquare,
   Eye,
   Film,
-  Heart
+  Heart,
+  X,
+  Package,
+  Check
 } from 'lucide-react';
 import { Movie, supabase } from '../lib/supabase';
 import { ReviewModal } from './ReviewModal';
