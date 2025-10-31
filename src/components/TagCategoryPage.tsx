@@ -1,106 +1,125 @@
 // src/components/TagCategoryPage.tsx
-// Individual category page with subcategory tabs and tag cards
-
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ChevronRight, Search, Settings, Calendar } from 'lucide-react';
-import { useTagSubcategories } from '../hooks/useTagSubcategories';
+import { TAG_CATEGORIES, getCategoryById } from '../data/taggingCategories';
+import { getSubcategoriesByCategory, getVisibleSubcategories } from '../data/taggingSubcategories';
 import { useTags } from '../hooks/useTags';
 import { TagCard } from './TagCard';
 import { TagDetailModal } from './TagDetailModal';
-import { TagManagementModal } from './TagManagementModal';
-import type { Tag } from '../types/tagging';
+import { EnhancedTagManagementModal } from './EnhancedTagManagementModal';
+import type { Tag } from '../types/customCollections';
 
 export function TagCategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
+  const { tags, loading } = useTags();
   
-  const { categories } = useTagCategories();
-  const { subcategories, loading: subcategoriesLoading } = useTagSubcategories({
-    categoryId: categoryId ? parseInt(categoryId) : undefined,
-  });
-  const { tags, loading: tagsLoading } = useTags({
-    categoryId: categoryId ? parseInt(categoryId) : undefined,
-  });
-
-  const [activeSubcategoryId, setActiveSubcategoryId] = useState<string | 'all'>('all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
-  const [showManageModal, setShowManageModal] = useState(false);
-
-  const category = categories.find(c => c.id === parseInt(categoryId || ''));
-
+  const [showManagementModal, setShowManagementModal] = useState(false);
+  
+  const categoryIdNum = parseInt(categoryId || '0');
+  const category = getCategoryById(categoryIdNum);
+  
+  // Get all subcategories for this category (both visible and suggested + custom)
+  const allSubcategories = getSubcategoriesByCategory(categoryIdNum);
+  const visibleSubcategories = getVisibleSubcategories(categoryIdNum);
+  
+  // Filter tags by category
+  const categoryTags = tags?.filter(tag => tag.category_id === categoryIdNum) || [];
+  
+  // Get unique subcategories that have tags (including custom ones)
+  const subcategoriesWithTags = React.useMemo(() => {
+    const subcatIds = new Set(categoryTags.map(t => t.subcategory_id));
+    return allSubcategories.filter(sub => subcatIds.has(sub.id));
+  }, [categoryTags, allSubcategories]);
+  
   // Filter tags by subcategory and search
-  const filteredTags = tags.filter(tag => {
-    const matchesSubcategory = activeSubcategoryId === 'all' || tag.subcategory_id === activeSubcategoryId;
-    const matchesSearch = tag.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSubcategory && matchesSearch;
-  });
-
-  // Get visible subcategories (predefined visible + user custom)
-  const visibleSubcategories = subcategories.filter(sub => sub.is_visible || sub.is_custom);
-
-  // Count tags per subcategory
-  const subcategoryTagCounts = subcategories.reduce((acc, sub) => {
-    acc[sub.id] = tags.filter(t => t.subcategory_id === sub.id).length;
-    return acc;
-  }, {} as Record<string, number>);
-
+  const filteredTags = React.useMemo(() => {
+    let filtered = categoryTags;
+    
+    // Filter by subcategory
+    if (selectedSubcategory !== 'all') {
+      filtered = filtered.filter(t => t.subcategory_id === selectedSubcategory);
+    }
+    
+    // Filter by search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(t => 
+        t.name.toLowerCase().includes(query) ||
+        t.description?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [categoryTags, selectedSubcategory, searchQuery]);
+  
   if (!category) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900">Category not found</h2>
-          <button
-            onClick={() => navigate('/tags')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Back to Tags
-          </button>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 py-12 text-center">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">Category Not Found</h2>
+        <button
+          onClick={() => navigate('/tags')}
+          className="text-blue-600 hover:text-blue-800"
+        >
+          ← Back to My Tags
+        </button>
       </div>
     );
   }
-
+  
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-600 mb-6">
-        <button
-          onClick={() => navigate('/tags')}
-          className="hover:text-blue-600 transition-colors"
-        >
+      <div className="mb-6 flex items-center text-sm text-slate-600">
+        <Link to="/tags" className="hover:text-blue-600">
           My Tags
-        </button>
-        <ChevronRight className="h-4 w-4" />
+        </Link>
+        <ChevronRight className="h-4 w-4 mx-2" />
         <span className="text-slate-900 font-medium">{category.name}</span>
       </div>
-
-      {/* Top Bar */}
+      
+      {/* Header */}
       <div className="mb-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-4xl">{category.icon}</span>
-              <h1 className="text-3xl font-bold text-slate-900">{category.name}</h1>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="flex items-center space-x-3 mb-2">
+              <span className="text-5xl">{category.icon}</span>
+              <h1 className="text-3xl font-bold text-slate-900">
+                {category.name}
+              </h1>
             </div>
-            {category.description && (
-              <p className="text-slate-600">{category.description}</p>
-            )}
+            <p className="text-slate-600">{category.description}</p>
           </div>
-
+          
           <button
-            onClick={() => setShowManageModal(true)}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            onClick={() => setShowManagementModal(true)}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
             <Settings className="h-4 w-4" />
             <span>Manage Tags</span>
           </button>
         </div>
-
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
+        
+        {/* Stats */}
+        <div className="flex items-center gap-6 text-sm text-slate-600">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <span>{categoryTags.length} tags</span>
+          </div>
+          <div>
+            {categoryTags.reduce((sum, t) => sum + (t.usage_count || 0), 0)} total uses
+          </div>
+        </div>
+      </div>
+      
+      {/* Search and Filter Bar */}
+      <div className="mb-6 flex gap-3">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
@@ -109,85 +128,93 @@ export function TagCategoryPage() {
             className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-
-        {/* Date Created */}
-        <div className="flex items-center gap-2 text-sm text-slate-500 mt-3">
-          <Calendar className="h-4 w-4" />
-          <span>Category created: {new Date(category.created_at).toLocaleDateString()}</span>
-        </div>
       </div>
-
+      
       {/* Subcategory Tabs (Horizontal Scrollable) */}
-      <div className="mb-6 -mx-4 px-4 overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2 pb-2">
+      <div className="mb-6 -mx-4 px-4 overflow-hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
-            onClick={() => setActiveSubcategoryId('all')}
+            onClick={() => setSelectedSubcategory('all')}
             className={`
-              px-4 py-2 rounded-lg whitespace-nowrap transition-all font-medium
-              ${activeSubcategoryId === 'all'
-                ? 'bg-blue-600 text-white shadow-sm'
+              px-4 py-2 rounded-lg whitespace-nowrap transition-all
+              ${selectedSubcategory === 'all'
+                ? 'bg-blue-600 text-white shadow-md'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }
             `}
           >
-            All ({tags.length})
+            All ({categoryTags.length})
           </button>
           
-          {visibleSubcategories.map((sub) => (
-            <button
-              key={sub.id}
-              onClick={() => setActiveSubcategoryId(sub.id)}
-              className={`
-                px-4 py-2 rounded-lg whitespace-nowrap transition-all font-medium
-                ${activeSubcategoryId === sub.id
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }
-              `}
-            >
-              {sub.name} ({subcategoryTagCounts[sub.id] || 0})
-            </button>
-          ))}
+          {subcategoriesWithTags.map((subcategory) => {
+            const tagCount = categoryTags.filter(t => t.subcategory_id === subcategory.id).length;
+            
+            return (
+              <button
+                key={subcategory.id}
+                onClick={() => setSelectedSubcategory(subcategory.id)}
+                className={`
+                  px-4 py-2 rounded-lg whitespace-nowrap transition-all
+                  ${selectedSubcategory === subcategory.id
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }
+                `}
+              >
+                {subcategory.name} ({tagCount})
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      {/* Tags Grid */}
-      {tagsLoading || subcategoriesLoading ? (
-        <div className="flex items-center justify-center h-64">
+      
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      ) : filteredTags.length === 0 ? (
-        <div className="text-center py-16 bg-slate-50 rounded-xl">
-          <div className="text-6xl mb-4">{category.icon}</div>
-          <h3 className="text-xl font-semibold text-slate-900 mb-2">
-            No tags yet
-          </h3>
-          <p className="text-slate-600 mb-4">
-            {searchQuery
-              ? 'No tags match your search'
-              : activeSubcategoryId !== 'all'
-              ? 'No tags in this subcategory'
-              : 'Create your first tag to get started'}
-          </p>
-          <button
-            onClick={() => setShowManageModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Create Tag
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      )}
+      
+      {/* Tags Grid */}
+      {!loading && filteredTags.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filteredTags.map((tag) => (
             <TagCard
               key={tag.id}
               tag={tag}
-              onClick={setSelectedTag}
+              categoryIcon={category.icon}
+              onClick={() => setSelectedTag(tag)}
             />
           ))}
         </div>
       )}
-
+      
+      {/* Empty State */}
+      {!loading && filteredTags.length === 0 && (
+        <div className="text-center py-12 bg-slate-50 rounded-xl">
+          <div className="text-5xl mb-4">{category.icon}</div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">
+            {searchQuery || selectedSubcategory !== 'all' 
+              ? 'No tags found'
+              : 'No tags in this category yet'
+            }
+          </h3>
+          <p className="text-slate-600 mb-6">
+            {searchQuery || selectedSubcategory !== 'all'
+              ? 'Try adjusting your filters'
+              : 'Create your first tag to get started'
+            }
+          </p>
+          <button
+            onClick={() => setShowManagementModal(true)}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Create Tag</span>
+          </button>
+        </div>
+      )}
+      
       {/* Tag Detail Modal */}
       {selectedTag && (
         <TagDetailModal
@@ -196,11 +223,12 @@ export function TagCategoryPage() {
           onClose={() => setSelectedTag(null)}
         />
       )}
-
-      {/* Manage Tags Modal */}
-      <TagManagementModal
-        isOpen={showManageModal}
-        onClose={() => setShowManageModal(false)}
+      
+      {/* Enhanced Tag Management Modal */}
+      <EnhancedTagManagementModal
+        isOpen={showManagementModal}
+        onClose={() => setShowManagementModal(false)}
+        defaultCategoryId={categoryIdNum}
       />
     </div>
   );
