@@ -1,6 +1,6 @@
 // src/components/FranchisePage.tsx - WITH TABS FOR TMDB & CUSTOM COLLECTIONS
 import React, { useState, useEffect } from 'react';
-import { Film, Heart, Plus, Folder, Package } from 'lucide-react';
+import { Layers, Heart, Plus, Folder, Package } from 'lucide-react';
 import { CustomCollectionsModal } from './CustomCollectionsModal';
 import { FranchiseSearchModal } from './FranchiseSearchModal';
 import { tmdbService, TMDBCollectionSearchResult } from '../lib/tmdb';
@@ -179,7 +179,7 @@ export function FranchisePage() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center space-x-3">
-              <Film className="h-8 w-8 text-purple-600" />
+              <Layers className="h-8 w-8 text-purple-600" />
               <h1 className="text-3xl font-bold text-slate-900">My Franchises</h1>
             </div>
   
@@ -188,11 +188,20 @@ export function FranchisePage() {
               {/* Collections Button - Only show on Custom tab */}
               {activeTab === 'custom' && (
                 <button
-                  onClick={() => setShowCustomCollectionsModal(true)}
-                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+                  onClick={() => setActiveTab('tmdb')}
+                  className={`px-6 py-3 font-medium text-sm transition-colors relative ${
+                    activeTab === 'tmdb'
+                      ? 'text-purple-600 border-b-2 border-purple-600'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
                 >
-                  <Folder className="h-4 w-4" />
-                  <span>Manage Collections</span>
+                  <span className="flex items-center space-x-2">
+                    <Layers className="h-4 w-4" />
+                    <span>TMDB Collections</span>
+                    <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">
+                      {favorites.length}
+                    </span>
+                  </span>
                 </button>
               )}
 
