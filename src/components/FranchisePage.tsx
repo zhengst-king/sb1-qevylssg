@@ -438,6 +438,7 @@ export function FranchisePage() {
           }}
           collection={selectedCustomCollection}
           onMovieClick={handleMovieDetailsClick}
+          onUpdatePoster={handleUpdateCollectionPoster}
         />
       )}
 
