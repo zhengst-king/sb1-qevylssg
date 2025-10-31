@@ -1,15 +1,9 @@
 // src/hooks/useTags.ts
-// React hook for managing tags
+// React hook for managing 3-level tagging system
 
 import { useState, useEffect, useCallback } from 'react';
 import { tagsService } from '../services/tagsService';
-import type {
-  Tag,
-  CreateTagDTO,
-  UpdateTagDTO,
-  TagStats,
-  TagCategory
-} from '../types/customCollections';
+import type { Tag, CreateTagDTO, UpdateTagDTO } from '../types/customCollections';
 
 export const useTags = () => {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -42,35 +36,12 @@ export const useTags = () => {
       try {
         const newTag = await tagsService.createTag(tagData);
         
-        // Only add if it's actually new (not existing)
+        // Add to state if not already present
         if (!tags.find(t => t.id === newTag.id)) {
           setTags(prev => [...prev, newTag]);
         }
         
         return newTag;
-      } catch (err) {
-        setError(err as Error);
-        throw err;
-      }
-    },
-    [tags]
-  );
-
-  // Create multiple tags
-  const createTags = useCallback(
-    async (tagNames: string[]): Promise<Tag[]> => {
-      try {
-        const newTags = await tagsService.createTags(tagNames);
-        
-        // Add only new tags
-        const existingIds = new Set(tags.map(t => t.id));
-        const tagsToAdd = newTags.filter(t => !existingIds.has(t.id));
-        
-        if (tagsToAdd.length > 0) {
-          setTags(prev => [...prev, ...tagsToAdd]);
-        }
-        
-        return newTags;
       } catch (err) {
         setError(err as Error);
         throw err;
@@ -105,11 +76,15 @@ export const useTags = () => {
     }
   }, []);
 
-  // Add a tag to an item
-  const addTagToItem = useCallback(
-    async (collectionItemId: string, tagId: string): Promise<void> => {
+  // Add a tag to content
+  const addTagToContent = useCallback(
+    async (
+      tagId: string,
+      contentId: number,
+      contentType: 'movie' | 'tv'
+    ): Promise<void> => {
       try {
-        await tagsService.addTagToItem(collectionItemId, tagId);
+        await tagsService.addTagToContent(tagId, contentId, contentType);
         // Update usage count
         setTags(prev =>
           prev.map(t =>
@@ -124,11 +99,15 @@ export const useTags = () => {
     []
   );
 
-  // Add multiple tags to an item
-  const addTagsToItem = useCallback(
-    async (collectionItemId: string, tagIds: string[]): Promise<void> => {
+  // Add multiple tags to content
+  const addTagsToContent = useCallback(
+    async (
+      contentId: number,
+      contentType: 'movie' | 'tv',
+      tagIds: string[]
+    ): Promise<void> => {
       try {
-        await tagsService.addTagsToItem(collectionItemId, tagIds);
+        await tagsService.addTagsToContent(contentId, contentType, tagIds);
         // Update usage counts
         const tagIdSet = new Set(tagIds);
         setTags(prev =>
@@ -146,11 +125,15 @@ export const useTags = () => {
     []
   );
 
-  // Remove a tag from an item
-  const removeTagFromItem = useCallback(
-    async (collectionItemId: string, tagId: string): Promise<void> => {
+  // Remove a tag from content
+  const removeTagFromContent = useCallback(
+    async (
+      tagId: string,
+      contentId: number,
+      contentType: 'movie' | 'tv'
+    ): Promise<void> => {
       try {
-        await tagsService.removeTagFromItem(collectionItemId, tagId);
+        await tagsService.removeTagFromContent(tagId, contentId, contentType);
         // Update usage count
         setTags(prev =>
           prev.map(t =>
@@ -165,26 +148,6 @@ export const useTags = () => {
       }
     },
     []
-  );
-
-  // Get or create tag by name
-  const getOrCreateTag = useCallback(
-    async (name: string, category?: TagCategory): Promise<Tag> => {
-      try {
-        const tag = await tagsService.getOrCreateTag(name, category);
-        
-        // Add to state if it's new
-        if (!tags.find(t => t.id === tag.id)) {
-          setTags(prev => [...prev, tag]);
-        }
-        
-        return tag;
-      } catch (err) {
-        setError(err as Error);
-        throw err;
-      }
-    },
-    [tags]
   );
 
   // Search tags
@@ -204,15 +167,26 @@ export const useTags = () => {
   const filterTags = useCallback(
     (query: string): Tag[] => {
       const lowerQuery = query.toLowerCase();
-      return tags.filter(t => t.name.toLowerCase().includes(lowerQuery));
+      return tags.filter(t => 
+        t.name.toLowerCase().includes(lowerQuery) ||
+        t.description?.toLowerCase().includes(lowerQuery)
+      );
     },
     [tags]
   );
 
   // Get tags by category
   const getTagsByCategory = useCallback(
-    (category: TagCategory): Tag[] => {
-      return tags.filter(t => t.category === category);
+    (categoryId: number): Tag[] => {
+      return tags.filter(t => t.category_id === categoryId);
+    },
+    [tags]
+  );
+
+  // Get tags by subcategory
+  const getTagsBySubcategory = useCallback(
+    (subcategoryId: number): Tag[] => {
+      return tags.filter(t => t.subcategory_id === subcategoryId);
     },
     [tags]
   );
@@ -251,13 +225,17 @@ export const useTags = () => {
     [tags]
   );
 
-  // Set tags for an item (replace all existing)
-  const setTagsForItem = useCallback(
-    async (collectionItemId: string, tagIds: string[]): Promise<void> => {
+  // Set tags for content (replace all existing)
+  const setTagsForContent = useCallback(
+    async (
+      contentId: number,
+      contentType: 'movie' | 'tv',
+      tagIds: string[]
+    ): Promise<void> => {
       try {
-        await tagsService.setTagsForItem(collectionItemId, tagIds);
-        // Note: Usage counts will be updated by database triggers
-        await fetchTags(); // Refetch to get accurate counts
+        await tagsService.setTagsForContent(contentId, contentType, tagIds);
+        // Refetch to get accurate counts
+        await fetchTags();
       } catch (err) {
         setError(err as Error);
         throw err;
@@ -279,19 +257,18 @@ export const useTags = () => {
     loading,
     error,
     createTag,
-    createTags,
     updateTag,
     deleteTag,
-    addTagToItem,
-    addTagsToItem,
-    removeTagFromItem,
-    getOrCreateTag,
+    addTagToContent,
+    addTagsToContent,
+    removeTagFromContent,
     searchTags,
     filterTags,
     getTagsByCategory,
+    getTagsBySubcategory,
     mostUsedTags,
     mergeTags,
-    setTagsForItem,
+    setTagsForContent,
     getTagById,
     refetch: fetchTags,
   };
@@ -299,7 +276,7 @@ export const useTags = () => {
 
 // Hook for tag statistics
 export const useTagStats = () => {
-  const [stats, setStats] = useState<TagStats | null>(null);
+  const [stats, setStats] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -329,87 +306,90 @@ export const useTagStats = () => {
   };
 };
 
-// Hook for managing tags on a specific item
-export const useItemTags = (collectionItemId: string | null) => {
-  const [itemTags, setItemTags] = useState<Tag[]>([]);
+// Hook for managing tags on specific content
+export const useContentTags = (
+  contentId: number | null,
+  contentType: 'movie' | 'tv' | null
+) => {
+  const [contentTags, setContentTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchItemTags = useCallback(async () => {
-    if (!collectionItemId) {
-      setItemTags([]);
+  const fetchContentTags = useCallback(async () => {
+    if (!contentId || !contentType) {
+      setContentTags([]);
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      const data = await tagsService.getTagsForItem(collectionItemId);
-      setItemTags(data);
+      const data = await tagsService.getTagsForContent(contentId, contentType);
+      setContentTags(data);
     } catch (err) {
       setError(err as Error);
-      console.error('Error fetching item tags:', err);
+      console.error('Error fetching content tags:', err);
     } finally {
       setLoading(false);
     }
-  }, [collectionItemId]);
+  }, [contentId, contentType]);
 
   useEffect(() => {
-    fetchItemTags();
-  }, [fetchItemTags]);
+    fetchContentTags();
+  }, [fetchContentTags]);
 
   const addTag = useCallback(
     async (tagId: string) => {
-      if (!collectionItemId) return;
+      if (!contentId || !contentType) return;
 
       try {
-        await tagsService.addTagToItem(collectionItemId, tagId);
-        await fetchItemTags();
+        await tagsService.addTagToContent(tagId, contentId, contentType);
+        await fetchContentTags();
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [collectionItemId, fetchItemTags]
+    [contentId, contentType, fetchContentTags]
   );
 
   const removeTag = useCallback(
     async (tagId: string) => {
-      if (!collectionItemId) return;
+      if (!contentId || !contentType) return;
 
       try {
-        await tagsService.removeTagFromItem(collectionItemId, tagId);
-        setItemTags(prev => prev.filter(t => t.id !== tagId));
+        await tagsService.removeTagFromContent(tagId, contentId, contentType);
+        setContentTags(prev => prev.filter(t => t.id !== tagId));
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [collectionItemId]
+    [contentId, contentType]
   );
 
   const setTags = useCallback(
     async (tagIds: string[]) => {
-      if (!collectionItemId) return;
+      if (!contentId || !contentType) return;
 
       try {
-        await tagsService.setTagsForItem(collectionItemId, tagIds);
-        await fetchItemTags();
+        await tagsService.setTagsForContent(contentId, contentType, tagIds);
+        await fetchContentTags();
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [collectionItemId, fetchItemTags]
+    [contentId, contentType, fetchContentTags]
   );
 
   return {
-    itemTags,
+    contentTags,
     loading,
     error,
     addTag,
     removeTag,
     setTags,
-    refetch: fetchItemTags,
+    refetch: fetchContentTags,
   };
 };
