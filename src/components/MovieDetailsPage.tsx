@@ -568,9 +568,9 @@ export function MovieDetailsPage({
                   disabled={isUpdating}
                   className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   style={{ 
-                    fontSize: '6px',
+                    fontSize: '2px',
                     height: '20px',
-                    padding: '4px 6px',
+                    padding: '0px 4px',
                     minWidth: '120px',
                     maxWidth: '140px'
                   }}
