@@ -73,25 +73,25 @@ export function TagCategoryPage() {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex items-center text-sm text-slate-600">
-        <Link to="/my-tags" className="hover:text-blue-600">
-          My Tags
-        </Link>
-        <ChevronRight className="h-4 w-4 mx-2" />
-        <span className="text-slate-900 font-medium">{category.name}</span>
-      </div>
-      
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-3">
             <span className="text-5xl">{category.icon}</span>
             <div>
               <h1 className="text-3xl font-bold text-slate-900">
                 {category.name}
               </h1>
-              <p className="text-slate-600">{category.description}</p>
+              {/* Stats moved here */}
+              <div className="flex items-center gap-6 text-sm text-slate-600 mt-1">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>{categoryTags.length} tags</span>
+                </div>
+                <div>
+                  {categoryTags.reduce((sum, t) => sum + (t.usage_count || 0), 0)} total uses
+                </div>
+              </div>
             </div>
           </div>
           
@@ -118,15 +118,13 @@ export function TagCategoryPage() {
           </div>
         </div>
         
-        {/* Stats */}
-        <div className="flex items-center gap-6 text-sm text-slate-600 mb-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            <span>{categoryTags.length} tags</span>
-          </div>
-          <div>
-            {categoryTags.reduce((sum, t) => sum + (t.usage_count || 0), 0)} total uses
-          </div>
+        {/* Breadcrumb moved below title row */}
+        <div className="flex items-center text-sm text-slate-600 mb-4 ml-20">
+          <Link to="/my-tags" className="hover:text-blue-600">
+            My Tags
+          </Link>
+          <ChevronRight className="h-4 w-4 mx-2" />
+          <span className="text-slate-900 font-medium">{category.name}</span>
         </div>
         
         {/* Visible Subcategories as Filter Labels */}
