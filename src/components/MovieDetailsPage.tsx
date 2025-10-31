@@ -536,8 +536,14 @@ export function MovieDetailsPage({
                   value={localRating || ''}
                   onChange={(e) => handleRatingChange(e.target.value ? parseFloat(e.target.value) : null)}
                   disabled={isUpdating}
-                  className="border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  style={{ fontSize: '14px !important', height: '30px', lineHeight: '1.2' }}
+                  className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{ 
+                    fontSize: '12px',
+                    height: '28px',
+                    padding: '2px 8px',
+                    minWidth: '90px',
+                    maxWidth: '110px'
+                  }}
                 >
                   <option value="">No rating</option>
                   {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((rating) => (
@@ -560,8 +566,14 @@ export function MovieDetailsPage({
                   value={localStatus}
                   onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
                   disabled={isUpdating}
-                  className="border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  style={{ fontSize: '14px !important', height: '30px', lineHeight: '1.2' }}
+                  className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  style={{ 
+                    fontSize: '12px',
+                    height: '28px',
+                    padding: '2px 8px',
+                    minWidth: '120px',
+                    maxWidth: '140px'
+                  }}
                 >
                   <option value="To Watch">To Watch</option>
                   <option value="Watching">Watching</option>
@@ -586,8 +598,14 @@ export function MovieDetailsPage({
                     onChange={(e) => handleDateWatchedChange(e.target.value)}
                     disabled={isUpdating}
                     max={getTodayDateString()}
-                    className="border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    style={{ fontSize: '14px !important', height: '30px', lineHeight: '1.2' }}
+                    className="border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    style={{ 
+                      fontSize: '12px',
+                      height: '28px',
+                      padding: '2px 8px',
+                      minWidth: '130px',
+                      maxWidth: '150px'
+                    }}
                   />
                   {dateWatchedError && (
                     <span className="text-xs text-red-600">{dateWatchedError}</span>
@@ -599,10 +617,14 @@ export function MovieDetailsPage({
               <button
                 onClick={() => setShowReviewModal(true)}
                 disabled={isUpdating}
-                className="inline-flex items-center space-x-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-                style={{ fontSize: '14px', height: '30px' }}
+                className="inline-flex items-center space-x-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+                style={{ 
+                  fontSize: '12px', 
+                  height: '28px',
+                  padding: '0 12px'
+                }}
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className="h-3.5 w-3.5" />
                 <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
               </button>
             </div>
@@ -613,10 +635,14 @@ export function MovieDetailsPage({
               <button
                 onClick={() => setShowCollectionSelector(true)}
                 disabled={isUpdating}
-                className="inline-flex items-center space-x-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-                style={{ fontSize: '14px', height: '30px' }}
+                className="inline-flex items-center space-x-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+                style={{ 
+                  fontSize: '12px', 
+                  height: '28px',
+                  padding: '0 12px'
+                }}
               >
-                <Package className="h-4 w-4" />
+                <Package className="h-3.5 w-3.5" />
                 <span>Add to Collection</span>
               </button>
 
