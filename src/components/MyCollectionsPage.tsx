@@ -32,8 +32,6 @@ import { AddToCollectionModal } from './AddToCollectionModal';
 import { ImportListsModal } from './ImportListsModal';
 import { csvExportService } from '../services/csvExportService';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
-import { TagManagementModal } from './TagManagementModal';
-import { Folder, Tag } from 'lucide-react';
 
 // Enhanced Collection Stats Card
 interface CollectionStatsCardProps {
@@ -158,7 +156,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
   // Modal states - SIMPLIFIED: Only need ImportListsModal now
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false);
   
   // Filter and sort states
   const [searchQuery, setSearchQuery] = useState('');
@@ -419,15 +416,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
                 <Upload className="h-4 w-4" />
                 <span>Import Lists</span>
               </button>
-
-              {/* Tags Button */}
-              <button
-                onClick={() => setShowTagManagementModal(true)}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <Tag className="h-4 w-4" />
-                <span>Tags</span>
-              </button>
               
               {/* Add Item Button */}
               <button
@@ -595,11 +583,6 @@ export const MyCollectionsPage: React.FC<MyCollectionsPageProps> = () => {
           onClose={() => setShowImportModal(false)}
           pageType="collections"
           onImportSuccess={handleImportSuccess}
-        />
-
-        <TagManagementModal
-          isOpen={showTagManagementModal}
-          onClose={() => setShowTagManagementModal(false)}
         />
       </div>
     </div>
