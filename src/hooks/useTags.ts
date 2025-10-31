@@ -1,10 +1,15 @@
 // src/hooks/useTags.ts
 // React hook for managing 3-level tagging system
+// Uses separated service layers: tagsService + contentTagsService
 
 import { useState, useEffect, useCallback } from 'react';
 import { tagsService } from '../services/tagsService';
+import { contentTagsService } from '../services/contentTagsService';
 import type { Tag, CreateTagDTO, UpdateTagDTO } from '../types/customCollections';
 
+/**
+ * Main hook for tag management (tag CRUD operations)
+ */
 export const useTags = () => {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,80 +81,6 @@ export const useTags = () => {
     }
   }, []);
 
-  // Add a tag to content
-  const addTagToContent = useCallback(
-    async (
-      tagId: string,
-      contentId: number,
-      contentType: 'movie' | 'tv'
-    ): Promise<void> => {
-      try {
-        await tagsService.addTagToContent(tagId, contentId, contentType);
-        // Update usage count
-        setTags(prev =>
-          prev.map(t =>
-            t.id === tagId ? { ...t, usage_count: t.usage_count + 1 } : t
-          )
-        );
-      } catch (err) {
-        setError(err as Error);
-        throw err;
-      }
-    },
-    []
-  );
-
-  // Add multiple tags to content
-  const addTagsToContent = useCallback(
-    async (
-      contentId: number,
-      contentType: 'movie' | 'tv',
-      tagIds: string[]
-    ): Promise<void> => {
-      try {
-        await tagsService.addTagsToContent(contentId, contentType, tagIds);
-        // Update usage counts
-        const tagIdSet = new Set(tagIds);
-        setTags(prev =>
-          prev.map(t =>
-            tagIdSet.has(t.id)
-              ? { ...t, usage_count: t.usage_count + 1 }
-              : t
-          )
-        );
-      } catch (err) {
-        setError(err as Error);
-        throw err;
-      }
-    },
-    []
-  );
-
-  // Remove a tag from content
-  const removeTagFromContent = useCallback(
-    async (
-      tagId: string,
-      contentId: number,
-      contentType: 'movie' | 'tv'
-    ): Promise<void> => {
-      try {
-        await tagsService.removeTagFromContent(tagId, contentId, contentType);
-        // Update usage count
-        setTags(prev =>
-          prev.map(t =>
-            t.id === tagId
-              ? { ...t, usage_count: Math.max(0, t.usage_count - 1) }
-              : t
-          )
-        );
-      } catch (err) {
-        setError(err as Error);
-        throw err;
-      }
-    },
-    []
-  );
-
   // Search tags
   const searchTags = useCallback(
     async (query: string): Promise<Tag[]> => {
@@ -163,7 +94,7 @@ export const useTags = () => {
     []
   );
 
-  // Local search in loaded tags
+  // Local search in loaded tags (faster for small datasets)
   const filterTags = useCallback(
     (query: string): Tag[] => {
       const lowerQuery = query.toLowerCase();
@@ -225,29 +156,48 @@ export const useTags = () => {
     [tags]
   );
 
-  // Set tags for content (replace all existing)
-  const setTagsForContent = useCallback(
-    async (
-      contentId: number,
-      contentType: 'movie' | 'tv',
-      tagIds: string[]
-    ): Promise<void> => {
+  // Get tag by ID
+  const getTagById = useCallback(
+    (id: string): Tag | undefined => {
+      return tags.find(t => t.id === id);
+    },
+    [tags]
+  );
+
+  // Duplicate a tag
+  const duplicateTag = useCallback(
+    async (id: string, newName: string): Promise<Tag> => {
       try {
-        await tagsService.setTagsForContent(contentId, contentType, tagIds);
-        // Refetch to get accurate counts
-        await fetchTags();
+        const newTag = await tagsService.duplicateTag(id, newName);
+        setTags(prev => [...prev, newTag]);
+        return newTag;
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [fetchTags]
+    []
   );
 
-  // Get tag by ID
-  const getTagById = useCallback(
-    (id: string): Tag | undefined => {
-      return tags.find(t => t.id === id);
+  // Bulk create tags
+  const createTags = useCallback(
+    async (tagsData: CreateTagDTO[]): Promise<Tag[]> => {
+      try {
+        const newTags = await tagsService.createTags(tagsData);
+        
+        // Add only new tags
+        const existingIds = new Set(tags.map(t => t.id));
+        const tagsToAdd = newTags.filter(t => !existingIds.has(t.id));
+        
+        if (tagsToAdd.length > 0) {
+          setTags(prev => [...prev, ...tagsToAdd]);
+        }
+        
+        return newTags;
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      }
     },
     [tags]
   );
@@ -257,24 +207,24 @@ export const useTags = () => {
     loading,
     error,
     createTag,
+    createTags,
     updateTag,
     deleteTag,
-    addTagToContent,
-    addTagsToContent,
-    removeTagFromContent,
     searchTags,
     filterTags,
     getTagsByCategory,
     getTagsBySubcategory,
     mostUsedTags,
     mergeTags,
-    setTagsForContent,
     getTagById,
+    duplicateTag,
     refetch: fetchTags,
   };
 };
 
-// Hook for tag statistics
+/**
+ * Hook for tag statistics
+ */
 export const useTagStats = () => {
   const [stats, setStats] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -306,7 +256,9 @@ export const useTagStats = () => {
   };
 };
 
-// Hook for managing tags on specific content
+/**
+ * Hook for managing tags on specific content (uses contentTagsService)
+ */
 export const useContentTags = (
   contentId: number | null,
   contentType: 'movie' | 'tv' | null
@@ -324,7 +276,7 @@ export const useContentTags = (
     try {
       setLoading(true);
       setError(null);
-      const data = await tagsService.getTagsForContent(contentId, contentType);
+      const data = await contentTagsService.getTagsForContent(contentId, contentType);
       setContentTags(data);
     } catch (err) {
       setError(err as Error);
@@ -338,12 +290,13 @@ export const useContentTags = (
     fetchContentTags();
   }, [fetchContentTags]);
 
+  // Add a tag to this content
   const addTag = useCallback(
     async (tagId: string) => {
       if (!contentId || !contentType) return;
 
       try {
-        await tagsService.addTagToContent(tagId, contentId, contentType);
+        await contentTagsService.addTagToContent(tagId, contentId, contentType);
         await fetchContentTags();
       } catch (err) {
         setError(err as Error);
@@ -353,12 +306,29 @@ export const useContentTags = (
     [contentId, contentType, fetchContentTags]
   );
 
+  // Add multiple tags to this content
+  const addTags = useCallback(
+    async (tagIds: string[]) => {
+      if (!contentId || !contentType) return;
+
+      try {
+        await contentTagsService.addTagsToContent(contentId, contentType, tagIds);
+        await fetchContentTags();
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      }
+    },
+    [contentId, contentType, fetchContentTags]
+  );
+
+  // Remove a tag from this content
   const removeTag = useCallback(
     async (tagId: string) => {
       if (!contentId || !contentType) return;
 
       try {
-        await tagsService.removeTagFromContent(tagId, contentId, contentType);
+        await contentTagsService.removeTagFromContent(tagId, contentId, contentType);
         setContentTags(prev => prev.filter(t => t.id !== tagId));
       } catch (err) {
         setError(err as Error);
@@ -368,12 +338,13 @@ export const useContentTags = (
     [contentId, contentType]
   );
 
+  // Set all tags for this content (replace existing)
   const setTags = useCallback(
     async (tagIds: string[]) => {
       if (!contentId || !contentType) return;
 
       try {
-        await tagsService.setTagsForContent(contentId, contentType, tagIds);
+        await contentTagsService.setTagsForContent(contentId, contentType, tagIds);
         await fetchContentTags();
       } catch (err) {
         setError(err as Error);
@@ -383,13 +354,109 @@ export const useContentTags = (
     [contentId, contentType, fetchContentTags]
   );
 
+  // Remove all tags from this content
+  const removeAllTags = useCallback(
+    async () => {
+      if (!contentId || !contentType) return;
+
+      try {
+        await contentTagsService.removeAllTagsFromContent(contentId, contentType);
+        setContentTags([]);
+      } catch (err) {
+        setError(err as Error);
+        throw err;
+      }
+    },
+    [contentId, contentType]
+  );
+
+  // Check if content has a specific tag
+  const hasTag = useCallback(
+    async (tagId: string): Promise<boolean> => {
+      if (!contentId || !contentType) return false;
+
+      try {
+        return await contentTagsService.hasTag(contentId, contentType, tagId);
+      } catch (err) {
+        setError(err as Error);
+        return false;
+      }
+    },
+    [contentId, contentType]
+  );
+
   return {
     contentTags,
     loading,
     error,
     addTag,
+    addTags,
     removeTag,
     setTags,
+    removeAllTags,
+    hasTag,
     refetch: fetchContentTags,
+  };
+};
+
+/**
+ * Hook for querying content by tags
+ */
+export const useContentByTags = (tagIds: string[], contentType?: 'movie' | 'tv') => {
+  const [content, setContent] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchContent = useCallback(async () => {
+    if (tagIds.length === 0) {
+      setContent([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get content that has ALL tags (AND logic)
+      const data = await contentTagsService.getContentByMultipleTags(tagIds, contentType);
+      setContent(data);
+    } catch (err) {
+      setError(err as Error);
+      console.error('Error fetching content by tags:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [tagIds, contentType]);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
+  // Switch to OR logic (content with ANY of the tags)
+  const fetchContentWithAnyTag = useCallback(async () => {
+    if (tagIds.length === 0) {
+      setContent([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await contentTagsService.getContentByAnyTag(tagIds, contentType);
+      setContent(data);
+    } catch (err) {
+      setError(err as Error);
+      console.error('Error fetching content by any tag:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [tagIds, contentType]);
+
+  return {
+    content,
+    loading,
+    error,
+    refetch: fetchContent,
+    fetchWithAnyTag: fetchContentWithAnyTag,
   };
 };
