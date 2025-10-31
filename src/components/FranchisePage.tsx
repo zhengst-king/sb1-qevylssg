@@ -11,7 +11,6 @@ import { Movie } from '../lib/supabase';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
 import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
-import { getIconComponent } from '../utils/collectionHelpers';
 
 type CollectionTab = 'tmdb' | 'custom';
 
@@ -389,10 +388,7 @@ export function FranchisePage() {
                             className="w-20 h-20 rounded-full flex items-center justify-center"
                             style={{ backgroundColor: collection.color }}
                           >
-                            {(() => {
-                              const IconComponent = getIconComponent(collection.icon);
-                              return <IconComponent className="h-10 w-10 text-white" />;
-                            })()}
+                            <Package className="h-10 w-10 text-white" />
                           </div>
                         </div>
                       )}
