@@ -367,20 +367,31 @@ export function FranchisePage() {
                     className="group relative rounded-lg overflow-hidden hover:shadow-lg transition-all cursor-pointer"
                     onClick={() => handleCustomCollectionClick(collection)}
                   >
-                    {/* Poster-style Background with Icon */}
-                    <div 
-                      className="w-full h-64 flex items-center justify-center relative"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${collection.color}20 0%, ${collection.color}40 100%)` 
-                      }}
-                    >
-                      {/* Centered Icon */}
-                      <div 
-                        className="w-20 h-20 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: collection.color }}
-                      >
-                        <Package className="h-10 w-10 text-white" />
-                      </div>
+                    {/* Poster or Colored Background */}
+                    <div className="w-full h-64 relative overflow-hidden">
+                      {collection.poster_url ? (
+                        // Show actual poster if available
+                        <img
+                          src={collection.poster_url}
+                          alt={collection.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        // Fallback to colored background with icon
+                        <div 
+                          className="w-full h-full flex items-center justify-center relative"
+                          style={{ 
+                            background: `linear-gradient(135deg, ${collection.color}20 0%, ${collection.color}40 100%)` 
+                          }}
+                        >
+                          <div 
+                            className="w-20 h-20 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: collection.color }}
+                          >
+                            <Package className="h-10 w-10 text-white" />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Bottom Gradient Overlay with Content */}
