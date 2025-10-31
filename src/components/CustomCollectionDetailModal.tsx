@@ -44,14 +44,20 @@ export function CustomCollectionDetailModal({
       
       setItems(fetchedItems);
       
-      // Build set of watchlist movie IDs (all fetched items are in watchlist by definition)
+      // Build set of watchlist movie IDs
       const movieIds = new Set(fetchedItems.map(item => item.id));
       setWatchlistMovieIds(movieIds);
       
-      // Update collection poster with newest item's poster
+      // Update collection poster with NEWEST item by release year
       if (fetchedItems.length > 0 && onUpdatePoster) {
-        const newestItem = fetchedItems[0];
-        console.log('[CustomCollectionDetailModal] Newest item:', newestItem);
+        // Find the item with the latest release year
+        const newestItem = fetchedItems.reduce((latest, current) => {
+          const latestYear = latest.year || 0;
+          const currentYear = current.year || 0;
+          return currentYear > latestYear ? current : latest;
+        }, fetchedItems[0]);
+        
+        console.log('[CustomCollectionDetailModal] Newest item by year:', newestItem);
         if (newestItem.poster_url) {
           onUpdatePoster(collection.id, newestItem.poster_url);
         }
