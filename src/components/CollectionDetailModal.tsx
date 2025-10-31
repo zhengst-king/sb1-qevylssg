@@ -12,6 +12,8 @@ import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
 import { tmdbCacheService } from '../services/tmdbCacheService';
+import { CustomCollectionsModal } from './CustomCollectionsModal';
+import { customCollectionsService } from '../services/customCollectionsService';
 
 interface CollectionDetailModalProps {
   isOpen: boolean;
