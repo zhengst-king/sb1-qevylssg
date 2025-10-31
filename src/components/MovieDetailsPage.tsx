@@ -31,6 +31,7 @@ import { PersonDetailsModal } from './PersonDetailsModal';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import { customCollectionsService } from '../services/customCollectionsService';
 import type { CustomCollection } from '../types/customCollections';
+import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -74,6 +75,10 @@ export function MovieDetailsPage({
   const [showCollectionSelector, setShowCollectionSelector] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
   const [addingToCollections, setAddingToCollections] = useState(false);
+
+  const [movieCollections, setMovieCollections] = useState<CustomCollection[]>([]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
+  const [selectedCollectionToView, setSelectedCollectionToView] = useState<CustomCollection | null>(null);
 
   const handleRecommendationClick = (clickedMovie: Movie) => {
     if (onViewRecommendation) {
@@ -142,6 +147,25 @@ export function MovieDetailsPage({
     };
     checkFranchiseFavorite();
   }, [tmdbData?.belongs_to_collection?.id]);
+
+  // Fetch collections that contain this movie
+  useEffect(() => {
+    const fetchMovieCollections = async () => {
+      if (!movie.id) return;
+      
+      setLoadingCollections(true);
+      try {
+        const collections = await customCollectionsService.getCollectionsForItem(movie.id);
+        setMovieCollections(collections);
+      } catch (error) {
+        console.error('Error fetching movie collections:', error);
+      } finally {
+        setLoadingCollections(false);
+      }
+    };
+
+    fetchMovieCollections();
+  }, [movie.id]);
 
   const handleStatusChange = async (status: Movie['status']) => {
     setLocalStatus(status);
@@ -264,10 +288,13 @@ export function MovieDetailsPage({
       // Add movie to each selected collection
       for (const collectionId of selectedCollections) {
         if (movie.id) {
-          // Correct parameter order: (movieId, collectionId)
           await customCollectionsService.addItemToCollection(movie.id, collectionId);
         }
       }
+
+      // Refresh the collections list
+      const updatedCollections = await customCollectionsService.getCollectionsForItem(movie.id!);
+      setMovieCollections(updatedCollections);
 
       alert(`Added "${movie.title}" to ${selectedCollections.size} collection(s)!`);
       setShowCollectionSelector(false);
@@ -499,30 +526,9 @@ export function MovieDetailsPage({
         {/* User Actions Section - Separate Card */}
         <div className="max-w-6xl mx-auto px-6">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <div className="flex flex-wrap items-center gap-4">
+            {/* Row 1: Rating, Status, Date Watched, Edit Review */}
+            <div className="flex flex-wrap items-center gap-4 mb-4">
               
-              {/* Status */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-slate-700">Status:</span>
-                <select
-                  value={localStatus}
-                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
-                  disabled={isUpdating}
-                  className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="To Watch">To Watch</option>
-                  <option value="Watching">Watching</option>
-                  <option value="Watched">Watched</option>
-                  <option value="To Watch Again">To Watch Again</option>
-                  <option value="Upcoming">Upcoming</option>
-                </select>
-                {movie.status_updated_at && (
-                  <span className="text-xs text-slate-400">
-                    {formatRelativeTime(movie.status_updated_at)}
-                  </span>
-                )}
-              </div>
-
               {/* My Rating */}
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium text-slate-700">My Rating:</span>
@@ -530,7 +536,7 @@ export function MovieDetailsPage({
                   value={localRating || ''}
                   onChange={(e) => handleRatingChange(e.target.value ? parseFloat(e.target.value) : null)}
                   disabled={isUpdating}
-                  className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">No rating</option>
                   {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((rating) => (
@@ -546,25 +552,27 @@ export function MovieDetailsPage({
                 )}
               </div>
 
-              {/* Add Review Button */}
-              <button
-                onClick={() => setShowReviewModal(true)}
-                disabled={isUpdating}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed text-sm"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
-              </button>
-
-              {/* Add to Collection Button */}
-              <button
-                onClick={() => setShowCollectionSelector(true)}
-                disabled={isUpdating}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed text-sm"
-              >
-                <Package className="h-4 w-4" />
-                <span>Add to Collection</span>
-              </button>
+              {/* Status */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-slate-700">Status:</span>
+                <select
+                  value={localStatus}
+                  onChange={(e) => handleStatusChange(e.target.value as Movie['status'])}
+                  disabled={isUpdating}
+                  className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="To Watch">To Watch</option>
+                  <option value="Watching">Watching</option>
+                  <option value="Watched">Watched</option>
+                  <option value="To Watch Again">To Watch Again</option>
+                  <option value="Upcoming">Upcoming</option>
+                </select>
+                {movie.status_updated_at && (
+                  <span className="text-xs text-slate-400">
+                    {formatRelativeTime(movie.status_updated_at)}
+                  </span>
+                )}
+              </div>
 
               {/* Date Watched */}
               {(localStatus === 'Watched' || localStatus === 'To Watch Again') && (
@@ -576,13 +584,75 @@ export function MovieDetailsPage({
                     onChange={(e) => handleDateWatchedChange(e.target.value)}
                     disabled={isUpdating}
                     max={getTodayDateString()}
-                    className="text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   {dateWatchedError && (
                     <span className="text-xs text-red-600">{dateWatchedError}</span>
                   )}
                 </div>
               )}
+
+              {/* Edit Review Button */}
+              <button
+                onClick={() => setShowReviewModal(true)}
+                disabled={isUpdating}
+                className="inline-flex items-center space-x-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed text-sm"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>{localReview ? 'Edit Review' : 'Add Review'}</span>
+              </button>
+            </div>
+
+            {/* Row 2: Add to Collection + Collection Badges */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Add to Collection Button */}
+              <button
+                onClick={() => setShowCollectionSelector(true)}
+                disabled={isUpdating}
+                className="inline-flex items-center space-x-2 px-4 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed text-sm"
+              >
+                <Package className="h-4 w-4" />
+                <span>Add to Collection</span>
+              </button>
+
+              {/* Collection Badges */}
+              {loadingCollections ? (
+                <div className="flex items-center space-x-2 text-sm text-slate-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                  <span>Loading collections...</span>
+                </div>
+              ) : movieCollections.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-slate-600">In collections:</span>
+                  {movieCollections.map((collection) => (
+                    <button
+                      key={collection.id}
+                      onClick={() => setSelectedCollectionToView(collection)}
+                      className="group relative inline-flex items-center space-x-2 px-3 py-1 rounded-lg border border-slate-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
+                    >
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: collection.color }}
+                      />
+                      <span className="text-slate-700 group-hover:text-purple-700">
+                        {collection.name}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Remove "${movie.title}" from "${collection.name}"?`)) {
+                            handleRemoveFromCollection(collection.id);
+                          }
+                        }}
+                        className="ml-1 text-slate-400 hover:text-red-600 transition-colors"
+                        title="Remove from collection"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             {/* Review Display */}
@@ -751,6 +821,20 @@ export function MovieDetailsPage({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Custom Collection Detail Modal */}
+      {selectedCollectionToView && (
+        <CustomCollectionDetailModal
+          isOpen={!!selectedCollectionToView}
+          onClose={() => setSelectedCollectionToView(null)}
+          collection={selectedCollectionToView}
+          onMovieClick={handleRecommendationClick}
+          onUpdatePoster={(collectionId, posterUrl) => {
+            // Update the poster URL in the local state if needed
+            console.log('Poster updated for collection:', collectionId, posterUrl);
+          }}
+        />
       )}
     </div>
   );
