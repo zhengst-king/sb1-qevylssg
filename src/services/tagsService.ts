@@ -1,5 +1,5 @@
 // src/services/tagsService.ts
-// Service layer for 3-level tagging system
+// Service layer for tag CRUD operations (Create, Read, Update, Delete)
 
 import { supabase } from '../lib/supabase';
 import type { Tag, CreateTagDTO, UpdateTagDTO } from '../types/customCollections';
@@ -20,7 +20,7 @@ class TagsService {
 
     if (error) throw error;
 
-    // Get usage counts for each tag
+    // Get usage counts for each tag from content_tags table
     const tagsWithUsage = await Promise.all(
       (data || []).map(async (tag) => {
         const { count } = await supabase
@@ -73,6 +73,19 @@ class TagsService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Validate required fields
+    if (!tagData.name?.trim()) {
+      throw new Error('Tag name is required');
+    }
+
+    if (!tagData.category_id) {
+      throw new Error('Category is required');
+    }
+
+    if (!tagData.subcategory_id) {
+      throw new Error('Subcategory is required');
+    }
+
     const { data, error } = await supabase
       .from('tags')
       .insert({
@@ -81,12 +94,18 @@ class TagsService {
         subcategory_id: tagData.subcategory_id,
         name: tagData.name.trim(),
         description: tagData.description?.trim() || null,
-        color: tagData.color
+        color: tagData.color || '#3B82F6'
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // Handle duplicate tag error
+      if (error.code === '23505') {
+        throw new Error('A tag with this name already exists in this category/subcategory');
+      }
+      throw error;
+    }
 
     return {
       ...data,
@@ -101,18 +120,40 @@ class TagsService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Clean up updates
+    const cleanedUpdates: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (updates.name !== undefined) {
+      if (!updates.name.trim()) {
+        throw new Error('Tag name cannot be empty');
+      }
+      cleanedUpdates.name = updates.name.trim();
+    }
+
+    if (updates.description !== undefined) {
+      cleanedUpdates.description = updates.description?.trim() || null;
+    }
+
+    if (updates.color !== undefined) {
+      cleanedUpdates.color = updates.color;
+    }
+
     const { data, error } = await supabase
       .from('tags')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
+      .update(cleanedUpdates)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('A tag with this name already exists');
+      }
+      throw error;
+    }
 
     // Get current usage count
     const { count } = await supabase
@@ -128,19 +169,20 @@ class TagsService {
 
   /**
    * Delete a tag
+   * Note: This will cascade delete all content_tags associations
    */
   async deleteTag(id: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Delete all content associations (cascade should handle this, but being explicit)
+    // The database CASCADE will handle deleting content_tags automatically
+    // But we can be explicit for clarity
     await supabase
       .from('content_tags')
       .delete()
       .eq('tag_id', id)
       .eq('user_id', user.id);
 
-    // Delete the tag
     const { error } = await supabase
       .from('tags')
       .delete()
@@ -151,232 +193,23 @@ class TagsService {
   }
 
   /**
-   * Add a tag to a content item
-   */
-  async addTagToContent(
-    tagId: string,
-    contentId: number,
-    contentType: 'movie' | 'tv'
-  ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Check if already tagged
-    const { data: existing } = await supabase
-      .from('content_tags')
-      .select('id')
-      .eq('tag_id', tagId)
-      .eq('content_id', contentId)
-      .eq('content_type', contentType)
-      .single();
-
-    if (existing) {
-      throw new Error('Content is already tagged with this tag');
-    }
-
-    const { error } = await supabase
-      .from('content_tags')
-      .insert({
-        tag_id: tagId,
-        content_id: contentId,
-        content_type: contentType,
-        user_id: user.id
-      });
-
-    if (error) throw error;
-  }
-
-  /**
-   * Remove a tag from a content item
-   */
-  async removeTagFromContent(
-    tagId: string,
-    contentId: number,
-    contentType: 'movie' | 'tv'
-  ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { error } = await supabase
-      .from('content_tags')
-      .delete()
-      .eq('tag_id', tagId)
-      .eq('content_id', contentId)
-      .eq('content_type', contentType)
-      .eq('user_id', user.id);
-
-    if (error) throw error;
-  }
-
-  /**
-   * Get all tags for a content item
-   */
-  async getTagsForContent(
-    contentId: number,
-    contentType: 'movie' | 'tv'
-  ): Promise<Tag[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('content_tags')
-      .select(`
-        tag_id,
-        tags (*)
-      `)
-      .eq('content_id', contentId)
-      .eq('content_type', contentType)
-      .eq('user_id', user.id);
-
-    if (error) throw error;
-
-    // Extract tags and add usage counts
-    const tags = await Promise.all(
-      (data || []).map(async (item: any) => {
-        const tag = item.tags;
-        const { count } = await supabase
-          .from('content_tags')
-          .select('*', { count: 'exact', head: true })
-          .eq('tag_id', tag.id);
-
-        return {
-          ...tag,
-          usage_count: count || 0
-        };
-      })
-    );
-
-    return tags;
-  }
-
-  /**
-   * Get all content items with a specific tag
-   */
-  async getContentByTag(tagId: string): Promise<any[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('content_tags')
-      .select('*')
-      .eq('tag_id', tagId)
-      .eq('user_id', user.id);
-
-    if (error) throw error;
-
-    // Fetch details from collections table for each content item
-    const contentDetails = await Promise.all(
-      (data || []).map(async (item) => {
-        const { data: contentData } = await supabase
-          .from('collections')
-          .select(`
-            id,
-            tmdb_id,
-            type,
-            title,
-            release_year,
-            poster_path,
-            user_rating,
-            user_notes
-          `)
-          .eq('tmdb_id', item.content_id)
-          .eq('type', item.content_type)
-          .eq('user_id', user.id)
-          .single();
-
-        return {
-          id: item.id,
-          tag_id: item.tag_id,
-          content_id: item.content_id,
-          content_type: item.content_type,
-          title: contentData?.title || 'Unknown',
-          year: contentData?.release_year,
-          poster_path: contentData?.poster_path,
-          user_rating: contentData?.user_rating,
-          user_notes: contentData?.user_notes,
-          created_at: item.created_at
-        };
-      })
-    );
-
-    return contentDetails;
-  }
-
-  /**
-   * Set tags for a content item (replace all existing)
-   */
-  async setTagsForContent(
-    contentId: number,
-    contentType: 'movie' | 'tv',
-    tagIds: string[]
-  ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Remove all existing tags for this content
-    await supabase
-      .from('content_tags')
-      .delete()
-      .eq('content_id', contentId)
-      .eq('content_type', contentType)
-      .eq('user_id', user.id);
-
-    // Add new tags
-    if (tagIds.length > 0) {
-      const inserts = tagIds.map(tagId => ({
-        tag_id: tagId,
-        content_id: contentId,
-        content_type: contentType,
-        user_id: user.id
-      }));
-
-      const { error } = await supabase
-        .from('content_tags')
-        .insert(inserts);
-
-      if (error) throw error;
-    }
-  }
-
-  /**
-   * Add multiple tags to a content item
-   */
-  async addTagsToContent(
-    contentId: number,
-    contentType: 'movie' | 'tv',
-    tagIds: string[]
-  ): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const inserts = tagIds.map(tagId => ({
-      tag_id: tagId,
-      content_id: contentId,
-      content_type: contentType,
-      user_id: user.id
-    }));
-
-    const { error } = await supabase
-      .from('content_tags')
-      .insert(inserts);
-
-    if (error) throw error;
-  }
-
-  /**
-   * Search tags by name
+   * Search tags by name or description
    */
   async searchTags(query: string): Promise<Tag[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    if (!query.trim()) {
+      return this.getTags();
+    }
+
     const { data, error } = await supabase
       .from('tags')
       .select('*')
       .eq('user_id', user.id)
-      .ilike('name', `%${query}%`)
-      .order('usage_count', { ascending: false })
-      .limit(20);
+      .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+      .order('name', { ascending: true })
+      .limit(50);
 
     if (error) throw error;
 
@@ -433,13 +266,70 @@ class TagsService {
   }
 
   /**
+   * Get tags by subcategory
+   */
+  async getTagsBySubcategory(subcategoryId: number): Promise<Tag[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('subcategory_id', subcategoryId)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    // Add usage counts
+    const tagsWithUsage = await Promise.all(
+      (data || []).map(async (tag) => {
+        const { count } = await supabase
+          .from('content_tags')
+          .select('*', { count: 'exact', head: true })
+          .eq('tag_id', tag.id);
+
+        return {
+          ...tag,
+          usage_count: count || 0
+        };
+      })
+    );
+
+    return tagsWithUsage;
+  }
+
+  /**
    * Merge two tags (move all content from source to target, then delete source)
    */
   async mergeTags(sourceTagId: string, targetTagId: string): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get all content tagged with source
+    // Verify both tags exist and belong to user
+    const { data: sourceTags } = await supabase
+      .from('tags')
+      .select('id')
+      .eq('id', sourceTagId)
+      .eq('user_id', user.id)
+      .single();
+
+    const { data: targetTags } = await supabase
+      .from('tags')
+      .select('id')
+      .eq('id', targetTagId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!sourceTags || !targetTags) {
+      throw new Error('One or both tags not found');
+    }
+
+    if (sourceTagId === targetTagId) {
+      throw new Error('Cannot merge a tag with itself');
+    }
+
+    // Get all content tagged with source tag
     const { data: sourceContent } = await supabase
       .from('content_tags')
       .select('content_id, content_type')
@@ -447,8 +337,9 @@ class TagsService {
       .eq('user_id', user.id);
 
     if (sourceContent && sourceContent.length > 0) {
+      // For each content, either update or delete based on if target already exists
       for (const content of sourceContent) {
-        // Check if already tagged with target
+        // Check if content already has target tag
         const { data: existing } = await supabase
           .from('content_tags')
           .select('id')
@@ -458,7 +349,7 @@ class TagsService {
           .single();
 
         if (!existing) {
-          // Update to target tag
+          // Content doesn't have target tag, so update source to target
           await supabase
             .from('content_tags')
             .update({ tag_id: targetTagId })
@@ -466,7 +357,7 @@ class TagsService {
             .eq('content_id', content.content_id)
             .eq('content_type', content.content_type);
         } else {
-          // Already tagged, just delete duplicate
+          // Content already has target tag, just delete the duplicate
           await supabase
             .from('content_tags')
             .delete()
@@ -477,7 +368,7 @@ class TagsService {
       }
     }
 
-    // Delete source tag
+    // Delete the source tag (all content_tags have been moved or deleted)
     await this.deleteTag(sourceTagId);
   }
 
@@ -494,28 +385,85 @@ class TagsService {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
-    // Get total content tags (usage)
+    // Get total content tags (total usage across all tags)
     const { count: totalUsage } = await supabase
       .from('content_tags')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id);
 
-    // Get tags by category
+    // Get tags grouped by category
     const { data: tagsByCategory } = await supabase
       .from('tags')
       .select('category_id')
       .eq('user_id', user.id);
 
+    // Count tags per category
     const categoryCounts: Record<number, number> = {};
     tagsByCategory?.forEach(tag => {
       categoryCounts[tag.category_id] = (categoryCounts[tag.category_id] || 0) + 1;
     });
 
+    // Get most used tags (top 10)
+    const allTags = await this.getTags();
+    const mostUsed = allTags
+      .sort((a, b) => b.usage_count - a.usage_count)
+      .slice(0, 10)
+      .map(tag => ({
+        id: tag.id,
+        name: tag.name,
+        usage_count: tag.usage_count
+      }));
+
     return {
       total_tags: totalTags || 0,
       total_usage: totalUsage || 0,
-      tags_by_category: categoryCounts
+      tags_by_category: categoryCounts,
+      most_used: mostUsed
     };
+  }
+
+  /**
+   * Bulk create tags
+   */
+  async createTags(tagsData: CreateTagDTO[]): Promise<Tag[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const inserts = tagsData.map(tagData => ({
+      user_id: user.id,
+      category_id: tagData.category_id,
+      subcategory_id: tagData.subcategory_id,
+      name: tagData.name.trim(),
+      description: tagData.description?.trim() || null,
+      color: tagData.color || '#3B82F6'
+    }));
+
+    const { data, error } = await supabase
+      .from('tags')
+      .insert(inserts)
+      .select();
+
+    if (error) throw error;
+
+    return (data || []).map(tag => ({
+      ...tag,
+      usage_count: 0
+    }));
+  }
+
+  /**
+   * Duplicate a tag (create a copy with a new name)
+   */
+  async duplicateTag(id: string, newName: string): Promise<Tag> {
+    const originalTag = await this.getTagById(id);
+
+    return this.createTag({
+      category_id: originalTag.category_id,
+      subcategory_id: originalTag.subcategory_id,
+      name: newName,
+      description: originalTag.description,
+      color: originalTag.color
+    });
   }
 }
 
