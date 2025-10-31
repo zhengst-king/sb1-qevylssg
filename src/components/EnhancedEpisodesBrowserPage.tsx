@@ -22,7 +22,10 @@ import {
   Zap,
   Globe,
   Plus,
-  Minus
+  Minus,
+  X,
+  Package,
+  Check
 } from 'lucide-react';
 import { Movie, supabase } from '../lib/supabase';
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
@@ -39,7 +42,6 @@ import { SeriesRecommendations } from './SeriesRecommendations';
 import WatchProvidersDisplay from './WatchProvidersDisplay';
 import { TMDBTVSeriesDetails } from '../lib/tmdb';
 import { PersonDetailsModal } from './PersonDetailsModal';
-import { Package, Check } from 'lucide-react';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import { customCollectionsService } from '../services/customCollectionsService';
 import type { CustomCollection } from '../types/customCollections';
