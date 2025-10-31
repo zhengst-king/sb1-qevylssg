@@ -540,7 +540,7 @@ export function MovieDetailsPage({
                   style={{ 
                     fontSize: '6px',
                     height: '20px',
-                    padding: '1px 6px',
+                    padding: '4px 6px',
                     minWidth: '90px',
                     maxWidth: '110px'
                   }}
@@ -570,7 +570,7 @@ export function MovieDetailsPage({
                   style={{ 
                     fontSize: '6px',
                     height: '20px',
-                    padding: '1px 6px',
+                    padding: '4px 6px',
                     minWidth: '120px',
                     maxWidth: '140px'
                   }}
@@ -602,7 +602,7 @@ export function MovieDetailsPage({
                     style={{ 
                       fontSize: '4px',
                       height: '20px',
-                      padding: '1px 6px',
+                      padding: '4px 6px',
                       minWidth: '130px',
                       maxWidth: '150px'
                     }}
