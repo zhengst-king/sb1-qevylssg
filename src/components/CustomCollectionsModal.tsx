@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import { X, Plus, Folder, Edit2, Trash2, Star, Copy, Check } from 'lucide-react';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
-import { COLLECTION_COLORS, COLLECTION_ICONS } from '../types/customCollections';
 import { Shuffle } from 'lucide-react';
 import { COLLECTION_ICONS, COLLECTION_COLORS, getRandomColor, getIconComponent } from '../utils/collectionHelpers';
 
