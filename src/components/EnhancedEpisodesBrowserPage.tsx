@@ -24,7 +24,7 @@ import {
   Plus,
   Minus
 } from 'lucide-react';
-import { Movie } from '../lib/supabase';
+import { Movie, supabase } from '../lib/supabase';
 import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 import { OMDBEpisodeDetails } from '../lib/omdb';
 import { ReviewModal } from './ReviewModal';
@@ -1367,6 +1367,119 @@ export function EnhancedEpisodesBrowserPage({
             onOpenSeriesDetails={handleOpenSeriesDetails}
           />
         </div>
+      )}
+
+      {/* Collection Selector Popup */}
+      {showCollectionSelector && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCollectionSelector(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl max-w-md w-full max-h-[70vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">Add to Collections</h3>
+              <button
+                onClick={() => setShowCollectionSelector(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {customCollections.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-slate-600 mb-2">No custom collections yet</p>
+                  <p className="text-sm text-slate-500">
+                    Create a custom collection first to add titles
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {customCollections.map((collection) => (
+                    <label
+                      key={collection.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCollections.has(collection.id)}
+                        onChange={() => handleToggleCollection(collection.id)}
+                        className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
+                      />
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: collection.color }}
+                      >
+                        <span className="text-white text-xs font-semibold">
+                          {collection.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 truncate">{collection.name}</p>
+                        {collection.description && (
+                          <p className="text-xs text-slate-500 truncate">{collection.description}</p>
+                        )}
+                      </div>
+                      {selectedCollections.has(collection.id) && (
+                        <Check className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-200 flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowCollectionSelector(false);
+                  setSelectedCollections(new Set());
+                }}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddToCollections}
+                disabled={selectedCollections.size === 0 || addingToCollections}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                {addingToCollections ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>Add to {selectedCollections.size} Collection(s)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Collection Detail Modal */}
+      {selectedCollectionToView && (
+        <CustomCollectionDetailModal
+          isOpen={!!selectedCollectionToView}
+          onClose={() => setSelectedCollectionToView(null)}
+          collection={selectedCollectionToView}
+          onMovieClick={handleRecommendationClick}
+          onUpdatePoster={(collectionId, posterUrl) => {
+            console.log('Poster updated for collection:', collectionId, posterUrl);
+          }}
+        />
       )}
     </>
   );
