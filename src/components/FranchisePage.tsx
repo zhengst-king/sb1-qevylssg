@@ -236,7 +236,7 @@ export function FranchisePage() {
               }`}
             >
               <span className="flex items-center space-x-2">
-                <Film className="h-4 w-4" />
+                <Layers className="h-4 w-4" />
                 <span>TMDB Collections</span>
                 <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">
                   {favorites.length}
