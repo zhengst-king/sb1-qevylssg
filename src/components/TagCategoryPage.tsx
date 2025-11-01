@@ -214,7 +214,7 @@ export function TagCategoryPage() {
                       `}
                       title={subcategory.name}
                     >
-                      <div className="text-sm font-bold text-center px-3 leading-tight line-clamp-3">
+                      <div className="text-xs font-bold text-center px-2 leading-tight line-clamp-2 break-words w-full">
                         {subcategory.name}
                       </div>
                       {tagCount > 0 && (
