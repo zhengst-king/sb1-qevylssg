@@ -163,7 +163,7 @@ export function TagCategoryPage() {
           <div className="flex gap-6 mt-6">
             {/* Left Panel with Tabs */}
             <div className="relative flex-shrink-0 w-32">
-              <div className="space-y-0 pr-1">
+              <div className="space-y-0">
                 {/* "All" Tab */}
                 <button
                   onClick={() => setSelectedSubcategory('all')}
