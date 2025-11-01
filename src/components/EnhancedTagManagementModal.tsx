@@ -57,24 +57,17 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
       return;
     }
 
-    // Validate subcategory exists
-    const selectedSubcategory = subcategories.find(s => s.id === formData.subcategory_id);
-    if (!selectedSubcategory) {
-      console.error('Selected subcategory not found in subcategories list');
-      console.error('Selected ID:', formData.subcategory_id);
-      console.error('Available subcategories:', subcategories);
-      alert('Invalid subcategory selected. Please try again.');
-      return;
-    }
-
     console.log('Creating tag with data:', {
       category_id: formData.category_id,
       subcategory_id: formData.subcategory_id,
-      subcategory_details: selectedSubcategory,
+      subcategory_type: typeof formData.subcategory_id,
       name: formData.name,
       description: formData.description,
       color: formData.color,
     });
+
+    console.log('Available subcategories:', subcategories);
+    console.log('Subcategories count:', subcategories?.length);
 
     try {
       const result = await createTag({
