@@ -1,11 +1,13 @@
 // src/components/EnhancedTagManagementModal.tsx
-// Complete tag management modal with create form, import/export, and subcategory management
+// Complete tag management modal with 3 sections
 
 import React, { useState } from 'react';
-import { X, Plus, Upload, Download, FileText, ChevronDown, ChevronUp, Move, Trash2 } from 'lucide-react';
-import { useTagCategories } from '../hooks/useTagCategories';
-import { useTagSubcategories } from '../hooks/useTagSubcategories';
+import { X, Plus, Upload, Download, FileText, ChevronDown, ChevronUp, Trash2, Tag as TagIcon } from 'lucide-react';
+import { TAG_CATEGORIES, getCategoryById } from '../data/taggingCategories';
+import { getSubcategoriesByCategory, getVisibleSubcategories, getSuggestedSubcategories } from '../data/taggingSubcategories';
 import { useTags } from '../hooks/useTags';
+import { useTagSubcategories } from '../hooks/useTagSubcategories';
+import { COLLECTION_COLORS } from '../types/customCollections';
 
 interface EnhancedTagManagementModalProps {
   isOpen: boolean;
@@ -13,28 +15,25 @@ interface EnhancedTagManagementModalProps {
   defaultCategoryId?: number;
 }
 
-const COLLECTION_COLORS = [
-  '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16',
-  '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
-  '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF',
-  '#EC4899', '#F43F5E', '#64748B', '#71717A', '#A1A1AA'
-];
-
 export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProps> = ({
   isOpen,
   onClose,
   defaultCategoryId,
 }) => {
-  const { categories } = useTagCategories();
-  const { subcategories, createSubcategory, deleteSubcategory } = useTagSubcategories();
-  const { createTag } = useTags({ autoFetch: false });
+  const { createTag, loading } = useTags();
+  const { 
+    subcategories, 
+    createSubcategory, 
+    deleteSubcategory, 
+    loading: subcategoriesLoading 
+  } = useTagSubcategories();
 
   const [activeSection, setActiveSection] = useState<'create' | 'import' | 'subcategories'>('create');
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   
   // Create Tag Form State
   const [formData, setFormData] = useState({
-    category_id: defaultCategoryId || categories[0]?.id || 1,
+    category_id: defaultCategoryId || 1,
     subcategory_id: '',
     name: '',
     description: '',
@@ -43,6 +42,7 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
 
   const [showAddSubcategory, setShowAddSubcategory] = useState<number | null>(null);
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [showSuggestedSubs, setShowSuggestedSubs] = useState(false);
 
   if (!isOpen) return null;
 
@@ -54,17 +54,26 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
       return;
     }
 
-    const result = await createTag(formData);
+    const result = await createTag({
+      category_id: formData.category_id,
+      subcategory_id: formData.subcategory_id,
+      name: formData.name,
+      description: formData.description,
+      color: formData.color,
+    });
+
     if (result.success) {
       // Reset form
       setFormData({
-        category_id: defaultCategoryId || categories[0]?.id || 1,
+        category_id: defaultCategoryId || 1,
         subcategory_id: '',
         name: '',
         description: '',
         color: COLLECTION_COLORS[11],
       });
       alert('Tag created successfully!');
+    } else {
+      alert(`Error: ${result.error || 'Failed to create tag'}`);
     }
   };
 
@@ -75,17 +84,24 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
       category_id: categoryId,
       name: newSubcategoryName.trim(),
       content_type: 'Both',
+      is_custom: true,
     });
 
     if (result.success) {
       setNewSubcategoryName('');
       setShowAddSubcategory(null);
+      alert('Subcategory created successfully!');
+    } else {
+      alert(`Error: ${result.error || 'Failed to create subcategory'}`);
     }
   };
 
   const handleDeleteSubcategory = async (subcategoryId: string, name: string) => {
     if (window.confirm(`Delete subcategory "${name}"? This will fail if any tags use it.`)) {
-      await deleteSubcategory(subcategoryId);
+      const result = await deleteSubcategory(subcategoryId);
+      if (!result.success) {
+        alert(`Error: ${result.error || 'Failed to delete subcategory'}`);
+      }
     }
   };
 
@@ -103,10 +119,10 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
     return subcategories.filter(sub => sub.category_id === categoryId);
   };
 
-  const selectedCategory = categories.find(c => c.id === formData.category_id);
-  const availableSubcategories = subcategories.filter(
-    sub => sub.category_id === formData.category_id
-  );
+  const selectedCategory = getCategoryById(formData.category_id);
+  const availableSubcategories = getSubcategoriesByCategory(formData.category_id);
+  const visibleSubs = getVisibleSubcategories(formData.category_id);
+  const suggestedSubs = getSuggestedSubcategories(formData.category_id);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -166,7 +182,7 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Section 1: Create Tag */}
+          {/* SECTION 1: CREATE NEW TAG */}
           {activeSection === 'create' && (
             <form onSubmit={handleCreateTag} className="max-w-2xl mx-auto space-y-6">
               <div>
@@ -175,15 +191,15 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                 </label>
                 <select
                   value={formData.category_id}
-                  onChange={(e) => setFormData({
-                    ...formData,
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
                     category_id: parseInt(e.target.value),
-                    subcategory_id: '', // Reset subcategory
+                    subcategory_id: '' // Reset subcategory when category changes
                   })}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 >
-                  {categories.map(cat => (
+                  {TAG_CATEGORIES.map(cat => (
                     <option key={cat.id} value={cat.id}>
                       {cat.icon} {cat.name}
                     </option>
@@ -202,11 +218,39 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                   required
                 >
                   <option value="">Select a subcategory...</option>
-                  {availableSubcategories.map(sub => (
-                    <option key={sub.id} value={sub.id}>
-                      {sub.name} {sub.is_custom && '(Custom)'}
-                    </option>
-                  ))}
+                  
+                  {/* Visible Subcategories */}
+                  {visibleSubs.length > 0 && (
+                    <optgroup label="━━ Visible Subcategories ━━">
+                      {visibleSubs.map(sub => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  
+                  {/* Suggested Subcategories */}
+                  {suggestedSubs.length > 0 && (
+                    <optgroup label="━━ Suggested Subcategories ━━">
+                      {suggestedSubs.map(sub => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  
+                  {/* Custom Subcategories */}
+                  {availableSubcategories.filter(sub => sub.is_custom).length > 0 && (
+                    <optgroup label="━━ My Custom Subcategories ━━">
+                      {availableSubcategories.filter(sub => sub.is_custom).map(sub => (
+                        <option key={sub.id} value={sub.id}>
+                          {sub.name} (Custom)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -223,6 +267,9 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                   required
                   maxLength={100}
                 />
+                <p className="text-xs text-slate-500 mt-1">
+                  {formData.name.length}/100 characters
+                </p>
               </div>
 
               <div>
@@ -237,6 +284,9 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                   rows={3}
                   maxLength={500}
                 />
+                <p className="text-xs text-slate-500 mt-1">
+                  {formData.description.length}/500 characters
+                </p>
               </div>
 
               <div>
@@ -251,7 +301,7 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                       onClick={() => setFormData({ ...formData, color })}
                       className={`w-10 h-10 rounded-full transition-all ${
                         formData.color === color
-                          ? 'ring-2 ring-offset-2 ring-slate-400 scale-110'
+                          ? 'ring-2 ring-offset-2 ring-blue-500 scale-110'
                           : 'hover:scale-105'
                       }`}
                       style={{ backgroundColor: color }}
@@ -263,164 +313,212 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
 
               <button
                 type="submit"
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
+                disabled={loading}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Tag
+                {loading ? 'Creating...' : 'Create Tag'}
               </button>
             </form>
           )}
 
-          {/* Section 2: Import/Export */}
+          {/* SECTION 2: IMPORT/EXPORT */}
           {activeSection === 'import' && (
-            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 className="font-semibold text-yellow-900 mb-2">Premium Feature</h3>
-                <p className="text-sm text-yellow-800">
-                  Bulk tag import and export is available for Pro, Plus, and Enterprise users.
-                  Upgrade your plan to unlock this feature.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <button
-                  disabled
-                  className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-100 text-slate-400 rounded-lg cursor-not-allowed"
-                >
-                  <Download className="h-5 w-5" />
-                  <span className="font-medium">Download Template</span>
-                </button>
-
-                <button
-                  disabled
-                  className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-slate-100 text-slate-400 rounded-lg cursor-not-allowed"
-                >
-                  <Download className="h-5 w-5" />
-                  <span className="font-medium">Export My Tags</span>
-                </button>
-
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center bg-slate-50">
-                  <Upload className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-                  <p className="text-slate-600 mb-2">Import Tags (Premium)</p>
-                  <p className="text-sm text-slate-500">
-                    Drag and drop or click to upload
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-200">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                    <Upload className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">
+                    Premium Feature
+                  </h3>
+                  <p className="text-slate-600">
+                    Bulk import and export your tags with spreadsheet templates
                   </p>
                 </div>
+
+                <div className="space-y-3">
+                  <div className="bg-white rounded-lg p-4 border border-slate-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Download className="h-5 w-5 text-slate-600" />
+                      <h4 className="font-semibold text-slate-900">Download Template</h4>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Get a pre-formatted spreadsheet with all categories and subcategories
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-slate-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <FileText className="h-5 w-5 text-slate-600" />
+                      <h4 className="font-semibold text-slate-900">Export Your Tags</h4>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Download all your tags as a spreadsheet for backup or sharing
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-slate-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Upload className="h-5 w-5 text-slate-600" />
+                      <h4 className="font-semibold text-slate-900">Import Tags</h4>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Upload a completed template to create multiple tags at once
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium"
+                  onClick={() => alert('Upgrade to Premium to unlock this feature!')}
+                >
+                  Upgrade to Premium
+                </button>
               </div>
             </div>
           )}
 
-          {/* Section 3: Subcategory Management */}
+          {/* SECTION 3: SUBCATEGORY MANAGEMENT */}
           {activeSection === 'subcategories' && (
             <div className="space-y-4">
-              {categories.map((category) => {
-                const categorySubcategories = getSubcategoriesForCategory(category.id);
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mb-6">
+                <p className="text-sm text-blue-900">
+                  <strong>Manage Subcategories:</strong> Create custom subcategories for better tag organization. 
+                  Visible subcategories appear by default, while suggested ones can be added as needed.
+                </p>
+              </div>
+
+              {/* 9 Category Tables */}
+              {TAG_CATEGORIES.map((category) => {
+                const categorySubs = getSubcategoriesForCategory(category.id);
                 const isExpanded = expandedCategories.has(category.id);
+                const visibleCount = categorySubs.filter(s => s.is_visible).length;
+                const suggestedCount = categorySubs.filter(s => s.is_suggested).length;
+                const customCount = categorySubs.filter(s => s.is_custom).length;
 
                 return (
-                  <div key={category.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div key={category.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                     {/* Category Header */}
-                    <div
+                    <button
                       onClick={() => toggleCategory(category.id)}
-                      className="flex items-center justify-between p-4 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors"
+                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{category.icon}</span>
-                        <div>
-                          <h3 className="font-semibold text-slate-900">{category.name}</h3>
+                        <div className="text-left">
+                          <h3 className="font-bold text-slate-900">{category.name}</h3>
                           <p className="text-sm text-slate-600">
-                            {categorySubcategories.length} subcategories
+                            {visibleCount} visible • {suggestedCount} suggested • {customCount} custom
                           </p>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowAddSubcategory(category.id);
-                          }}
-                          className="p-2 hover:bg-white rounded-lg transition-colors"
-                          title="Add subcategory"
-                        >
-                          <Plus className="h-5 w-5 text-blue-600" />
-                        </button>
-                        {isExpanded ? (
-                          <ChevronUp className="h-5 w-5 text-slate-600" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-slate-600" />
-                        )}
-                      </div>
-                    </div>
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-slate-600" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-slate-600" />
+                      )}
+                    </button>
 
-                    {/* Subcategories List */}
+                    {/* Expanded Content */}
                     {isExpanded && (
-                      <div className="p-4 space-y-2">
-                        {/* Add Subcategory Form */}
-                        {showAddSubcategory === category.id && (
-                          <div className="flex gap-2 mb-3 p-3 bg-blue-50 rounded-lg">
-                            <input
-                              type="text"
-                              value={newSubcategoryName}
-                              onChange={(e) => setNewSubcategoryName(e.target.value)}
-                              placeholder="New subcategory name (max 20 chars)"
-                              className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              maxLength={20}
-                            />
+                      <div className="px-6 pb-4 border-t border-slate-200">
+                        {/* Add Subcategory Button */}
+                        <div className="py-4">
+                          {showAddSubcategory === category.id ? (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={newSubcategoryName}
+                                onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                placeholder="New subcategory name..."
+                                className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                maxLength={50}
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleCreateSubcategory(category.id)}
+                                disabled={!newSubcategoryName.trim()}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Add
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowAddSubcategory(null);
+                                  setNewSubcategoryName('');
+                                }}
+                                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
                             <button
-                              onClick={() => handleCreateSubcategory(category.id)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                              onClick={() => setShowAddSubcategory(category.id)}
+                              className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
                             >
-                              Add
+                              <Plus className="h-4 w-4" />
+                              <span>Add Custom Subcategory</span>
                             </button>
-                            <button
-                              onClick={() => {
-                                setShowAddSubcategory(null);
-                                setNewSubcategoryName('');
-                              }}
-                              className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
 
-                        {/* Subcategory Rows */}
-                        {categorySubcategories.length === 0 ? (
-                          <p className="text-sm text-slate-500 text-center py-4">
-                            No subcategories yet. Click + to add one.
-                          </p>
-                        ) : (
-                          categorySubcategories.map((sub) => (
-                            <div
-                              key={sub.id}
-                              className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:shadow-sm transition-all group"
-                            >
-                              <div className="flex-1">
-                                <span className="font-medium text-slate-900">{sub.name}</span>
-                                {sub.is_custom && (
-                                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                                    Custom
+                        {/* Subcategories List */}
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {categorySubs.length === 0 ? (
+                            <p className="text-sm text-slate-500 text-center py-4">
+                              No subcategories yet. Add your first one above.
+                            </p>
+                          ) : (
+                            categorySubs.map((sub) => (
+                              <div
+                                key={sub.id}
+                                className={`
+                                  flex items-center justify-between px-4 py-2 rounded-lg border
+                                  ${sub.is_visible 
+                                    ? 'bg-green-50 border-green-200' 
+                                    : sub.is_suggested 
+                                      ? 'bg-orange-50 border-orange-200'
+                                      : 'bg-blue-50 border-blue-200'
+                                  }
+                                `}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-slate-900">
+                                    {sub.name}
                                   </span>
-                                )}
-                                <span className="ml-2 text-sm text-slate-500">
-                                  ({sub.usage_count} tags)
-                                </span>
-                              </div>
-
-                              {sub.is_custom && (
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <span className={`
+                                    text-xs px-2 py-0.5 rounded-full
+                                    ${sub.is_visible 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : sub.is_suggested 
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : 'bg-blue-100 text-blue-700'
+                                    }
+                                  `}>
+                                    {sub.is_visible ? 'Visible' : sub.is_suggested ? 'Suggested' : 'Custom'}
+                                  </span>
+                                  {sub.usage_count > 0 && (
+                                    <span className="text-xs text-slate-500">
+                                      {sub.usage_count} {sub.usage_count === 1 ? 'tag' : 'tags'}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {sub.is_custom && (
                                   <button
                                     onClick={() => handleDeleteSubcategory(sub.id, sub.name)}
-                                    className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                    className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
                                     title="Delete subcategory"
                                   >
-                                    <Trash2 className="h-4 w-4 text-red-600" />
+                                    <Trash2 className="h-4 w-4" />
                                   </button>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -428,16 +526,6 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
               })}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
-          >
-            Close
-          </button>
         </div>
       </div>
     </div>
