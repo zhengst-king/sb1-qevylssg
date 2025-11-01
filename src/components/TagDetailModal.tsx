@@ -89,7 +89,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
   const handleDeleteTag = async () => {
     if (window.confirm(
-      `Are you sure you want to delete "${tag.name}"? This will remove it from all ${tagWithContent?.content.length || 0} titles.`
+      `Are you sure you want to delete "${currentTag.name}"? This will remove it from all ${tagWithContent?.content.length || 0} titles.`
     )) {
       try {
         // deleteTag returns void and throws on error
@@ -103,7 +103,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   };
 
   const handleRemoveFromTitle = async (contentTagId: string, title: string) => {
-    if (window.confirm(`Remove "${tag.name}" from "${title}"?`)) {
+    if (window.confirm(`Remove "${currentTag.name}" from "${title}"?`)) {
       try {
         // This functionality needs to be implemented in the service layer
         // For now, just show a message
@@ -124,15 +124,15 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   if (!isOpen) return null;
 
   // Get category and subcategory info
-  const category = getCategoryById(tag.category_id);
+  const category = getCategoryById(currentTag.category_id);
 
   // Find subcategory from the subcategories list
-  const subcategory = subcategories?.find(sub => sub.id === tag.subcategory_id);
-  const subcategoryName = subcategory?.name || tag.subcategory?.name || 'Unknown Subcategory';
+  const subcategory = subcategories?.find(sub => sub.id === currentTag.subcategory_id);
+  const subcategoryName = subcategory?.name || currentTag.subcategory?.name || 'Unknown Subcategory';
 
   // Format creation date
-  const createdDate = tag.created_at 
-    ? new Date(tag.created_at).toLocaleDateString('en-US', { 
+  const createdDate = currentTag.created_at 
+    ? new Date(currentTag.created_at).toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'short', 
         day: 'numeric' 
@@ -149,7 +149,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
               <div className="flex items-center gap-3 mb-2">
                 <div
                   className="w-6 h-6 rounded-full border-2 border-white shadow-sm flex-shrink-0"
-                  style={{ backgroundColor: tag.color }}
+                  style={{ backgroundColor: currentTag.color }}
                 />
                 
                 {editMode ? (
@@ -162,19 +162,19 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                     autoFocus
                   />
                 ) : (
-                  <h2 className="text-2xl font-bold text-slate-900">{tag.name}</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">{currentTag.name}</h2>
                 )}
 
                 {/* Public/Private Badge */}
                 {!editMode && (
                   <span className={`
                     inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
-                    ${tag.is_public 
+                    ${currentTag.is_public 
                       ? 'bg-green-100 text-green-700' 
                       : 'bg-slate-100 text-slate-700'
                     }
                   `}>
-                    {tag.is_public ? (
+                    {currentTag.is_public ? (
                       <>
                         <Globe className="h-3 w-3" />
                         Public
@@ -201,7 +201,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                 <div className="flex items-center gap-2 text-slate-600">
                   <TagIcon className="h-4 w-4" />
                   <span>
-                    <span className="font-semibold text-slate-900">{tag.usage_count || 0}</span> uses
+                    <span className="font-semibold text-slate-900">{currentTag.usage_count || 0}</span> uses
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
@@ -285,9 +285,9 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
               maxLength={500}
             />
           ) : (
-            tag.description && (
+            currentTag.description && (
               <p className="text-slate-700 bg-slate-50 rounded-lg p-3">
-                {tag.description}
+                {currentTag.description}
               </p>
             )
           )}
