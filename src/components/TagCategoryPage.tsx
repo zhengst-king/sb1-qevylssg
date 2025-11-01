@@ -168,7 +168,7 @@ export function TagCategoryPage() {
                 <button
                   onClick={() => setSelectedSubcategory('all')}
                   className={`
-                    relative w-full h-10 rounded-l-lg
+                    relative w-full h-12 rounded-l-lg
                     transition-colors duration-300 flex flex-col items-center justify-center
                     border-2 border-r-0 rounded-r-none
                     ${selectedSubcategory === 'all'
@@ -204,7 +204,7 @@ export function TagCategoryPage() {
                       key={subcategory.id}
                       onClick={() => setSelectedSubcategory(subcategory.id)}
                       className={`
-                        relative w-full h-10 rounded-l-lg
+                        relative w-full h-12 rounded-l-lg
                         transition-colors duration-300 flex flex-col items-center justify-center
                         border-2 border-r-0 rounded-r-none
                         ${isSelected
