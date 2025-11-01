@@ -160,28 +160,31 @@ export function TagCategoryPage() {
         
         {/* Stacked Tabs - Subcategory Filters (File Folder Style) */}
         {visibleSubcategories.length > 0 && (
-          <div className="mt-4">
-            <div className="flex items-end justify-center overflow-x-auto pb-2 gap-0 min-h-[80px]">
+          <div className="mt-8 relative z-10">
+            <div className="flex items-end justify-start overflow-x-auto gap-0 w-full">
               {/* "All" Tab */}
               <button
                 onClick={() => setSelectedSubcategory('all')}
                 className={`
-                  relative px-4 py-3 rounded-t-xl font-medium 
-                  transition-all duration-300 flex flex-col items-center
+                  relative px-4 py-1.5 rounded-t-lg font-medium 
+                  transition-all duration-300 flex flex-col items-center justify-center
+                  border-t-2 border-l-2 border-r-2 flex-1
                   ${selectedSubcategory === 'all'
-                    ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[120px] h-[70px]'
-                    : 'bg-slate-300 text-slate-700 hover:-translate-y-3 scale-95 hover:scale-100 w-[80px] h-[50px] overflow-hidden'
+                    ? 'bg-blue-600 text-white shadow-lg -translate-y-2 min-w-[100px] max-w-[140px] h-[52px] border-blue-700'
+                    : 'bg-slate-300 text-slate-700 hover:-translate-y-2 min-w-[80px] max-w-[120px] h-[44px] border-slate-400'
                   }
                 `}
                 style={{
                   marginLeft: 0,
-                  marginRight: selectedSubcategory === 'all' ? '-10px' : '-30px',
-                  zIndex: selectedSubcategory === 'all' ? 20 : 10
+                  marginRight: selectedSubcategory === 'all' ? '-12px' : '-30px',
+                  zIndex: selectedSubcategory === 'all' ? 20 : 10,
+                  marginBottom: selectedSubcategory === 'all' ? '0' : '8px',
+                  borderBottom: selectedSubcategory === 'all' ? '2px solid rgb(37, 99, 235)' : 'none'
                 }}
               >
-                <div className="text-sm font-semibold leading-tight text-center">All</div>
+                <div className="text-xs font-bold leading-tight text-center">All</div>
                 {selectedSubcategory === 'all' && (
-                  <div className="text-xs mt-1 opacity-90">{categoryTags.length} tags</div>
+                  <div className="text-[10px] mt-0.5 opacity-90">{categoryTags.length}</div>
                 )}
               </button>
               
@@ -198,30 +201,33 @@ export function TagCategoryPage() {
                     key={subcategory.id}
                     onClick={() => setSelectedSubcategory(subcategory.id)}
                     className={`
-                      relative px-4 py-3 rounded-t-xl font-medium 
-                      transition-all duration-300 flex flex-col items-center justify-start
+                      relative px-4 py-1.5 rounded-t-lg font-medium 
+                      transition-all duration-300 flex flex-col items-center justify-center
+                      border-t-2 border-l-2 border-r-2 flex-1
                       ${isSelected
                         ? hasContent
-                          ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[140px] h-[70px]'
-                          : 'bg-slate-500 text-white shadow-lg -translate-y-3 min-w-[140px] h-[70px]'
+                          ? 'bg-blue-600 text-white shadow-lg -translate-y-2 min-w-[120px] max-w-[160px] h-[52px] border-blue-700'
+                          : 'bg-slate-500 text-white shadow-lg -translate-y-2 min-w-[120px] max-w-[160px] h-[52px] border-slate-600'
                         : hasContent
-                          ? 'bg-blue-200 text-blue-900 hover:-translate-y-3 hover:h-[70px] scale-95 hover:scale-100 w-[100px] h-[50px] overflow-hidden'
-                          : 'bg-slate-300 text-slate-700 hover:-translate-y-3 hover:h-[70px] scale-95 hover:scale-100 w-[100px] h-[50px] overflow-hidden'
+                          ? 'bg-blue-200 text-blue-900 hover:-translate-y-2 min-w-[90px] max-w-[140px] h-[44px] border-blue-300'
+                          : 'bg-slate-300 text-slate-700 hover:-translate-y-2 min-w-[90px] max-w-[140px] h-[44px] border-slate-400'
                       }
                     `}
                     style={{
-                      marginLeft: isSelected ? '-10px' : '0',
-                      marginRight: isSelected ? '-10px' : '-30px',
-                      zIndex: isSelected ? 20 : 10 - index
+                      marginLeft: isSelected ? '-12px' : '0',
+                      marginRight: isSelected ? '-12px' : '-30px',
+                      zIndex: isSelected ? 20 : 10 - index,
+                      marginBottom: isSelected ? '0' : '8px',
+                      borderBottom: isSelected ? (hasContent ? '2px solid rgb(37, 99, 235)' : '2px solid rgb(100, 116, 139)') : 'none'
                     }}
                     title={subcategory.name}
                   >
-                    <div className={`text-sm font-semibold leading-tight text-center ${isSelected ? '' : 'line-clamp-2'}`}>
+                    <div className={`text-xs font-bold leading-tight text-center px-1 ${isSelected ? 'line-clamp-2' : 'line-clamp-1'}`}>
                       {subcategory.name}
                     </div>
-                    {(isSelected || tagCount > 0) && (
-                      <div className={`text-xs mt-1 ${isSelected ? 'opacity-90' : 'opacity-0 group-hover:opacity-90'}`}>
-                        {tagCount} {tagCount === 1 ? 'tag' : 'tags'}
+                    {isSelected && (
+                      <div className="text-[10px] mt-0.5 opacity-90">
+                        {tagCount}
                       </div>
                     )}
                   </button>
@@ -229,8 +235,8 @@ export function TagCategoryPage() {
               })}
             </div>
             
-            {/* Bottom Border */}
-            <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b"></div>
+            {/* Bottom Border - Connected to tabs */}
+            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 w-full"></div>
           </div>
         )}
       </div>
