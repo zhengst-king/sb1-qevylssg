@@ -2,9 +2,10 @@
 // Modal showing tag details and all associated content
 
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText, Calendar, Tag as TagIcon, Save } from 'lucide-react';
+import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText, Calendar, Tag as TagIcon, Save, Lock, Globe } from 'lucide-react';
 import { useTags } from '../hooks/useTags';
 import { useContentTags } from '../hooks/useTags';
+import { getCategoryById } from '../data/taggingCategories';
 import type { Tag, TagWithContent } from '../types/tagging';
 
 interface TagDetailModalProps {
@@ -26,20 +27,27 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [editedName, setEditedName] = useState(tag.name);
   const [editedDescription, setEditedDescription] = useState(tag.description || '');
+  const [editedIsPublic, setEditedIsPublic] = useState(tag.is_public || false);
 
   useEffect(() => {
     if (isOpen) {
       loadTagDetails();
       setEditedName(tag.name);
       setEditedDescription(tag.description || '');
+      setEditedIsPublic(tag.is_public || false);
     }
   }, [tag.id, isOpen]);
 
   const loadTagDetails = async () => {
     setLoading(true);
-    const data = await getTagWithContent(tag.id);
-    setTagWithContent(data);
-    setLoading(false);
+    try {
+      const data = await getTagWithContent(tag.id);
+      setTagWithContent(data);
+    } catch (error) {
+      console.error('Error loading tag details:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -48,17 +56,27 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
       return;
     }
 
-    const result = await updateTag(tag.id, {
-      name: editedName.trim(),
-      description: editedDescription.trim() || null,
-    });
+    try {
+      const result = await updateTag(tag.id, {
+        name: editedName.trim(),
+        description: editedDescription.trim() || null,
+        is_public: editedIsPublic,
+      });
 
-    if (result.success) {
-      setEditMode(false);
-      // Reload to get updated data
-      await loadTagDetails();
-    } else {
-      alert(`Error: ${result.error || 'Failed to update tag'}`);
+      if (result && result.success) {
+        setEditMode(false);
+        // Update the local tag object
+        tag.name = editedName.trim();
+        tag.description = editedDescription.trim() || null;
+        tag.is_public = editedIsPublic;
+        // Reload to get updated data
+        await loadTagDetails();
+      } else {
+        alert(`Error: ${result?.error || 'Failed to update tag'}`);
+      }
+    } catch (error) {
+      console.error('Error updating tag:', error);
+      alert(`Error: ${(error as Error).message || 'Failed to update tag'}`);
     }
   };
 
@@ -66,6 +84,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
     setEditMode(false);
     setEditedName(tag.name);
     setEditedDescription(tag.description || '');
+    setEditedIsPublic(tag.is_public || false);
   };
 
   const handleDeleteTag = async () => {
@@ -98,6 +117,10 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  // Get category and subcategory info
+  const category = getCategoryById(tag.category_id);
+  const subcategoryName = tag.subcategory?.name || 'Unknown Subcategory';
 
   // Format creation date
   const createdDate = tag.created_at 
@@ -133,13 +156,36 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                 ) : (
                   <h2 className="text-2xl font-bold text-slate-900">{tag.name}</h2>
                 )}
+
+                {/* Public/Private Badge */}
+                {!editMode && (
+                  <span className={`
+                    inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                    ${tag.is_public 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-slate-100 text-slate-700'
+                    }
+                  `}>
+                    {tag.is_public ? (
+                      <>
+                        <Globe className="h-3 w-3" />
+                        Public
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-3 w-3" />
+                        Private
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
               
               {/* Breadcrumb */}
               <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
-                <span>{tag.category?.name || 'Category'}</span>
+                <span>{category?.name || 'Unknown Category'}</span>
                 <ChevronRight className="h-4 w-4" />
-                <span>{tag.subcategory?.name || 'Subcategory'}</span>
+                <span>{subcategoryName}</span>
               </div>
 
               {/* Stats Row */}
@@ -153,13 +199,6 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                 <div className="flex items-center gap-2 text-slate-600">
                   <Calendar className="h-4 w-4" />
                   <span>Created {createdDate}</span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-600">
-                  <div
-                    className="w-4 h-4 rounded-full border border-slate-300"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                  <span className="font-mono text-xs">{tag.color}</span>
                 </div>
               </div>
             </div>
@@ -210,6 +249,23 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Edit Mode: Public/Private Selector */}
+          {editMode && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Visibility
+              </label>
+              <select
+                value={editedIsPublic ? 'public' : 'private'}
+                onChange={(e) => setEditedIsPublic(e.target.value === 'public')}
+                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="private">🔒 Private (only you can see)</option>
+                <option value="public">🌐 Public (other users can see)</option>
+              </select>
+            </div>
+          )}
+
           {/* Description */}
           {editMode ? (
             <textarea
@@ -237,7 +293,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
             </div>
           ) : !tagWithContent || tagWithContent.content.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-5xl mb-4">{tag.category?.icon || '🏷️'}</div>
+              <div className="text-5xl mb-4">{category?.icon || '🏷️'}</div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
                 No content tagged yet
               </h3>
@@ -316,7 +372,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="h-4 w-4 inline mr-2" />
-            Delete Tag Entirely
+            Delete Tag
           </button>
           
           <button
