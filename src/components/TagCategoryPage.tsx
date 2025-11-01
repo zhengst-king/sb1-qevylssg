@@ -13,12 +13,16 @@ import type { Tag } from '../types/customCollections';
 export function TagCategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const { tags, loading } = useTags();
+  const { tags, loading, refetch } = useTags();
   
   const [selectedSubcategory, setSelectedSubcategory] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [showManagementModal, setShowManagementModal] = useState(false);
+  // Callback to refetch tags when a new tag is created
+  const handleTagCreated = () => {
+    refetch();
+  };
   
   const categoryIdNum = parseInt(categoryId || '0');
   const category = getCategoryById(categoryIdNum);
@@ -216,6 +220,7 @@ export function TagCategoryPage() {
         isOpen={showManagementModal}
         onClose={() => setShowManagementModal(false)}
         defaultCategoryId={categoryIdNum}
+        onTagCreated={handleTagCreated}
       />
     </div>
   );
