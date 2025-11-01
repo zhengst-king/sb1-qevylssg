@@ -40,6 +40,18 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   }, [tag.id, isOpen]);
 
   const loadTagDetails = async () => {
+    setLoading(true);
+    try {
+      // For now, just set empty content since getTagWithContent doesn't exist yet
+      setTagWithContent({ ...tag, content: [] } as TagWithContent);
+    } catch (error) {
+      console.error('Error loading tag details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
     if (!editedName.trim()) {
       alert('Tag name cannot be empty');
       return;
@@ -58,38 +70,8 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
       tag.name = updatedTag.name;
       tag.description = updatedTag.description;
       tag.is_public = updatedTag.is_public;
-      // Reload
+      // Reload to get updated data
       await loadTagDetails();
-    } catch (error) {
-      console.error('Error updating tag:', error);
-      alert(`Error: ${(error as Error).message || 'Failed to update tag'}`);
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editedName.trim()) {
-      alert('Tag name cannot be empty');
-      return;
-    }
-
-    try {
-      const result = await updateTag(tag.id, {
-        name: editedName.trim(),
-        description: editedDescription.trim() || null,
-        is_public: editedIsPublic,
-      });
-
-      if (result && result.success) {
-        setEditMode(false);
-        // Update the local tag object
-        tag.name = editedName.trim();
-        tag.description = editedDescription.trim() || null;
-        tag.is_public = editedIsPublic;
-        // Reload to get updated data
-        await loadTagDetails();
-      } else {
-        alert(`Error: ${result?.error || 'Failed to update tag'}`);
-      }
     } catch (error) {
       console.error('Error updating tag:', error);
       alert(`Error: ${(error as Error).message || 'Failed to update tag'}`);
