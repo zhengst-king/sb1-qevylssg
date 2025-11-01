@@ -158,128 +158,133 @@ export function TagCategoryPage() {
           </div>
         </div>
         
-        {/* Stacked Tabs - Subcategory Filters (File Folder Style) */}
+        {/* Left Sidebar - Subcategory Filters (File Folder Style) */}
         {visibleSubcategories.length > 0 && (
-          <div className="mt-12 relative" style={{ zIndex: 9999, overflow: 'visible' }}>
-            <div className="flex items-end justify-start overflow-x-auto gap-0 w-full pr-8" style={{ position: 'relative', zIndex: 50 }}>
-              {/* "All" Tab */}
-              <button
-                onClick={() => setSelectedSubcategory('all')}
-                className={`
-                  relative px-4 py-2.5 rounded-t-lg font-medium 
-                  transition-all duration-300 flex flex-col items-center justify-center
-                  border-t-2 border-l-2 border-r-2 flex-1
-                  ${selectedSubcategory === 'all'
-                    ? 'bg-blue-600 text-white shadow-lg -translate-y-10 min-w-[100px] max-w-[140px] h-[65px] border-blue-700'
-                    : 'bg-slate-300 text-slate-700 hover:-translate-y-10 min-w-[80px] max-w-[120px] h-[56px] border-slate-400'
-                  }
-                `}
-                style={{
-                  marginLeft: 0,
-                  marginRight: selectedSubcategory === 'all' ? '-12px' : '-30px',
-                  zIndex: selectedSubcategory === 'all' ? 100 : 50,
-                  marginBottom: '0',
-                  borderBottom: selectedSubcategory === 'all' ? '2px solid rgb(37, 99, 235)' : 'none'
-                }}
-              >
-                <div className="text-xs font-bold leading-tight text-center">All</div>
-                {selectedSubcategory === 'all' && (
-                  <div className="text-[10px] mt-1 opacity-90">{categoryTags.length}</div>
-                )}
-              </button>
-              
-              {/* Subcategory Tabs */}
-              {visibleSubcategories.map((subcategory, index) => {
-                const isSelected = String(selectedSubcategory) === String(subcategory.id);
-                const tagCount = categoryTags.filter(t => 
-                  String(t.subcategory_id) === String(subcategory.id)
-                ).length;
-                const hasContent = tagCount > 0;
-                
-                return (
-                  <button
-                    key={subcategory.id}
-                    onClick={() => setSelectedSubcategory(subcategory.id)}
-                    className={`
-                      relative px-4 py-2.5 rounded-t-lg font-medium 
-                      transition-all duration-300 flex flex-col items-center justify-center
-                      border-t-2 border-l-2 border-r-2 flex-1
-                      ${isSelected
-                        ? hasContent
-                          ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[120px] max-w-[160px] h-[65px] border-blue-700'
-                          : 'bg-slate-500 text-white shadow-lg -translate-y-3 min-w-[120px] max-w-[160px] h-[65px] border-slate-600'
-                        : hasContent
-                          ? 'bg-blue-200 text-blue-900 hover:-translate-y-3 min-w-[90px] max-w-[140px] h-[56px] border-blue-300'
-                          : 'bg-slate-300 text-slate-700 hover:-translate-y-3 min-w-[90px] max-w-[140px] h-[56px] border-slate-400'
-                      }
-                    `}
-                    style={{
-                      marginLeft: isSelected ? '-12px' : '0',
-                      marginRight: isSelected ? '-12px' : '-30px',
-                      zIndex: isSelected ? 100 : 50 - index,
-                      marginBottom: '0',
-                      borderBottom: isSelected ? (hasContent ? '2px solid rgb(37, 99, 235)' : '2px solid rgb(100, 116, 139)') : 'none'
-                    }}
-                    title={subcategory.name}
-                  >
-                    <div className={`text-xs font-bold leading-tight text-center px-1 ${isSelected ? 'line-clamp-2' : 'line-clamp-1'}`}>
-                      {subcategory.name}
-                    </div>
-                    {isSelected && (
-                      <div className="text-[10px] mt-1 opacity-90">
-                        {tagCount}
+          <div className="flex gap-6 mt-6">
+            {/* Left Panel with Tabs */}
+            <div className="relative flex-shrink-0 w-44">
+              <div className="space-y-2 pr-1">
+                {/* "All" Tab */}
+                <button
+                  onClick={() => setSelectedSubcategory('all')}
+                  className={`
+                    relative w-full h-28 rounded-l-lg
+                    transition-colors duration-300 flex flex-col items-center justify-center
+                    border-2 border-r-0
+                    ${selectedSubcategory === 'all'
+                      ? 'bg-blue-600 text-white border-blue-700'
+                      : 'bg-yellow-50 text-slate-800 hover:bg-yellow-100 border-yellow-300'
+                    }
+                  `}
+                >
+                  <div className="text-sm font-bold text-center px-3 leading-tight">
+                    All
+                  </div>
+                  <div className={`
+                    absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                    text-xs font-bold border-2
+                    ${selectedSubcategory === 'all'
+                      ? 'bg-white text-blue-600 border-blue-700'
+                      : 'bg-blue-600 text-white border-blue-700'
+                    }
+                  `}>
+                    {categoryTags.length}
+                  </div>
+                </button>
+
+                {/* Subcategory Tabs */}
+                {visibleSubcategories.map((subcategory) => {
+                  const isSelected = String(selectedSubcategory) === String(subcategory.id);
+                  const tagCount = categoryTags.filter(t => 
+                    String(t.subcategory_id) === String(subcategory.id)
+                  ).length;
+                  
+                  return (
+                    <button
+                      key={subcategory.id}
+                      onClick={() => setSelectedSubcategory(subcategory.id)}
+                      className={`
+                        relative w-full h-28 rounded-l-lg
+                        transition-colors duration-300 flex flex-col items-center justify-center
+                        border-2 border-r-0
+                        ${isSelected
+                          ? 'bg-blue-600 text-white border-blue-700'
+                          : 'bg-yellow-50 text-slate-800 hover:bg-yellow-100 border-yellow-300'
+                        }
+                      `}
+                      title={subcategory.name}
+                    >
+                      <div className="text-sm font-bold text-center px-3 leading-tight line-clamp-3">
+                        {subcategory.name}
                       </div>
-                    )}
-                  </button>
-                );
-              })}
+                      {tagCount > 0 && (
+                        <div className={`
+                          absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                          text-xs font-bold border-2
+                          ${isSelected
+                            ? 'bg-white text-blue-600 border-blue-700'
+                            : 'bg-blue-600 text-white border-blue-700'
+                          }
+                        `}>
+                          {tagCount}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Vertical Border Line */}
+              <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-blue-500 to-indigo-500"></div>
             </div>
-            
-            {/* Bottom Border - Connected to tabs */}
-            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 w-full relative" style={{ marginTop: '-2px', zIndex: 150 }}></div>
+
+            {/* Right Content Area */}
+            <div className="flex-1">
+              
+              {/* Loading State */}
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+              
+              {/* Tags Grid */}
+              {!loading && filteredTags.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {filteredTags.map((tag) => (
+                    <TagCard
+                      key={tag.id}
+                      tag={tag}
+                      categoryIcon={category.icon}
+                      onClick={() => setSelectedTag(tag)}
+                    />
+                  ))}
+                </div>
+              )}
+              
+              {/* Empty State */}
+              {!loading && filteredTags.length === 0 && (
+                <div className="text-center py-12 bg-slate-50 rounded-xl">
+                  <div className="text-5xl mb-4">{category.icon}</div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    {searchQuery || selectedSubcategory !== 'all' 
+                      ? 'No tags found'
+                      : 'No tags in this category yet'
+                    }
+                  </h3>
+                  <p className="text-slate-600">
+                    {searchQuery || selectedSubcategory !== 'all'
+                      ? 'Try adjusting your filters'
+                      : 'Use the "Manage Tags" button above to create your first tag'
+                    }
+                  </p>
+                </div>
+              )}
+
+            </div>
           </div>
         )}
       </div>
-      
-      {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      )}
-      
-      {/* Tags Grid */}
-      {!loading && filteredTags.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {filteredTags.map((tag) => (
-            <TagCard
-              key={tag.id}
-              tag={tag}
-              categoryIcon={category.icon}
-              onClick={() => setSelectedTag(tag)}
-            />
-          ))}
-        </div>
-      )}
-      
-      {/* Empty State */}
-      {!loading && filteredTags.length === 0 && (
-        <div className="text-center py-12 bg-slate-50 rounded-xl">
-          <div className="text-5xl mb-4">{category.icon}</div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-2">
-            {searchQuery || selectedSubcategory !== 'all' 
-              ? 'No tags found'
-              : 'No tags in this category yet'
-            }
-          </h3>
-          <p className="text-slate-600">
-            {searchQuery || selectedSubcategory !== 'all'
-              ? 'Try adjusting your filters'
-              : 'Use the "Manage Tags" button above to create your first tag'
-            }
-          </p>
-        </div>
-      )}
       
       {/* Tag Detail Modal */}
       {selectedTag && (
