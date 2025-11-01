@@ -19,6 +19,7 @@ export function TagCategoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [showManagementModal, setShowManagementModal] = useState(false);
+  
   // Callback to refetch tags when a new tag is created
   const handleTagCreated = () => {
     refetch();
@@ -77,6 +78,44 @@ export function TagCategoryPage() {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Category Navigation Tabs */}
+      <div className="mb-6 border-b border-slate-200">
+        <div className="flex items-center gap-1 overflow-x-auto pb-2">
+          {/* All Categories Tab */}
+          <Link
+            to="/my-tags"
+            className={`
+              flex items-center justify-center px-4 py-3 rounded-t-lg transition-all whitespace-nowrap
+              ${!categoryId || categoryId === 'all'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }
+            `}
+            title="All Categories"
+          >
+            <span className="text-base font-semibold">All</span>
+          </Link>
+          
+          {/* Category Tabs */}
+          {TAG_CATEGORIES.map((cat) => (
+            <Link
+              key={cat.id}
+              to={`/my-tags/category/${cat.id}`}
+              className={`
+                flex items-center justify-center px-4 py-3 rounded-t-lg transition-all min-w-[60px]
+                ${categoryIdNum === cat.id
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-slate-100 hover:bg-slate-200'
+                }
+              `}
+              title={cat.name}
+            >
+              <span className="text-2xl">{cat.icon}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
@@ -131,12 +170,11 @@ export function TagCategoryPage() {
           <span className="text-slate-900 font-medium">{category.name}</span>
         </div>
         
-        {/* Visible Subcategories as Filter Labels */}
+        {/* Visible Subcategories as Filter Labels - Show ALL visible subcategories */}
         {visibleSubcategories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {visibleSubcategories.map((subcategory) => {
               const tagCount = categoryTags.filter(t => t.subcategory_id === subcategory.id).length;
-              if (tagCount === 0) return null;
               
               return (
                 <button
@@ -146,7 +184,9 @@ export function TagCategoryPage() {
                     px-3 py-1.5 rounded-full text-sm font-medium transition-all
                     ${selectedSubcategory === subcategory.id
                       ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                      : tagCount > 0
+                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
                     }
                   `}
                 >
