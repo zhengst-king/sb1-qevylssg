@@ -163,12 +163,12 @@ export function TagCategoryPage() {
           <div className="flex gap-6 mt-6">
             {/* Left Panel with Tabs */}
             <div className="relative flex-shrink-0 w-44">
-              <div className="space-y-2 pr-1">
+              <div className="space-y-0 pr-1">
                 {/* "All" Tab */}
                 <button
                   onClick={() => setSelectedSubcategory('all')}
                   className={`
-                    relative w-full h-28 rounded-l-lg
+                    relative w-full h-10 rounded-l-none
                     transition-colors duration-300 flex flex-col items-center justify-center
                     border-2 border-r-0
                     ${selectedSubcategory === 'all'
@@ -204,7 +204,7 @@ export function TagCategoryPage() {
                       key={subcategory.id}
                       onClick={() => setSelectedSubcategory(subcategory.id)}
                       className={`
-                        relative w-full h-28 rounded-l-lg
+                        relative w-full h-10 rounded-l-none
                         transition-colors duration-300 flex flex-col items-center justify-center
                         border-2 border-r-0
                         ${isSelected
