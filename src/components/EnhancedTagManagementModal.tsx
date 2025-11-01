@@ -116,6 +116,8 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
   };
 
   const getSubcategoriesForCategory = (categoryId: number) => {
+    // Use the subcategories from the hook, not the static data file
+    if (!subcategories || !Array.isArray(subcategories)) return [];
     return subcategories.filter(sub => sub.category_id === categoryId);
   };
 
@@ -389,8 +391,18 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                 </p>
               </div>
 
-              {/* 9 Category Tables */}
-              {TAG_CATEGORIES.map((category) => {
+              {subcategoriesLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-slate-500 mt-4">Loading subcategories...</p>
+                </div>
+              ) : !subcategories || !Array.isArray(subcategories) ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-500">Error loading subcategories. Please try again.</p>
+                </div>
+              ) : (
+                /* 9 Category Tables */
+                TAG_CATEGORIES.map((category) => {
                 const categorySubs = getSubcategoriesForCategory(category.id);
                 const isExpanded = expandedCategories.has(category.id);
                 const visibleCount = categorySubs.filter(s => s.is_visible).length;
@@ -523,7 +535,8 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                     )}
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
         </div>
