@@ -12,14 +12,16 @@ interface EnhancedTagManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultCategoryId?: number;
+  onTagCreated?: () => void; // Callback to notify parent when tag is created
 }
 
 export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProps> = ({
   isOpen,
   onClose,
   defaultCategoryId,
+  onTagCreated,
 }) => {
-  const { createTag, loading } = useTags();
+  const { createTag, loading, refetch: refetchTags } = useTags();
   const { 
     subcategories, 
     createSubcategory, 
@@ -67,13 +69,14 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, showAddSubcategoryPopup, onClose]);
 
-  // Refetch subcategories when modal closes
+  // Refetch subcategories and tags when modal closes
   useEffect(() => {
     if (!isOpen) {
       // Refetch when modal is closed to ensure parent components see updates
       refetchSubcategories();
+      refetchTags();
     }
-  }, [isOpen, refetchSubcategories]);
+  }, [isOpen, refetchSubcategories, refetchTags]);
 
   if (!isOpen) return null;
 
@@ -120,6 +123,10 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
             description: '',
             color: COLLECTION_COLORS[11],
           });
+          
+          // Notify parent component
+          onTagCreated?.();
+          
           alert('Tag created successfully!');
         } else {
           console.error('Tag creation failed:', result.error);
@@ -135,6 +142,10 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
           description: '',
           color: COLLECTION_COLORS[11],
         });
+        
+        // Notify parent component
+        onTagCreated?.();
+        
         alert('Tag created successfully!');
       }
     } catch (error) {
