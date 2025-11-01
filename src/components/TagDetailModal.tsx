@@ -22,6 +22,9 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 }) => {
   const { deleteTag, updateTag } = useTags();
   const { subcategories } = useTagSubcategories();
+
+  // Add this line - keep local copy of tag
+  const [currentTag, setCurrentTag] = useState<Tag>(tag);
   
   const [tagWithContent, setTagWithContent] = useState<TagWithContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setCurrentTag(tag); // Update local copy when modal opens
       loadTagDetails();
       setEditedName(tag.name);
       setEditedDescription(tag.description || '');
@@ -67,10 +71,8 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
       setEditMode(false);
       // Update the local tag object
-      tag.name = updatedTag.name;
-      tag.description = updatedTag.description;
-      tag.is_public = updatedTag.is_public;
-      // Reload to get updated data
+      setCurrentTag(updatedTag);
+      // Reload
       await loadTagDetails();
     } catch (error) {
       console.error('Error updating tag:', error);
