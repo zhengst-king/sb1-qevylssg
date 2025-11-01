@@ -160,31 +160,31 @@ export function TagCategoryPage() {
         
         {/* Stacked Tabs - Subcategory Filters (File Folder Style) */}
         {visibleSubcategories.length > 0 && (
-          <div className="mt-8 relative z-10">
-            <div className="flex items-end justify-start overflow-x-auto gap-0 w-full">
+          <div className="mt-12 relative z-50">
+            <div className="flex items-end justify-start overflow-x-auto gap-0 w-full" style={{ position: 'relative', zIndex: 50 }}>
               {/* "All" Tab */}
               <button
                 onClick={() => setSelectedSubcategory('all')}
                 className={`
-                  relative px-4 py-1.5 rounded-t-lg font-medium 
+                  relative px-4 py-2.5 rounded-t-lg font-medium 
                   transition-all duration-300 flex flex-col items-center justify-center
                   border-t-2 border-l-2 border-r-2 flex-1
                   ${selectedSubcategory === 'all'
-                    ? 'bg-blue-600 text-white shadow-lg -translate-y-2 min-w-[100px] max-w-[140px] h-[52px] border-blue-700'
-                    : 'bg-slate-300 text-slate-700 hover:-translate-y-2 min-w-[80px] max-w-[120px] h-[44px] border-slate-400'
+                    ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[100px] max-w-[140px] h-[65px] border-blue-700'
+                    : 'bg-slate-300 text-slate-700 hover:-translate-y-3 min-w-[80px] max-w-[120px] h-[56px] border-slate-400'
                   }
                 `}
                 style={{
                   marginLeft: 0,
                   marginRight: selectedSubcategory === 'all' ? '-12px' : '-30px',
-                  zIndex: selectedSubcategory === 'all' ? 20 : 10,
-                  marginBottom: selectedSubcategory === 'all' ? '0' : '8px',
+                  zIndex: selectedSubcategory === 'all' ? 100 : 50,
+                  marginBottom: '0',
                   borderBottom: selectedSubcategory === 'all' ? '2px solid rgb(37, 99, 235)' : 'none'
                 }}
               >
                 <div className="text-xs font-bold leading-tight text-center">All</div>
                 {selectedSubcategory === 'all' && (
-                  <div className="text-[10px] mt-0.5 opacity-90">{categoryTags.length}</div>
+                  <div className="text-[10px] mt-1 opacity-90">{categoryTags.length}</div>
                 )}
               </button>
               
@@ -201,23 +201,23 @@ export function TagCategoryPage() {
                     key={subcategory.id}
                     onClick={() => setSelectedSubcategory(subcategory.id)}
                     className={`
-                      relative px-4 py-1.5 rounded-t-lg font-medium 
+                      relative px-4 py-2.5 rounded-t-lg font-medium 
                       transition-all duration-300 flex flex-col items-center justify-center
                       border-t-2 border-l-2 border-r-2 flex-1
                       ${isSelected
                         ? hasContent
-                          ? 'bg-blue-600 text-white shadow-lg -translate-y-2 min-w-[120px] max-w-[160px] h-[52px] border-blue-700'
-                          : 'bg-slate-500 text-white shadow-lg -translate-y-2 min-w-[120px] max-w-[160px] h-[52px] border-slate-600'
+                          ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[120px] max-w-[160px] h-[65px] border-blue-700'
+                          : 'bg-slate-500 text-white shadow-lg -translate-y-3 min-w-[120px] max-w-[160px] h-[65px] border-slate-600'
                         : hasContent
-                          ? 'bg-blue-200 text-blue-900 hover:-translate-y-2 min-w-[90px] max-w-[140px] h-[44px] border-blue-300'
-                          : 'bg-slate-300 text-slate-700 hover:-translate-y-2 min-w-[90px] max-w-[140px] h-[44px] border-slate-400'
+                          ? 'bg-blue-200 text-blue-900 hover:-translate-y-3 min-w-[90px] max-w-[140px] h-[56px] border-blue-300'
+                          : 'bg-slate-300 text-slate-700 hover:-translate-y-3 min-w-[90px] max-w-[140px] h-[56px] border-slate-400'
                       }
                     `}
                     style={{
                       marginLeft: isSelected ? '-12px' : '0',
                       marginRight: isSelected ? '-12px' : '-30px',
-                      zIndex: isSelected ? 20 : 10 - index,
-                      marginBottom: isSelected ? '0' : '8px',
+                      zIndex: isSelected ? 100 : 50 - index,
+                      marginBottom: '0',
                       borderBottom: isSelected ? (hasContent ? '2px solid rgb(37, 99, 235)' : '2px solid rgb(100, 116, 139)') : 'none'
                     }}
                     title={subcategory.name}
@@ -226,7 +226,7 @@ export function TagCategoryPage() {
                       {subcategory.name}
                     </div>
                     {isSelected && (
-                      <div className="text-[10px] mt-0.5 opacity-90">
+                      <div className="text-[10px] mt-1 opacity-90">
                         {tagCount}
                       </div>
                     )}
@@ -236,7 +236,7 @@ export function TagCategoryPage() {
             </div>
             
             {/* Bottom Border - Connected to tabs */}
-            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 w-full"></div>
+            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 w-full" style={{ marginTop: '-2px' }}></div>
           </div>
         )}
       </div>
