@@ -158,19 +158,19 @@ export function TagCategoryPage() {
           </div>
         </div>
         
-        {/* Stacked Tabs - Subcategory Filters */}
+        {/* Stacked Tabs - Subcategory Filters (File Folder Style) */}
         {visibleSubcategories.length > 0 && (
           <div className="mt-4">
-            <div className="flex items-end overflow-x-auto pb-2 gap-0">
+            <div className="flex items-end justify-center overflow-x-auto pb-2 gap-0 min-h-[80px]">
               {/* "All" Tab */}
               <button
                 onClick={() => setSelectedSubcategory('all')}
                 className={`
-                  relative px-6 py-3 rounded-t-xl font-medium 
-                  transition-all duration-300 whitespace-nowrap
+                  relative px-4 py-3 rounded-t-xl font-medium 
+                  transition-all duration-300 flex flex-col items-center
                   ${selectedSubcategory === 'all'
-                    ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-lg z-20 scale-105 min-w-[120px]'
-                    : 'bg-gradient-to-b from-slate-200 to-slate-300 text-slate-700 hover:from-slate-300 hover:to-slate-400 scale-95 hover:scale-100 opacity-80 hover:opacity-100 w-[80px] overflow-hidden'
+                    ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[120px] h-[70px]'
+                    : 'bg-slate-300 text-slate-700 hover:-translate-y-3 scale-95 hover:scale-100 w-[80px] h-[50px] overflow-hidden'
                   }
                 `}
                 style={{
@@ -179,11 +179,9 @@ export function TagCategoryPage() {
                   zIndex: selectedSubcategory === 'all' ? 20 : 10
                 }}
               >
-                <span className="truncate">All</span>
+                <div className="text-sm font-semibold leading-tight text-center">All</div>
                 {selectedSubcategory === 'all' && (
-                  <span className="absolute -top-2 -right-2 bg-white text-blue-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">
-                    {categoryTags.length}
-                  </span>
+                  <div className="text-xs mt-1 opacity-90">{categoryTags.length} tags</div>
                 )}
               </button>
               
@@ -200,31 +198,31 @@ export function TagCategoryPage() {
                     key={subcategory.id}
                     onClick={() => setSelectedSubcategory(subcategory.id)}
                     className={`
-                      relative px-6 py-3 rounded-t-xl font-medium 
-                      transition-all duration-300 whitespace-nowrap
+                      relative px-4 py-3 rounded-t-xl font-medium 
+                      transition-all duration-300 flex flex-col items-center justify-start
                       ${isSelected
                         ? hasContent
-                          ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-lg scale-105 min-w-[180px]'
-                          : 'bg-gradient-to-b from-slate-400 to-slate-500 text-white shadow-lg scale-105 min-w-[180px]'
+                          ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[140px] h-[70px]'
+                          : 'bg-slate-500 text-white shadow-lg -translate-y-3 min-w-[140px] h-[70px]'
                         : hasContent
-                          ? 'bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800 hover:from-blue-200 hover:to-blue-300 scale-95 hover:scale-100 opacity-80 hover:opacity-100 w-[100px] overflow-hidden'
-                          : 'bg-gradient-to-b from-slate-200 to-slate-300 text-slate-600 hover:from-slate-300 hover:to-slate-400 scale-95 hover:scale-100 opacity-70 hover:opacity-90 w-[100px] overflow-hidden'
+                          ? 'bg-blue-200 text-blue-900 hover:-translate-y-3 hover:h-[70px] scale-95 hover:scale-100 w-[100px] h-[50px] overflow-hidden'
+                          : 'bg-slate-300 text-slate-700 hover:-translate-y-3 hover:h-[70px] scale-95 hover:scale-100 w-[100px] h-[50px] overflow-hidden'
                       }
                     `}
                     style={{
-                      marginLeft: isSelected ? '-10px' : (index === 0 && selectedSubcategory === 'all' ? '0' : '0'),
+                      marginLeft: isSelected ? '-10px' : '0',
                       marginRight: isSelected ? '-10px' : '-30px',
                       zIndex: isSelected ? 20 : 10 - index
                     }}
                     title={subcategory.name}
                   >
-                    <span className={isSelected ? '' : 'truncate'}>
+                    <div className={`text-sm font-semibold leading-tight text-center ${isSelected ? '' : 'line-clamp-2'}`}>
                       {subcategory.name}
-                    </span>
-                    {isSelected && tagCount > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-white text-blue-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">
-                        {tagCount}
-                      </span>
+                    </div>
+                    {(isSelected || tagCount > 0) && (
+                      <div className={`text-xs mt-1 ${isSelected ? 'opacity-90' : 'opacity-0 group-hover:opacity-90'}`}>
+                        {tagCount} {tagCount === 1 ? 'tag' : 'tags'}
+                      </div>
                     )}
                   </button>
                 );
