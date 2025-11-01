@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tag, Settings, TrendingUp } from 'lucide-react';
-import { TagManagementModal } from './TagManagementModal';
+import { EnhancedTagManagementModal } from './EnhancedTagManagementModal';
 import { TAG_CATEGORIES } from '../data/taggingCategories';
 import { useTags } from '../hooks/useTags';
 
@@ -46,7 +46,7 @@ export function MyTagsPage() {
   }, [tags]);
 
   const handleCategoryClick = (categoryId: number) => {
-    navigate(`/my-tags/category/${categoryId}`);  // ← Note: /my-tags not /tags
+    navigate(`/my-tags/category/${categoryId}`);
   };
 
   const getCategoryStats = (categoryId: number): CategoryStats => {
@@ -184,7 +184,7 @@ export function MyTagsPage() {
         </div>
       )}
 
-      <TagManagementModal
+      <EnhancedTagManagementModal
         isOpen={showTagManagementModal}
         onClose={() => setShowTagManagementModal(false)}
       />
