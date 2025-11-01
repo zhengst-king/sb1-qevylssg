@@ -1,7 +1,7 @@
 // src/components/EnhancedTagManagementModal.tsx
 // Complete tag management modal with 3 sections
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Upload, Download, FileText, ChevronDown, ChevronUp, Trash2, Tag as TagIcon } from 'lucide-react';
 import { TAG_CATEGORIES, getCategoryById } from '../data/taggingCategories';
 import { useTags } from '../hooks/useTags';
@@ -27,7 +27,8 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
     deleteSubcategory, 
     getVisibleSubcategories,
     getSuggestedSubcategories,
-    loading: subcategoriesLoading 
+    loading: subcategoriesLoading,
+    refetch: refetchSubcategories
   } = useTagSubcategories();
 
   const [activeSection, setActiveSection] = useState<'create' | 'import' | 'subcategories'>('create');
@@ -46,6 +47,33 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [showAddSubcategoryPopup, setShowAddSubcategoryPopup] = useState(false);
   const [newSubcategoryInput, setNewSubcategoryInput] = useState('');
+
+  // Handle Esc key to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        if (showAddSubcategoryPopup) {
+          // Close popup first if it's open
+          setShowAddSubcategoryPopup(false);
+          setNewSubcategoryInput('');
+        } else {
+          // Close main modal
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, showAddSubcategoryPopup, onClose]);
+
+  // Refetch subcategories when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Refetch when modal is closed to ensure parent components see updates
+      refetchSubcategories();
+    }
+  }, [isOpen, refetchSubcategories]);
 
   if (!isOpen) return null;
 
@@ -208,7 +236,15 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        onClick={(e) => {
+          // Close modal when clicking the backdrop (not the modal content)
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
         <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="p-6 border-b border-slate-200">
@@ -603,7 +639,16 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
 
       {/* Add Subcategory Popup */}
       {showAddSubcategoryPopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          onClick={(e) => {
+            // Close popup when clicking the backdrop
+            if (e.target === e.currentTarget) {
+              setShowAddSubcategoryPopup(false);
+              setNewSubcategoryInput('');
+            }
+          }}
+        >
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-900">Add Subcategory</h3>
