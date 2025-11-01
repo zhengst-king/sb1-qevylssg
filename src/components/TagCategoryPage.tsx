@@ -162,7 +162,7 @@ export function TagCategoryPage() {
         {visibleSubcategories.length > 0 && (
           <div className="flex gap-6 mt-6">
             {/* Left Panel with Tabs */}
-            <div className="relative flex-shrink-0 w-44">
+            <div className="relative flex-shrink-0 w-32">
               <div className="space-y-0 pr-1">
                 {/* "All" Tab */}
                 <button
@@ -233,9 +233,6 @@ export function TagCategoryPage() {
                   );
                 })}
               </div>
-              
-              {/* Vertical Border Line */}
-              <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-blue-500 to-indigo-500"></div>
             </div>
 
             {/* Right Content Area */}
