@@ -115,6 +115,14 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
       if (result && typeof result === 'object' && 'success' in result) {
         // New pattern: returns { success, data, error }
         if (result.success) {
+          // Immediately refetch tags to update parent components
+          await refetchTags();
+          
+          // Notify parent component that a tag was created
+          if (onTagCreated) {
+            onTagCreated();
+          }
+          
           // Reset form
           setFormData({
             category_id: defaultCategoryId || 1,
@@ -124,9 +132,6 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
             color: COLLECTION_COLORS[11],
           });
           
-          // Notify parent component
-          onTagCreated?.();
-          
           alert('Tag created successfully!');
         } else {
           console.error('Tag creation failed:', result.error);
@@ -134,6 +139,14 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
         }
       } else {
         // Old pattern: returns Tag object directly
+        // Immediately refetch tags to update parent components
+        await refetchTags();
+        
+        // Notify parent component that a tag was created
+        if (onTagCreated) {
+          onTagCreated();
+        }
+        
         // Reset form
         setFormData({
           category_id: defaultCategoryId || 1,
@@ -142,9 +155,6 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
           description: '',
           color: COLLECTION_COLORS[11],
         });
-        
-        // Notify parent component
-        onTagCreated?.();
         
         alert('Tag created successfully!');
       }
