@@ -236,7 +236,7 @@ export function TagCategoryPage() {
             </div>
             
             {/* Bottom Border - Connected to tabs */}
-            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 w-full" style={{ marginTop: '-2px' }}></div>
+            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 w-full relative" style={{ marginTop: '-2px', zIndex: 150 }}></div>
           </div>
         )}
       </div>
