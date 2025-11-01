@@ -161,7 +161,7 @@ export function TagCategoryPage() {
         {/* Stacked Tabs - Subcategory Filters (File Folder Style) */}
         {visibleSubcategories.length > 0 && (
           <div className="mt-12 relative z-50">
-            <div className="flex items-end justify-start overflow-x-auto gap-0 w-full" style={{ position: 'relative', zIndex: 50 }}>
+            <div className="flex items-end justify-start overflow-x-auto gap-0 w-full pr-8" style={{ position: 'relative', zIndex: 50 }}>
               {/* "All" Tab */}
               <button
                 onClick={() => setSelectedSubcategory('all')}
