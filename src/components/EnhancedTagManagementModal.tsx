@@ -499,13 +499,6 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
             {/* SECTION 3: SUBCATEGORY MANAGEMENT */}
             {activeSection === 'subcategories' && (
               <div className="space-y-4">
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mb-6">
-                  <p className="text-sm text-blue-900">
-                    <strong>Manage Subcategories:</strong> Create custom subcategories for better tag organization. 
-                    Visible subcategories appear by default, while suggested ones can be added as needed.
-                  </p>
-                </div>
-
                 {subcategoriesLoading ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -518,139 +511,191 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
                 ) : (
                   /* 9 Category Tables */
                   TAG_CATEGORIES.map((category) => {
-                  const categorySubs = getSubcategoriesForCategory(category.id);
-                  const isExpanded = expandedCategories.has(category.id);
-                  const visibleCount = categorySubs.filter(s => s.is_visible).length;
-                  const suggestedCount = categorySubs.filter(s => s.is_suggested).length;
-                  const customCount = categorySubs.filter(s => s.is_custom).length;
+                    const categorySubs = getSubcategoriesForCategory(category.id);
+                    const isExpanded = expandedCategories.has(category.id);
+                    const visibleSubs = categorySubs.filter(s => s.is_visible);
+                    const suggestedSubs = categorySubs.filter(s => s.is_suggested);
+                    const customCount = categorySubs.filter(s => s.is_custom).length;
 
-                  return (
-                    <div key={category.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                      {/* Category Header */}
-                      <button
-                        onClick={() => toggleCategory(category.id)}
-                        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{category.icon}</span>
-                          <div className="text-left">
-                            <h3 className="font-bold text-slate-900">{category.name}</h3>
-                            <p className="text-sm text-slate-600">
-                              {visibleCount} visible • {suggestedCount} suggested • {customCount} custom
-                            </p>
+                    return (
+                      <div key={category.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                        {/* Category Header */}
+                        <button
+                          onClick={() => toggleCategory(category.id)}
+                          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{category.icon}</span>
+                            <div className="text-left">
+                              <h3 className="font-bold text-slate-900">{category.name}</h3>
+                              <p className="text-sm text-slate-600">
+                                {visibleSubs.length} visible • {suggestedSubs.length} suggested • {customCount} custom
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronUp className="h-5 w-5 text-slate-600" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-slate-600" />
-                        )}
-                      </button>
-
-                      {/* Expanded Content */}
-                      {isExpanded && (
-                        <div className="px-6 pb-4 border-t border-slate-200">
-                          {/* Add Subcategory Button */}
-                          <div className="py-4">
-                            {showAddSubcategory === category.id ? (
-                              <div className="flex gap-2">
-                                <input
-                                  type="text"
-                                  value={newSubcategoryName}
-                                  onChange={(e) => setNewSubcategoryName(e.target.value)}
-                                  placeholder="New subcategory name..."
-                                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                  maxLength={50}
-                                  autoFocus
-                                />
+                          <div className="flex items-center gap-3">
+                            {/* Add Custom Subcategory Button */}
+                            {isExpanded && (
+                              showAddSubcategory === category.id ? (
+                                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="text"
+                                    value={newSubcategoryName}
+                                    onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                    placeholder="New subcategory..."
+                                    className="px-3 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    maxLength={50}
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCreateSubcategory(category.id);
+                                    }}
+                                    disabled={!newSubcategoryName.trim()}
+                                    className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                  >
+                                    Add
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowAddSubcategory(null);
+                                      setNewSubcategoryName('');
+                                    }}
+                                    className="px-3 py-1 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
                                 <button
-                                  onClick={() => handleCreateSubcategory(category.id)}
-                                  disabled={!newSubcategoryName.trim()}
-                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  Add
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setShowAddSubcategory(null);
-                                    setNewSubcategoryName('');
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowAddSubcategory(category.id);
                                   }}
-                                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                                  className="flex items-center gap-2 px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium text-sm"
                                 >
-                                  Cancel
+                                  <Plus className="h-4 w-4" />
+                                  <span>Add Custom</span>
                                 </button>
-                              </div>
+                              )
+                            )}
+                            {isExpanded ? (
+                              <ChevronUp className="h-5 w-5 text-slate-600" />
                             ) : (
-                              <button
-                                onClick={() => setShowAddSubcategory(category.id)}
-                                className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
-                              >
-                                <Plus className="h-4 w-4" />
-                                <span>Add Custom Subcategory</span>
-                              </button>
+                              <ChevronDown className="h-5 w-5 text-slate-600" />
                             )}
                           </div>
+                        </button>
 
-                          {/* Subcategories List */}
-                          <div className="space-y-2 max-h-96 overflow-y-auto">
-                            {categorySubs.length === 0 ? (
-                              <p className="text-sm text-slate-500 text-center py-4">
-                                No subcategories yet. Add your first one above.
-                              </p>
-                            ) : (
-                              categorySubs.map((sub) => (
-                                <div
-                                  key={sub.id}
-                                  className={`
-                                    flex items-center justify-between px-4 py-2 rounded-lg border
-                                    ${sub.is_visible 
-                                      ? 'bg-green-50 border-green-200' 
-                                      : sub.is_suggested 
-                                        ? 'bg-orange-50 border-orange-200'
-                                        : 'bg-blue-50 border-blue-200'
+                        {/* Expanded Content - Two Column Layout */}
+                        {isExpanded && (
+                          <div className="px-6 pb-4 border-t border-slate-200">
+                            <div className="grid grid-cols-2 gap-6 py-4">
+                              {/* LEFT COLUMN - Visible Subcategories */}
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 mb-3">Visible</h4>
+                                <div 
+                                  className="grid grid-cols-3 gap-2 min-h-[100px] p-3 bg-green-50 rounded-lg border-2 border-dashed border-green-300"
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.add('bg-green-100');
+                                  }}
+                                  onDragLeave={(e) => {
+                                    e.currentTarget.classList.remove('bg-green-100');
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.remove('bg-green-100');
+                                    const subcategoryId = e.dataTransfer.getData('subcategoryId');
+                                    const fromVisible = e.dataTransfer.getData('fromVisible') === 'true';
+                                    
+                                    if (!fromVisible && subcategoryId) {
+                                      // Moving from suggested to visible
+                                      makeSuggestedVisible(subcategoryId);
                                     }
-                                  `}
+                                  }}
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-slate-900">
-                                      {sub.name}
-                                    </span>
-                                    <span className={`
-                                      text-xs px-2 py-0.5 rounded-full
-                                      ${sub.is_visible 
-                                        ? 'bg-green-100 text-green-700' 
-                                        : sub.is_suggested 
-                                          ? 'bg-orange-100 text-orange-700'
-                                          : 'bg-blue-100 text-blue-700'
-                                      }
-                                    `}>
-                                      {sub.is_visible ? 'Visible' : sub.is_suggested ? 'Suggested' : 'Custom'}
-                                    </span>
-                                    {sub.usage_count > 0 && (
-                                      <span className="text-xs text-slate-500">
-                                        {sub.usage_count} {sub.usage_count === 1 ? 'tag' : 'tags'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  
-                                  {sub.is_custom && (
-                                    <button
-                                      onClick={() => handleDeleteSubcategory(sub.id, sub.name)}
-                                      className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                                      title="Delete subcategory"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
+                                  {visibleSubs.length === 0 ? (
+                                    <p className="col-span-3 text-xs text-slate-500 text-center py-4">
+                                      Drag items here
+                                    </p>
+                                  ) : (
+                                    visibleSubs.map((sub) => (
+                                      <div
+                                        key={sub.id}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('subcategoryId', sub.id);
+                                          e.dataTransfer.setData('fromVisible', 'true');
+                                        }}
+                                        className="px-2 py-1.5 bg-white border border-green-300 rounded text-xs font-medium text-slate-900 cursor-move hover:shadow-md transition-shadow flex items-center justify-between"
+                                        title={sub.name}
+                                      >
+                                        <span className="truncate">{sub.name}</span>
+                                        {sub.is_custom && (
+                                          <button
+                                            onClick={() => handleDeleteSubcategory(sub.id, sub.name)}
+                                            className="ml-1 text-red-600 hover:text-red-800"
+                                            title="Delete"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))
                                   )}
                                 </div>
-                              ))
-                            )}
+                              </div>
+
+                              {/* RIGHT COLUMN - Suggested Subcategories */}
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 mb-3">Suggested</h4>
+                                <div 
+                                  className="grid grid-cols-3 gap-2 min-h-[100px] p-3 bg-orange-50 rounded-lg border-2 border-dashed border-orange-300"
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.add('bg-orange-100');
+                                  }}
+                                  onDragLeave={(e) => {
+                                    e.currentTarget.classList.remove('bg-orange-100');
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.currentTarget.classList.remove('bg-orange-100');
+                                    // Suggested column is view-only for now
+                                    // Could implement "hide" functionality here if needed
+                                  }}
+                                >
+                                  {suggestedSubs.length === 0 ? (
+                                    <p className="col-span-3 text-xs text-slate-500 text-center py-4">
+                                      No suggestions
+                                    </p>
+                                  ) : (
+                                    suggestedSubs.map((sub) => (
+                                      <div
+                                        key={sub.id}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          e.dataTransfer.setData('subcategoryId', sub.id);
+                                          e.dataTransfer.setData('fromVisible', 'false');
+                                        }}
+                                        className="px-2 py-1.5 bg-white border border-orange-300 rounded text-xs font-medium text-slate-900 cursor-move hover:shadow-md transition-shadow truncate"
+                                        title={sub.name}
+                                      >
+                                        {sub.name}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}
