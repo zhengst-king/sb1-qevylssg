@@ -1,10 +1,10 @@
 // src/components/TagCategoryPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, Search, Settings, Calendar } from 'lucide-react';
+import { Search, Settings, Calendar } from 'lucide-react';
 import { TAG_CATEGORIES, getCategoryById } from '../data/taggingCategories';
-import { getSubcategoriesByCategory, getVisibleSubcategories } from '../data/taggingSubcategories';
 import { useTags } from '../hooks/useTags';
+import { useTagSubcategories } from '../hooks/useTagSubcategories';
 import { TagCard } from './TagCard';
 import { TagDetailModal } from './TagDetailModal';
 import { EnhancedTagManagementModal } from './EnhancedTagManagementModal';
@@ -14,32 +14,27 @@ export function TagCategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
   const { tags, loading, refetch } = useTags();
+  const { subcategories, getVisibleSubcategories, refetch: refetchSubcategories } = useTagSubcategories();
   
-  const [selectedSubcategory, setSelectedSubcategory] = useState<number | 'all'>('all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [showManagementModal, setShowManagementModal] = useState(false);
   
-  // Callback to refetch tags when a new tag is created
+  // Callback to refetch tags and subcategories when a new tag is created
   const handleTagCreated = () => {
     refetch();
+    refetchSubcategories();
   };
   
   const categoryIdNum = parseInt(categoryId || '0');
   const category = getCategoryById(categoryIdNum);
   
-  // Get all subcategories for this category (both visible and suggested + custom)
-  const allSubcategories = getSubcategoriesByCategory(categoryIdNum);
+  // Get visible subcategories for this category from the hook
   const visibleSubcategories = getVisibleSubcategories(categoryIdNum);
   
   // Filter tags by category
   const categoryTags = tags?.filter(tag => tag.category_id === categoryIdNum) || [];
-  
-  // Get unique subcategories that have tags (including custom ones)
-  const subcategoriesWithTags = React.useMemo(() => {
-    const subcatIds = new Set(categoryTags.map(t => t.subcategory_id));
-    return allSubcategories.filter(sub => subcatIds.has(sub.id));
-  }, [categoryTags, allSubcategories]);
   
   // Filter tags by subcategory and search
   const filteredTags = React.useMemo(() => {
@@ -47,7 +42,9 @@ export function TagCategoryPage() {
     
     // Filter by subcategory
     if (selectedSubcategory !== 'all') {
-      filtered = filtered.filter(t => t.subcategory_id === selectedSubcategory);
+      filtered = filtered.filter(t => 
+        String(t.subcategory_id) === String(selectedSubcategory)
+      );
     }
     
     // Filter by search
@@ -80,7 +77,7 @@ export function TagCategoryPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Category Navigation Tabs */}
       <div className="mb-6 border-b border-slate-200">
-        <div className="flex items-center gap-1 overflow-x-auto pb-2">
+        <div className="flex items-center justify-center gap-1 overflow-x-auto pb-2">
           {/* All Categories Tab */}
           <Link
             to="/my-tags"
@@ -161,20 +158,14 @@ export function TagCategoryPage() {
           </div>
         </div>
         
-        {/* Breadcrumb moved below title row */}
-        <div className="flex items-center text-sm text-slate-600 mb-4 ml-20">
-          <Link to="/my-tags" className="hover:text-blue-600">
-            My Tags
-          </Link>
-          <ChevronRight className="h-4 w-4 mx-2" />
-          <span className="text-slate-900 font-medium">{category.name}</span>
-        </div>
-        
         {/* Visible Subcategories as Filter Labels - Show ALL visible subcategories */}
         {visibleSubcategories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {visibleSubcategories.map((subcategory) => {
-              const tagCount = categoryTags.filter(t => t.subcategory_id === subcategory.id).length;
+              // Count tags matching this subcategory (handle both string and number IDs)
+              const tagCount = categoryTags.filter(t => 
+                String(t.subcategory_id) === String(subcategory.id)
+              ).length;
               
               return (
                 <button
@@ -182,7 +173,7 @@ export function TagCategoryPage() {
                   onClick={() => setSelectedSubcategory(subcategory.id)}
                   className={`
                     px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                    ${selectedSubcategory === subcategory.id
+                    ${String(selectedSubcategory) === String(subcategory.id)
                       ? 'bg-blue-600 text-white shadow-md'
                       : tagCount > 0
                         ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
