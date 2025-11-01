@@ -7,6 +7,7 @@ import { useTags } from '../hooks/useTags';
 import { useContentTags } from '../hooks/useTags';
 import { getCategoryById } from '../data/taggingCategories';
 import type { Tag, TagWithContent } from '../types/tagging';
+import { useTagSubcategories } from '../hooks/useTagSubcategories';
 
 interface TagDetailModalProps {
   tag: Tag;
@@ -21,6 +22,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 }) => {
   const { getTagWithContent, deleteTag, updateTag } = useTags({ autoFetch: false });
   const { removeTagFromContent } = useContentTags({ autoFetch: false });
+  const { subcategories } = useTagSubcategories();
   
   const [tagWithContent, setTagWithContent] = useState<TagWithContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,10 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
   // Get category and subcategory info
   const category = getCategoryById(tag.category_id);
-  const subcategoryName = tag.subcategory?.name || 'Unknown Subcategory';
+
+  // Find subcategory from the subcategories list
+  const subcategory = subcategories?.find(sub => sub.id === tag.subcategory_id);
+  const subcategoryName = subcategory?.name || tag.subcategory?.name || 'Unknown Subcategory';
 
   // Format creation date
   const createdDate = tag.created_at 
