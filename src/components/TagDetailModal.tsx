@@ -86,12 +86,16 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
     }
 
     try {
+      console.log('Updating tag with is_public:', editedIsPublic); // Debug log
+      
       // updateTag returns Tag directly and throws on error
       const updatedTag = await updateTag(tag.id, {
         name: editedName.trim(),
         description: editedDescription.trim() || null,
         is_public: editedIsPublic,
       });
+
+      console.log('Updated tag received:', updatedTag); // Debug log
 
       setEditMode(false);
       // Update the local tag object
