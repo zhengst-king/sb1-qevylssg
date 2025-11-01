@@ -45,6 +45,28 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
     }
   }, [tag.id, isOpen]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentTag(tag); // Update local copy when modal opens
+      loadTagDetails();
+     setEditedName(tag.name);
+      setEditedDescription(tag.description || '');
+      setEditedIsPublic(tag.is_public || false);
+    }
+  }, [tag.id, isOpen]);
+
+  // Add this new useEffect for Esc key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   const loadTagDetails = async () => {
     setLoading(true);
     try {
