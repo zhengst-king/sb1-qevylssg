@@ -168,7 +168,7 @@ export function TagCategoryPage() {
                 <button
                   onClick={() => setSelectedSubcategory('all')}
                   className={`
-                    relative w-full h-12 rounded-l-lg
+                    relative w-full h-14 rounded-l-lg
                     transition-colors duration-300 flex flex-col items-center justify-center
                     border-2 border-r-0 rounded-r-none
                     ${selectedSubcategory === 'all'
@@ -204,7 +204,7 @@ export function TagCategoryPage() {
                       key={subcategory.id}
                       onClick={() => setSelectedSubcategory(subcategory.id)}
                       className={`
-                        relative w-full h-12 rounded-l-lg
+                        relative w-full h-14 rounded-l-lg
                         transition-colors duration-300 flex flex-col items-center justify-center
                         border-2 border-r-0 rounded-r-none
                         ${isSelected
@@ -254,7 +254,7 @@ export function TagCategoryPage() {
               {/* Loading State */}
               {loading && (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-14 w-12 border-b-2 border-blue-600"></div>
                 </div>
               )}
               
