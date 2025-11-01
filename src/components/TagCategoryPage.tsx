@@ -115,7 +115,7 @@ export function TagCategoryPage() {
 
       {/* Header */}
       <div className="mb-3">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center space-x-3">
             <span className="text-5xl">{category.icon}</span>
             <div>
