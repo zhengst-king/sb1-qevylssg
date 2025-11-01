@@ -7,7 +7,7 @@ import { getSubcategoriesByCategory, getVisibleSubcategories } from '../data/tag
 import { useTags } from '../hooks/useTags';
 import { TagCard } from './TagCard';
 import { TagDetailModal } from './TagDetailModal';
-import { TagManagementModal } from './TagManagementModal';
+import { EnhancedTagManagementModal } from './EnhancedTagManagementModal';
 import type { Tag } from '../types/customCollections';
 
 export function TagCategoryPage() {
@@ -211,10 +211,11 @@ export function TagCategoryPage() {
         />
       )}
       
-      {/* Tag Management Modal */}
-      <TagManagementModal
+      {/* Enhanced Tag Management Modal */}
+      <EnhancedTagManagementModal
         isOpen={showManagementModal}
         onClose={() => setShowManagementModal(false)}
+        defaultCategoryId={categoryIdNum}
       />
     </div>
   );
