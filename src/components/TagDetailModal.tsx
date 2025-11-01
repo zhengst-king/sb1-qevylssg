@@ -13,12 +13,14 @@ interface TagDetailModalProps {
   tag: Tag;
   isOpen: boolean;
   onClose: () => void;
+  onTagUpdated?: () => void;
 }
 
 export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   tag,
   isOpen,
   onClose,
+  onTagUpdated,
 }) => {
   const { deleteTag, updateTag } = useTags();
   const { subcategories } = useTagSubcategories();
@@ -72,6 +74,12 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
       setEditMode(false);
       // Update the local tag object
       setCurrentTag(updatedTag);
+
+      // Notify parent component to refresh its tags
+      if (onTagUpdated) {
+        onTagUpdated();
+      }
+    
       // Reload
       await loadTagDetails();
     } catch (error) {
@@ -82,9 +90,9 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
   const handleCancelEdit = () => {
     setEditMode(false);
-    setEditedName(tag.name);
-    setEditedDescription(tag.description || '');
-    setEditedIsPublic(tag.is_public || false);
+    setEditedName(currentTag.name);
+    setEditedDescription(currentTag.description || '');
+    setEditedIsPublic(currentTag.is_public || false);
   };
 
   const handleDeleteTag = async () => {
