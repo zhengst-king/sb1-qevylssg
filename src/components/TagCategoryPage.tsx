@@ -181,7 +181,7 @@ export function TagCategoryPage() {
                     All
                   </div>
                   <div className={`
-                    absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                    absolute bottom-3 -right-2 w-7 h-7 rounded-full flex items-center justify-center
                     text-xs font-bold border-2
                     ${selectedSubcategory === 'all'
                       ? 'bg-white text-blue-600 border-blue-700'
@@ -219,7 +219,7 @@ export function TagCategoryPage() {
                       </div>
                       {tagCount > 0 && (
                         <div className={`
-                          absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center
+                          absolute bottom-3 -right-2 w-7 h-7 rounded-full flex items-center justify-center
                           text-xs font-bold border-2
                           ${isSelected
                             ? 'bg-white text-blue-600 border-blue-700'
