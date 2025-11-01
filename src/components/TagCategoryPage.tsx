@@ -74,7 +74,7 @@ export function TagCategoryPage() {
   }
   
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-visible">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-visible">
       {/* Category Navigation Tabs */}
       <div className="mb-6 border-b border-slate-200">
         <div className="flex items-center justify-center gap-1 overflow-x-auto pb-2">
