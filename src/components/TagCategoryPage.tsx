@@ -240,6 +240,19 @@ export function TagCategoryPage() {
           
             {/* Right Content Area */}
             <div className="flex-1">
+      
+              {/* Subcategory Title Row */}
+              <div className="mb-6 pb-3 border-b border-slate-200">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {selectedSubcategory === 'all' 
+                    ? 'All Subcategories'
+                    : visibleSubcategories.find(s => String(s.id) === String(selectedSubcategory))?.name || 'Unknown'
+                  }
+                </h2>
+              </div>
+              
+              {/* Loading State */}
+              {loading && (
               
               {/* Loading State */}
               {loading && (
