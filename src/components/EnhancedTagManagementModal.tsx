@@ -57,26 +57,74 @@ export const EnhancedTagManagementModal: React.FC<EnhancedTagManagementModalProp
       return;
     }
 
-    const result = await createTag({
+    // Validate subcategory exists
+    const selectedSubcategory = subcategories.find(s => s.id === formData.subcategory_id);
+    if (!selectedSubcategory) {
+      console.error('Selected subcategory not found in subcategories list');
+      console.error('Selected ID:', formData.subcategory_id);
+      console.error('Available subcategories:', subcategories);
+      alert('Invalid subcategory selected. Please try again.');
+      return;
+    }
+
+    console.log('Creating tag with data:', {
       category_id: formData.category_id,
       subcategory_id: formData.subcategory_id,
+      subcategory_details: selectedSubcategory,
       name: formData.name,
       description: formData.description,
       color: formData.color,
     });
 
-    if (result.success) {
-      // Reset form
-      setFormData({
-        category_id: defaultCategoryId || 1,
-        subcategory_id: '',
-        name: '',
-        description: '',
-        color: COLLECTION_COLORS[11],
+    try {
+      const result = await createTag({
+        category_id: formData.category_id,
+        subcategory_id: formData.subcategory_id,
+        name: formData.name,
+        description: formData.description,
+        color: formData.color,
       });
-      alert('Tag created successfully!');
-    } else {
-      alert(`Error: ${result.error || 'Failed to create tag'}`);
+
+      console.log('CreateTag result:', result);
+
+      // Handle both old (throws error) and new (returns result object) patterns
+      if (result && typeof result === 'object' && 'success' in result) {
+        // New pattern: returns { success, data, error }
+        if (result.success) {
+          // Reset form
+          setFormData({
+            category_id: defaultCategoryId || 1,
+            subcategory_id: '',
+            name: '',
+            description: '',
+            color: COLLECTION_COLORS[11],
+          });
+          alert('Tag created successfully!');
+        } else {
+          console.error('Tag creation failed:', result.error);
+          alert(`Error: ${result.error || 'Failed to create tag'}`);
+        }
+      } else {
+        // Old pattern: returns Tag object directly
+        // Reset form
+        setFormData({
+          category_id: defaultCategoryId || 1,
+          subcategory_id: '',
+          name: '',
+          description: '',
+          color: COLLECTION_COLORS[11],
+        });
+        alert('Tag created successfully!');
+      }
+    } catch (error) {
+      // Old pattern: throws error
+      console.error('Error creating tag (caught):', error);
+      console.error('Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        formData: formData,
+      });
+      alert(`Error: ${(error as Error).message || 'Failed to create tag'}`);
     }
   };
 
