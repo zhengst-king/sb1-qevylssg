@@ -170,7 +170,7 @@ export function TagCategoryPage() {
                   transition-all duration-300 flex flex-col items-center justify-center
                   border-t-2 border-l-2 border-r-2 flex-1
                   ${selectedSubcategory === 'all'
-                    ? 'bg-blue-600 text-white shadow-lg -translate-y-3 min-w-[100px] max-w-[140px] h-[65px] border-blue-700'
+                    ? 'bg-blue-600 text-white shadow-lg -translate-y-10 min-w-[100px] max-w-[140px] h-[65px] border-blue-700'
                     : 'bg-slate-300 text-slate-700 hover:-translate-y-10 min-w-[80px] max-w-[120px] h-[56px] border-slate-400'
                   }
                 `}
