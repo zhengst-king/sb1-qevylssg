@@ -158,41 +158,81 @@ export function TagCategoryPage() {
           </div>
         </div>
         
-        {/* Visible Subcategories as Filter Labels - Show ALL visible subcategories */}
+        {/* Stacked Tabs - Subcategory Filters */}
         {visibleSubcategories.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {visibleSubcategories.map((subcategory) => {
-              // Count tags matching this subcategory (handle both string and number IDs)
-              const tagCount = categoryTags.filter(t => 
-                String(t.subcategory_id) === String(subcategory.id)
-              ).length;
-              
-              return (
-                <button
-                  key={subcategory.id}
-                  onClick={() => setSelectedSubcategory(subcategory.id)}
-                  className={`
-                    px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                    ${String(selectedSubcategory) === String(subcategory.id)
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : tagCount > 0
-                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'
-                    }
-                  `}
-                >
-                  {subcategory.name} ({tagCount})
-                </button>
-              );
-            })}
-            {selectedSubcategory !== 'all' && (
+          <div className="mt-4">
+            <div className="flex items-end overflow-x-auto pb-2 gap-0">
+              {/* "All" Tab */}
               <button
                 onClick={() => setSelectedSubcategory('all')}
-                className="px-3 py-1.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+                className={`
+                  relative px-6 py-3 rounded-t-xl font-medium 
+                  transition-all duration-300 whitespace-nowrap
+                  ${selectedSubcategory === 'all'
+                    ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-lg z-20 scale-105 min-w-[120px]'
+                    : 'bg-gradient-to-b from-slate-200 to-slate-300 text-slate-700 hover:from-slate-300 hover:to-slate-400 scale-95 hover:scale-100 opacity-80 hover:opacity-100 w-[80px] overflow-hidden'
+                  }
+                `}
+                style={{
+                  marginLeft: 0,
+                  marginRight: selectedSubcategory === 'all' ? '-10px' : '-30px',
+                  zIndex: selectedSubcategory === 'all' ? 20 : 10
+                }}
               >
-                Clear Filter
+                <span className="truncate">All</span>
+                {selectedSubcategory === 'all' && (
+                  <span className="absolute -top-2 -right-2 bg-white text-blue-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">
+                    {categoryTags.length}
+                  </span>
+                )}
               </button>
-            )}
+              
+              {/* Subcategory Tabs */}
+              {visibleSubcategories.map((subcategory, index) => {
+                const isSelected = String(selectedSubcategory) === String(subcategory.id);
+                const tagCount = categoryTags.filter(t => 
+                  String(t.subcategory_id) === String(subcategory.id)
+                ).length;
+                const hasContent = tagCount > 0;
+                
+                return (
+                  <button
+                    key={subcategory.id}
+                    onClick={() => setSelectedSubcategory(subcategory.id)}
+                    className={`
+                      relative px-6 py-3 rounded-t-xl font-medium 
+                      transition-all duration-300 whitespace-nowrap
+                      ${isSelected
+                        ? hasContent
+                          ? 'bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-lg scale-105 min-w-[180px]'
+                          : 'bg-gradient-to-b from-slate-400 to-slate-500 text-white shadow-lg scale-105 min-w-[180px]'
+                        : hasContent
+                          ? 'bg-gradient-to-b from-blue-100 to-blue-200 text-blue-800 hover:from-blue-200 hover:to-blue-300 scale-95 hover:scale-100 opacity-80 hover:opacity-100 w-[100px] overflow-hidden'
+                          : 'bg-gradient-to-b from-slate-200 to-slate-300 text-slate-600 hover:from-slate-300 hover:to-slate-400 scale-95 hover:scale-100 opacity-70 hover:opacity-90 w-[100px] overflow-hidden'
+                      }
+                    `}
+                    style={{
+                      marginLeft: isSelected ? '-10px' : (index === 0 && selectedSubcategory === 'all' ? '0' : '0'),
+                      marginRight: isSelected ? '-10px' : '-30px',
+                      zIndex: isSelected ? 20 : 10 - index
+                    }}
+                    title={subcategory.name}
+                  >
+                    <span className={isSelected ? '' : 'truncate'}>
+                      {subcategory.name}
+                    </span>
+                    {isSelected && tagCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-white text-blue-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-md">
+                        {tagCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* Bottom Border */}
+            <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-b"></div>
           </div>
         )}
       </div>
