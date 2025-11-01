@@ -2,7 +2,7 @@
 // Modal showing tag details and all associated content
 
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText } from 'lucide-react';
+import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText, Calendar, Tag as TagIcon, Save } from 'lucide-react';
 import { useTags } from '../hooks/useTags';
 import { useContentTags } from '../hooks/useTags';
 import type { Tag, TagWithContent } from '../types/tagging';
@@ -18,16 +18,20 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { getTagWithContent, deleteTag } = useTags({ autoFetch: false });
+  const { getTagWithContent, deleteTag, updateTag } = useTags({ autoFetch: false });
   const { removeTagFromContent } = useContentTags({ autoFetch: false });
   
   const [tagWithContent, setTagWithContent] = useState<TagWithContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [editedName, setEditedName] = useState(tag.name);
+  const [editedDescription, setEditedDescription] = useState(tag.description || '');
 
   useEffect(() => {
     if (isOpen) {
       loadTagDetails();
+      setEditedName(tag.name);
+      setEditedDescription(tag.description || '');
     }
   }, [tag.id, isOpen]);
 
@@ -38,6 +42,32 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
     setLoading(false);
   };
 
+  const handleSaveEdit = async () => {
+    if (!editedName.trim()) {
+      alert('Tag name cannot be empty');
+      return;
+    }
+
+    const result = await updateTag(tag.id, {
+      name: editedName.trim(),
+      description: editedDescription.trim() || null,
+    });
+
+    if (result.success) {
+      setEditMode(false);
+      // Reload to get updated data
+      await loadTagDetails();
+    } else {
+      alert(`Error: ${result.error || 'Failed to update tag'}`);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditMode(false);
+    setEditedName(tag.name);
+    setEditedDescription(tag.description || '');
+  };
+
   const handleDeleteTag = async () => {
     if (window.confirm(
       `Are you sure you want to delete "${tag.name}"? This will remove it from all ${tagWithContent?.content.length || 0} titles.`
@@ -45,14 +75,20 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
       const result = await deleteTag(tag.id);
       if (result.success) {
         onClose();
+      } else {
+        alert(`Error: ${result.error || 'Failed to delete tag'}`);
       }
     }
   };
 
   const handleRemoveFromTitle = async (contentTagId: string, title: string) => {
     if (window.confirm(`Remove "${tag.name}" from "${title}"?`)) {
-      await removeTagFromContent(contentTagId);
-      await loadTagDetails(); // Reload
+      const result = await removeTagFromContent(contentTagId);
+      if (result.success) {
+        await loadTagDetails(); // Reload
+      } else {
+        alert(`Error: ${result.error || 'Failed to remove tag'}`);
+      }
     }
   };
 
@@ -63,6 +99,15 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Format creation date
+  const createdDate = tag.created_at 
+    ? new Date(tag.created_at).toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
+    : 'Unknown';
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -72,67 +117,116 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <div
-                  className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
+                  className="w-6 h-6 rounded-full border-2 border-white shadow-sm flex-shrink-0"
                   style={{ backgroundColor: tag.color }}
                 />
-                <h2 className="text-2xl font-bold text-slate-900">{tag.name}</h2>
+                
+                {editMode ? (
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 focus:outline-none flex-1"
+                    maxLength={100}
+                    autoFocus
+                  />
+                ) : (
+                  <h2 className="text-2xl font-bold text-slate-900">{tag.name}</h2>
+                )}
               </div>
               
               {/* Breadcrumb */}
-              <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
                 <span>{tag.category?.name || 'Category'}</span>
                 <ChevronRight className="h-4 w-4" />
                 <span>{tag.subcategory?.name || 'Subcategory'}</span>
+              </div>
+
+              {/* Stats Row */}
+              <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-2 text-slate-600">
+                  <TagIcon className="h-4 w-4" />
+                  <span>
+                    <span className="font-semibold text-slate-900">{tag.usage_count || 0}</span> uses
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <Calendar className="h-4 w-4" />
+                  <span>Created {createdDate}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600">
+                  <div
+                    className="w-4 h-4 rounded-full border border-slate-300"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                  <span className="font-mono text-xs">{tag.color}</span>
+                </div>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setEditMode(!editMode)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Edit tag"
-              >
-                <Edit2 className="h-5 w-5 text-slate-600" />
-              </button>
-              <button
-                onClick={handleShare}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                title="Share tag"
-              >
-                <Share2 className="h-5 w-5 text-slate-600" />
-              </button>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5 text-slate-600" />
-              </button>
+              {editMode ? (
+                <>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                    title="Save changes"
+                  >
+                    <Save className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="Cancel"
+                  >
+                    <X className="h-5 w-5 text-slate-600" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="Edit tag"
+                  >
+                    <Edit2 className="h-5 w-5 text-slate-600" />
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="Share tag"
+                  >
+                    <Share2 className="h-5 w-5 text-slate-600" />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <X className="h-5 w-5 text-slate-600" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           {/* Description */}
-          {tag.description && (
-            <p className="text-slate-700 bg-slate-50 rounded-lg p-3">
-              {tag.description}
-            </p>
+          {editMode ? (
+            <textarea
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              placeholder="Add a description..."
+              className="w-full text-slate-700 bg-slate-50 rounded-lg p-3 border-2 border-blue-500 focus:outline-none resize-none"
+              rows={3}
+              maxLength={500}
+            />
+          ) : (
+            tag.description && (
+              <p className="text-slate-700 bg-slate-50 rounded-lg p-3">
+                {tag.description}
+              </p>
+            )
           )}
-
-          {/* Stats */}
-          <div className="flex items-center gap-6 mt-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: tag.color }}
-              />
-              <span className="text-slate-600">Color: {tag.color}</span>
-            </div>
-            <div className="text-slate-600">
-              <span className="font-semibold text-slate-900">
-                {tagWithContent?.content.length || 0}
-              </span> titles tagged
-            </div>
-          </div>
         </div>
 
         {/* Content List */}
@@ -159,7 +253,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
               
               {tagWithContent.content.map((item) => (
                 <div
-                  key={`${item.content_type}-${item.id}`}
+                  key={item.content_tag_id}
                   className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors group"
                 >
                   {/* Poster */}
@@ -183,7 +277,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                       {item.title} {item.year && `(${item.year})`}
                     </h4>
                     
-                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                    <div className="flex items-center gap-3 text-sm text-slate-600 mb-1">
                       <span className="capitalize">{item.content_type}</span>
                       {item.user_rating && (
                         <div className="flex items-center gap-1">
@@ -194,7 +288,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                     </div>
 
                     {item.user_notes && (
-                      <p className="text-sm text-slate-600 mt-1 line-clamp-2">
+                      <p className="text-sm text-slate-600 line-clamp-2">
                         {item.user_notes}
                       </p>
                     )}
@@ -202,12 +296,8 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
                   {/* Remove Button */}
                   <button
-                    onClick={() => {
-                      // Find the content_tag id
-                      // This is a simplified version - you'd need the actual content_tag id
-                      handleRemoveFromTitle('content-tag-id', item.title);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-lg transition-all"
+                    onClick={() => handleRemoveFromTitle(item.content_tag_id, item.title)}
+                    className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                     title="Remove from this title"
                   >
                     <X className="h-4 w-4 text-red-600" />
@@ -222,7 +312,8 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <button
             onClick={handleDeleteTag}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            disabled={editMode}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="h-4 w-4 inline mr-2" />
             Delete Tag Entirely
