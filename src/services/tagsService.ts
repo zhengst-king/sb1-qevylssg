@@ -140,6 +140,10 @@ class TagsService {
       cleanedUpdates.color = updates.color;
     }
 
+    if (updates.is_public !== undefined) {
+      cleanedUpdates.is_public = updates.is_public;
+    }
+
     const { data, error } = await supabase
       .from('tags')
       .update(cleanedUpdates)
