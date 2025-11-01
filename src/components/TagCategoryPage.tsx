@@ -170,7 +170,7 @@ export function TagCategoryPage() {
                   className={`
                     relative w-full h-10 rounded-l-lg
                     transition-colors duration-300 flex flex-col items-center justify-center
-                    border-2 border-r-0
+                    border-2 border-r-0 rounded-r-none
                     ${selectedSubcategory === 'all'
                       ? 'bg-blue-600 text-white border-blue-700'
                       : 'bg-yellow-50 text-slate-800 hover:bg-yellow-100 border-yellow-300'
@@ -206,7 +206,7 @@ export function TagCategoryPage() {
                       className={`
                         relative w-full h-10 rounded-l-lg
                         transition-colors duration-300 flex flex-col items-center justify-center
-                        border-2 border-r-0
+                        border-2 border-r-0 rounded-r-none
                         ${isSelected
                           ? 'bg-blue-600 text-white border-blue-700'
                           : 'bg-yellow-50 text-slate-800 hover:bg-yellow-100 border-yellow-300'
