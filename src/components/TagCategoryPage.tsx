@@ -302,6 +302,7 @@ export function TagCategoryPage() {
           tag={selectedTag}
           isOpen={!!selectedTag}
           onClose={() => setSelectedTag(null)}
+          onTagUpdated={() => refetch()}
         />
       )}
       
