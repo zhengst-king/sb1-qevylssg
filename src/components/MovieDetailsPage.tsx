@@ -32,6 +32,12 @@ import { useCustomCollections } from '../hooks/useCustomCollections';
 import { customCollectionsService } from '../services/customCollectionsService';
 import type { CustomCollection } from '../types/customCollections';
 import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
+import { useTags, useContentTags } from '../hooks/useTags';
+import { useTagSubcategories } from '../hooks/useTagSubcategories';
+import { tagsService } from '../services/tagsService';
+import { contentTagsService } from '../services/contentTagsService';
+import { getCategoryById } from '../data/taggingCategories';
+import type { Tag } from '../types/customCollections';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -69,6 +75,32 @@ export function MovieDetailsPage({
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
   const [selectedPersonName, setSelectedPersonName] = useState<string>('');
   const [selectedPersonType, setSelectedPersonType] = useState<'cast' | 'crew'>('cast');
+
+  const [selectedCollectionToView, setSelectedCollectionToView] = useState<CustomCollection | null>(null);
+
+  // Tagging state
+  const { tags } = useTags();
+  const { subcategories } = useTagSubcategories();
+  const { contentTags, addTag, removeTag: removeContentTag, refetch: refetchContentTags } = useContentTags(
+    movie.id ? parseInt(movie.id) : null,
+  'movie'
+  );
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const [tagSearchQuery, setTagSearchQuery] = useState('');
+  const [selectedTagTab, setSelectedTagTab] = useState<'my-tags' | 'create-new' | 'community'>('my-tags');
+  const [addingTag, setAddingTag] = useState(false);
+  const [loadingTags, setLoadingTags] = useState(false);
+
+  // Create new tag state
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagCategory, setNewTagCategory] = useState<number>(1);
+  const [newTagSubcategory, setNewTagSubcategory] = useState<number>(1);
+  const [newTagDescription, setNewTagDescription] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3B82F6');
+
+  // Community tags state
+  const [communityTags, setCommunityTags] = useState<Tag[]>([]);
+  const [loadingCommunityTags, setLoadingCommunityTags] = useState(false);
 
   // Custom Collections state
   const { collections: customCollections } = useCustomCollections();
@@ -306,6 +338,149 @@ export function MovieDetailsPage({
       setAddingToCollections(false);
     }
   };
+
+  const handleRemoveFromCollection = async (collectionId: string) => {
+    try {
+      if (movie.id) {
+        await customCollectionsService.removeItemFromCollection(movie.id, collectionId);
+        const updatedCollections = await customCollectionsService.getCollectionsForItem(movie.id);
+        setMovieCollections(updatedCollections);
+      }
+    } catch (error) {
+      console.error('Error removing from collection:', error);
+      alert('Failed to remove from collection');
+    }
+  };
+
+  const handleAddExistingTag = async (tagId: string) => {
+    setAddingTag(true);
+    try {
+      await addTag(tagId);
+      await refetchContentTags();
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      alert('Failed to add tag');
+    } finally {
+      setAddingTag(false);
+    }
+  };
+
+  const handleCreateAndAddTag = async () => {
+    if (!newTagName.trim()) {
+      alert('Tag name is required');
+      return;
+    }
+
+    setAddingTag(true);
+    try {
+      // Create the tag
+      const newTag = await tagsService.createTag({
+        name: newTagName.trim(),
+        description: newTagDescription.trim() || null,
+        category_id: newTagCategory,
+        subcategory_id: newTagSubcategory,
+        color: newTagColor,
+      });
+
+      // Add it to this movie
+      if (movie.id) {
+        await contentTagsService.addTagToContent(newTag.id, parseInt(movie.id), 'movie');
+        await refetchContentTags();
+      }
+
+      // Reset form
+      setNewTagName('');
+      setNewTagDescription('');
+      setNewTagColor('#3B82F6');
+      setSelectedTagTab('my-tags');
+      
+      alert(`Tag "${newTag.name}" created and added!`);
+    } catch (error) {
+      console.error('Error creating tag:', error);
+      alert('Failed to create tag');
+    } finally {
+      setAddingTag(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagId: string) => {
+    try {
+      await removeContentTag(tagId);
+      await refetchContentTags();
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      alert('Failed to remove tag');
+    }
+  };
+
+  const loadCommunityTags = async () => {
+    if (!movie.id) return;
+    
+    setLoadingCommunityTags(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get public tags used by other users for this movie
+      const { data, error } = await supabase
+        .from('content_tags')
+        .select(`
+          tag_id,
+          tags!inner(
+            id,
+            name,
+            description,
+            color,
+            category_id,
+            subcategory_id,
+            is_public,
+            user_id
+          )
+        `)
+        .eq('content_id', movie.id)
+        .eq('content_type', 'movie')
+        .eq('tags.is_public', true)
+        .neq('tags.user_id', user.id);
+
+      if (error) throw error;
+
+      // Extract unique tags
+      const uniqueTags = new Map<string, Tag>();
+      data?.forEach((item: any) => {
+        if (item.tags && !uniqueTags.has(item.tags.id)) {
+          uniqueTags.set(item.tags.id, item.tags);
+        }
+      });
+
+      setCommunityTags(Array.from(uniqueTags.values()));
+    } catch (error) {
+      console.error('Error loading community tags:', error);
+    } finally {
+      setLoadingCommunityTags(false);
+    }
+  };
+
+  // Load community tags when switching to that tab
+  useEffect(() => {
+    if (selectedTagTab === 'community' && showTagSelector) {
+      loadCommunityTags();
+    }
+  }, [selectedTagTab, showTagSelector]);
+
+  // Filter tags based on search
+  const filteredTags = tags.filter(tag => 
+    tag.name.toLowerCase().includes(tagSearchQuery.toLowerCase()) ||
+    tag.description?.toLowerCase().includes(tagSearchQuery.toLowerCase())
+  );
+
+  // Group tags by category
+  const tagsByCategory = filteredTags.reduce((acc, tag) => {
+    if (!acc[tag.category_id]) {
+      acc[tag.category_id] = [];
+    }
+    acc[tag.category_id].push(tag);
+    return acc;
+  }, {} as Record<number, Tag[]>);
 
   return (
     <div className="flex flex-col h-full bg-white">
