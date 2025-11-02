@@ -1566,7 +1566,7 @@ export function EnhancedEpisodesBrowserPage({
       )}
 
       {/* ✅ NEW: Tag Selector Modal */}
-      {showTagSelector && series.id && (
+      {showTagSelector && series.id && !isNaN(parseInt(series.id)) && (
         <TagSelectorModal
           isOpen={showTagSelector}
           onClose={() => setShowTagSelector(false)}
