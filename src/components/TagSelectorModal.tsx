@@ -75,6 +75,14 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
 
     setAddingTag(true);
     try {
+      console.log('[TagSelector] Creating tag with:', {
+        name: newTagName.trim(),
+        description: newTagDescription.trim() || null,
+        category_id: newTagCategory,
+        subcategory_id: newTagSubcategory,
+        color: newTagColor,
+      });
+
       // Create the tag
       const newTag = await tagsService.createTag({
         name: newTagName.trim(),
@@ -84,12 +92,25 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
         color: newTagColor,
       });
 
+      console.log('[TagSelector] Tag created successfully:', newTag);
+
+      if (!newTag || !newTag.id) {
+        throw new Error('Tag creation did not return a valid tag object');
+      }
+
       // Add it to this content
+      console.log('[TagSelector] Adding tag to content:', {
+        tagId: newTag.id,
+        contentId,
+        contentType
+      });
+
       await contentTagsService.addTagToContent(newTag.id, contentId, contentType);
+      console.log('[TagSelector] Tag added to content successfully');
       
       // Refresh both the content tags AND the full tags list
       await refetchContentTags();
-      await refetchTags(); // ✅ ADD THIS LINE
+      await refetchTags();
 
       // Reset form and return to browse view
       setNewTagName('');
@@ -104,8 +125,12 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
       if (onTagsUpdated) onTagsUpdated();
       alert(`Tag "${newTag.name}" created and added!`);
     } catch (error) {
-      console.error('Error creating tag:', error);
-      alert('Failed to create tag');
+      console.error('[TagSelector] Error creating tag:', error);
+      console.error('[TagSelector] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      alert(`Failed to create tag: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setAddingTag(false);
     }
