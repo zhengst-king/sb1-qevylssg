@@ -2,12 +2,13 @@
 // Modal showing tag details and all associated content
 
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText, Calendar, Tag as TagIcon, Save, Lock, Globe } from 'lucide-react';
+import { X, Edit2, Share2, Trash2, ChevronRight, Star, FileText, Calendar, Tag as TagIcon, Save, Lock, Globe, Download, Copy, Check } from 'lucide-react';
 import { useTags } from '../hooks/useTags';
 import { useContentTags } from '../hooks/useTags';
 import { getCategoryById } from '../data/taggingCategories';
 import type { Tag, TagWithContent } from '../types/tagging';
 import { useTagSubcategories } from '../hooks/useTagSubcategories';
+import { tagsService } from '../services/tagsService';
 
 interface TagDetailModalProps {
   tag: Tag;
@@ -34,6 +35,8 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   const [editedName, setEditedName] = useState(tag.name);
   const [editedDescription, setEditedDescription] = useState(tag.description || '');
   const [editedIsPublic, setEditedIsPublic] = useState(tag.is_public || false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,35 +48,30 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
     }
   }, [tag.id, isOpen]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentTag(tag); // Update local copy when modal opens
-      loadTagDetails();
-     setEditedName(tag.name);
-      setEditedDescription(tag.description || '');
-      setEditedIsPublic(tag.is_public || false);
-    }
-  }, [tag.id, isOpen]);
-
   // Add this new useEffect for Esc key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        if (showShareMenu) {
+          setShowShareMenu(false);
+        } else {
+          onClose();
+        }
       }
     };
 
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, showShareMenu, onClose]);
 
   const loadTagDetails = async () => {
     setLoading(true);
     try {
-      // For now, just set empty content since getTagWithContent doesn't exist yet
-      setTagWithContent({ ...tag, content: [] } as TagWithContent);
+      const data = await tagsService.getTagWithContent(tag.id);
+      setTagWithContent(data);
     } catch (error) {
       console.error('Error loading tag details:', error);
+      setTagWithContent({ ...tag, content: [] } as TagWithContent);
     } finally {
       setLoading(false);
     }
@@ -139,14 +137,43 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
   const handleRemoveFromTitle = async (contentTagId: string, title: string) => {
     if (window.confirm(`Remove "${currentTag.name}" from "${title}"?`)) {
       try {
-        // This functionality needs to be implemented in the service layer
-        // For now, just show a message
-        alert('Remove from title functionality coming soon');
-        // await loadTagDetails(); // Reload after implementation
+        await tagsService.removeTagFromContent(contentTagId);
+        await loadTagDetails(); // Reload to update the list
       } catch (error) {
         console.error('Error removing tag:', error);
         alert(`Error: ${(error as Error).message || 'Failed to remove tag'}`);
       }
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    try {
+      const exportData = await tagsService.exportTag(tag.id);
+      await navigator.clipboard.writeText(exportData);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      alert('Failed to copy to clipboard');
+    }
+  };
+
+  const handleDownloadJSON = async () => {
+    try {
+      const exportData = await tagsService.exportTag(tag.id);
+      const blob = new Blob([exportData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tag-${currentTag.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setShowShareMenu(false);
+    } catch (error) {
+      console.error('Error downloading JSON:', error);
+      alert('Failed to download tag data');
     }
   };
 
@@ -281,13 +308,44 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
                   >
                     <Edit2 className="h-5 w-5 text-slate-600" />
                   </button>
-                  <button
-                    onClick={handleShare}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                    title="Share tag"
-                  >
-                    <Share2 className="h-5 w-5 text-slate-600" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowShareMenu(!showShareMenu)}
+                      className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                      title="Share tag"
+                    >
+                      <Share2 className="h-5 w-5 text-slate-600" />
+                    </button>
+                    
+                    {/* Share Menu Dropdown */}
+                    {showShareMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10">
+                        <button
+                          onClick={handleCopyToClipboard}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="h-4 w-4 text-green-600" />
+                              <span className="text-green-600">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4" />
+                              <span>Copy as JSON</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleDownloadJSON}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download JSON</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={onClose}
                     className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
