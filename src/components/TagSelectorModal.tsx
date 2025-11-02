@@ -1,7 +1,7 @@
 // src/components/TagSelectorModal.tsx
 // Reusable modal for adding tags to movies or TV episodes
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 import { useTags, useContentTags } from '../hooks/useTags';
 import { useTagSubcategories } from '../hooks/useTagSubcategories';
@@ -42,9 +42,32 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
   // Create new tag state
   const [newTagName, setNewTagName] = useState('');
   const [newTagCategory, setNewTagCategory] = useState<number>(1);
-  const [newTagSubcategory, setNewTagSubcategory] = useState<number>(1);
+  const [newTagSubcategory, setNewTagSubcategory] = useState<number>(() => {
+    // Initialize with the first visible subcategory of category 1
+    const firstSubcat = subcategories?.find(s => s.category_id === 1 && s.is_visible);
+    return firstSubcat?.id || 1;
+  });
   const [newTagDescription, setNewTagDescription] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
+
+  // Ensure subcategory is valid when component loads or subcategories change
+  useEffect(() => {
+    if (subcategories && subcategories.length > 0) {
+      const validSubcat = subcategories.find(
+        s => s.id === newTagSubcategory && s.category_id === newTagCategory && s.is_visible
+      );
+      
+      if (!validSubcat) {
+        // Current subcategory is invalid, select the first valid one for this category
+        const firstValid = subcategories.find(
+          s => s.category_id === newTagCategory && s.is_visible
+        );
+        if (firstValid) {
+          setNewTagSubcategory(firstValid.id);
+        }
+      }
+    }
+  }, [subcategories, newTagCategory]);
 
   const handleClose = () => {
     setShowCreateNewForm(false);
