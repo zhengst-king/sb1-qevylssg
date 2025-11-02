@@ -127,7 +127,7 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
       }}
     >
       <div 
-        className="bg-white rounded-xl max-w-6xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl max-w-6xl w-full max-h-[92vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -286,7 +286,7 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
             /* 3-Column Tag Browser */
             <div className="space-y-6">
               {/* 3 Columns */}
-              <div className="grid grid-cols-3 gap-4" style={{ height: '400px' }}>
+              <div className="grid gap-4" style={{ height: '520px', gridTemplateColumns: '1fr 1fr 2fr' }}>
                 {/* Column 1: Categories */}
                 <div className="border-2 border-slate-200 rounded-lg overflow-hidden flex flex-col">
                   <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
@@ -334,13 +334,12 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
                   <div className="flex-1 overflow-y-auto p-2">
                     {selectedDropdownCategory ? (
                       subcategories
-                        ?.filter(s => s.category_id === selectedDropdownCategory)
+                        ?.filter(s => s.category_id === selectedDropdownCategory && s.is_visible)
                         .map(subcat => {
                           const subcatTags = tags.filter(
                             t => t.category_id === selectedDropdownCategory && t.subcategory_id === subcat.id
                           );
-                          if (subcatTags.length === 0) return null;
-                          
+                                                    
                           return (
                             <button
                               key={subcat.id}
@@ -366,10 +365,25 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
 
                 {/* Column 3: Tags */}
                 <div className="border-2 border-slate-200 rounded-lg overflow-hidden flex flex-col">
-                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-200">
+                  <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                     <h4 className="font-semibold text-slate-900">
                       {selectedDropdownSubcategory ? 'Tags' : 'Select a subcategory'}
                     </h4>
+                    {selectedDropdownCategory && selectedDropdownSubcategory && (
+                      <button
+                        onClick={() => {
+          setNewTagCategory(selectedDropdownCategory);
+          setNewTagSubcategory(selectedDropdownSubcategory);
+          setShowCreateNewForm(true);
+        }}
+                        className="p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        title="Create new tag in this category/subcategory"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   <div className="flex-1 overflow-y-auto p-2">
                     {selectedDropdownCategory && selectedDropdownSubcategory ? (
