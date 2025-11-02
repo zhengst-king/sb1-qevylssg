@@ -182,7 +182,7 @@ export function TagCategoryPage() {
                   </div>
                   <div className={`
                     absolute bottom-3 -right-1 w-7 h-7 rounded-full flex items-center justify-center
-                    text-xs font-bold border-2
+                    text-xs font-bold border-2 bg-opacity-100
                     ${selectedSubcategory === 'all'
                       ? 'bg-white text-blue-600 border-blue-700'
                       : 'bg-blue-600 text-white border-blue-700'
@@ -220,7 +220,7 @@ export function TagCategoryPage() {
                       {tagCount > 0 && (
                         <div className={`
                           absolute bottom-3 -right-1 w-7 h-7 rounded-full flex items-center justify-center
-                          text-xs font-bold border-2
+                          text-xs font-bold border-2 bg-opacity-100
                           ${isSelected
                             ? 'bg-white text-blue-600 border-blue-700'
                             : 'bg-blue-600 text-white border-blue-700'
