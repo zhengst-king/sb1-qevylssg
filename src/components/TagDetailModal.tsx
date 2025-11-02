@@ -202,7 +202,7 @@ export const TagDetailModal: React.FC<TagDetailModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[300] p-4"
       onClick={(e) => {
         // Only close if clicking the backdrop itself, not the modal content
         if (e.target === e.currentTarget) {
