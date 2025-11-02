@@ -655,27 +655,33 @@ export function MovieDetailsPage({
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             {/* Header with Tabs and Add Button */}
             <div className="flex items-center justify-between mb-4">
-              {/* Tabs - styled like Cast/Crew tabs */}
-              <div className="flex items-center space-x-1 bg-slate-100 rounded-lg p-1">
+              {/* Tabs - styled exactly like Cast/Crew tabs */}
+              <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setSelectedTagTab('my-tags')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center space-x-2 px-6 py-2.5 rounded-full font-medium transition-all ${
                     selectedTagTab === 'my-tags'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  My Tags
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  <span>My Tags</span>
                 </button>
                 <button
                   onClick={() => setSelectedTagTab('shared-tags')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center space-x-2 px-6 py-2.5 rounded-full font-medium transition-all ${
                     selectedTagTab === 'shared-tags'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
-                  Shared Tags
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <span>Shared Tags</span>
                 </button>
               </div>
 
@@ -704,75 +710,52 @@ export function MovieDetailsPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {contentTags.map((tag) => {
                     const category = getCategoryById(tag.category_id);
-                    const isExpanded = expandedTags.has(tag.id);
                     
                     return (
                       <div
                         key={tag.id}
-                        className="group flex flex-col border border-slate-200 hover:border-blue-300 rounded-lg transition-all overflow-hidden"
+                        className="group relative flex items-center space-x-2 px-3 py-2 border border-slate-200 hover:border-blue-300 rounded-lg transition-all"
                         style={{ backgroundColor: `${tag.color}08` }}
+                        title={tag.description || tag.name}
                       >
-                        {/* Tag Header */}
-                        <div className="flex items-center space-x-2 px-3 py-2">
-                          <div 
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: tag.color }}
-                          />
-                          <span className="text-xs text-slate-500">{category?.icon}</span>
-                          <span className="font-medium text-slate-900 text-sm flex-1 truncate">
-                            {tag.name}
-                          </span>
+                        {/* Color Dot */}
+                        <div 
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        
+                        {/* Category Icon */}
+                        <span className="text-xs flex-shrink-0">{category?.icon}</span>
+                        
+                        {/* Tag Name - Allow 2 lines */}
+                        <span className="font-medium text-slate-900 text-sm flex-1 line-clamp-2 min-w-0">
+                          {tag.name}
+                        </span>
+                        
+                        {/* Action Icons */}
+                        <div className="flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          {/* Tag Details Icon */}
+                          <button
+                            onClick={() => handleOpenTagDetails(tag)}
+                            className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                            title="View tag details"
+                          >
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                          </button>
                           
-                          {/* Action Icons */}
-                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {/* Tag Details Icon */}
-                            <button
-                              onClick={() => handleOpenTagDetails(tag)}
-                              className="text-slate-400 hover:text-blue-600 transition-colors"
-                              title="View tag details"
-                            >
-                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                              </svg>
-                            </button>
-                            
-                            {/* Expand/Collapse Icon */}
-                            {tag.description && (
-                              <button
-                                onClick={() => handleToggleTagExpand(tag.id)}
-                                className="text-slate-400 hover:text-slate-600 transition-colors"
-                                title={isExpanded ? "Collapse" : "Expand"}
-                              >
-                                <svg 
-                                  className={`h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                  fill="none" 
-                                  viewBox="0 0 24 24" 
-                                  stroke="currentColor"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                            )}
-                            
-                            {/* Remove Icon */}
-                            <button
-                              onClick={() => handleRemoveTag(tag.id)}
-                              className="text-slate-400 hover:text-red-600 transition-colors"
-                              title="Remove tag"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          {/* Remove Icon */}
+                          <button
+                            onClick={() => handleRemoveTag(tag.id)}
+                            className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                            title="Remove tag"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </div>
 
-                        {/* Expanded Description */}
-                        {isExpanded && tag.description && (
-                          <div className="px-3 py-2 border-t border-slate-200 bg-white">
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                              {tag.description}
-                            </p>
-                          </div>
-                        )}
+                        {/* Tooltip for description on hover - using title attribute above */}
                       </div>
                     );
                   })}
