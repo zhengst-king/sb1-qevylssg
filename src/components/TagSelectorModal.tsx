@@ -96,6 +96,13 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
       return;
     }
 
+    // Validate contentId
+    if (!contentId || isNaN(contentId)) {
+      alert('Invalid content ID. Cannot add tag to this content.');
+      console.error('[TagSelector] Invalid contentId:', contentId);
+      return;
+    }
+
     setAddingTag(true);
     try {
       console.log('[TagSelector] Creating tag with:', {
