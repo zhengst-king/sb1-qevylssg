@@ -1065,6 +1065,9 @@ export function MovieDetailsPage({
           contentId={parseInt(movie.id)}
           contentType="movie"
           contentTitle={movie.title}
+          onTagsUpdated={() => {
+            refetchContentTags();
+          }}
         />
       )}
     </div>
