@@ -76,8 +76,6 @@ export function MovieDetailsPage({
   const [selectedPersonName, setSelectedPersonName] = useState<string>('');
   const [selectedPersonType, setSelectedPersonType] = useState<'cast' | 'crew'>('cast');
 
-  const [selectedCollectionToView, setSelectedCollectionToView] = useState<CustomCollection | null>(null);
-
   // Tagging state
   const { tags } = useTags();
   const { subcategories } = useTagSubcategories();
