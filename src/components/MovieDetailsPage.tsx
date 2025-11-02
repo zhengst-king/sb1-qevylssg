@@ -1058,7 +1058,7 @@ export function MovieDetailsPage({
       )}
 
       {/* Tag Selector Modal */}
-      {showTagSelector && movie.id && (
+      {showTagSelector && movie.id && !isNaN(parseInt(movie.id)) && (
         <TagSelectorModal
           isOpen={showTagSelector}
           onClose={() => setShowTagSelector(false)}
