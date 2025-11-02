@@ -650,7 +650,7 @@ export function MovieDetailsPage({
           </div>
         </div>
 
-        {/* ✅ ENHANCED: TAGS SECTION - Between Details and User Actions */}
+        {/* ✅ {/* ✅ ENHANCED: TAGS SECTION - Between Details and User Actions */}
         <div className="max-w-6xl mx-auto px-6 pb-4">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             {/* Header with Tabs and Add Button */}
