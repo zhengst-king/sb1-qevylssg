@@ -469,6 +469,99 @@ class TagsService {
       color: originalTag.color
     });
   }
+
+  /**
+   * Get a tag with all its associated content (movies/TV shows)
+   */
+  async getTagWithContent(tagId: string): Promise<any> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Get the tag
+    const tag = await this.getTagById(tagId);
+
+    // Get all content tagged with this tag
+    const { data: contentTags, error } = await supabase
+      .from('content_tags')
+      .select('id, content_id, content_type, created_at')
+      .eq('tag_id', tagId)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // For each content_tag, get the movie/TV details
+    const contentWithDetails = await Promise.all(
+      (contentTags || []).map(async (ct) => {
+        // Get from movies table
+        const { data: movie } = await supabase
+          .from('movies')
+          .select('title, poster_path, tmdb_id, user_rating, user_notes, release_date')
+          .eq('id', ct.content_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (movie) {
+          return {
+            content_tag_id: ct.id,
+            content_type: ct.content_type,
+            title: movie.title,
+            poster_path: movie.poster_path,
+            year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
+            user_rating: movie.user_rating,
+            user_notes: movie.user_notes,
+          };
+        }
+
+        return null;
+      })
+    );
+
+    // Filter out nulls
+    const validContent = contentWithDetails.filter(c => c !== null);
+
+    return {
+      ...tag,
+      content: validContent
+    };
+  }
+
+  /**
+   * Remove a tag from a specific piece of content
+   */
+  async removeTagFromContent(contentTagId: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('content_tags')
+      .delete()
+      .eq('id', contentTagId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Export tag as JSON for sharing
+   */
+  async exportTag(tagId: string): Promise<string> {
+    const tagWithContent = await this.getTagWithContent(tagId);
+    
+    const exportData = {
+      tag: {
+        name: tagWithContent.name,
+        description: tagWithContent.description,
+        color: tagWithContent.color,
+        category_id: tagWithContent.category_id,
+        subcategory_id: tagWithContent.subcategory_id,
+      },
+      content_count: tagWithContent.content.length,
+      exported_at: new Date().toISOString(),
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  }
 }
 
 export const tagsService = new TagsService();
