@@ -84,10 +84,11 @@ export function MovieDetailsPage({
   'movie'
   );
   const [showTagSelector, setShowTagSelector] = useState(false);
-  const [selectedTagTab, setSelectedTagTab] = useState<'browse' | 'create-new'>('browse');
   const [addingTag, setAddingTag] = useState(false);
-  const [selectedBrowseCategory, setSelectedBrowseCategory] = useState<number>(1);
-  const [selectedBrowseSubcategory, setSelectedBrowseSubcategory] = useState<number | null>(null);
+  const [showCreateNewForm, setShowCreateNewForm] = useState(false);
+  const [dropdownLevel, setDropdownLevel] = useState<'closed' | 'category' | 'subcategory' | 'tag'>('closed');
+  const [selectedDropdownCategory, setSelectedDropdownCategory] = useState<number | null>(null);
+  const [selectedDropdownSubcategory, setSelectedDropdownSubcategory] = useState<number | null>(null);
   const [loadingTags, setLoadingTags] = useState(false);
 
   // Create new tag state
@@ -1058,6 +1059,8 @@ export function MovieDetailsPage({
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowTagSelector(false);
+              setShowCreateNewForm(false);
+              setDropdownLevel('closed');
             }
           }}
         >
@@ -1067,10 +1070,12 @@ export function MovieDetailsPage({
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h3 className="text-xl font-bold text-slate-900">Add Tags</h3>
+              <h3 className="text-xl font-bold text-slate-900">Add Tags to "{movie.title}"</h3>
               <button
                 onClick={() => {
                   setShowTagSelector(false);
+                  setShowCreateNewForm(false);
+                  setDropdownLevel('closed');
                 }}
                 className="text-slate-400 hover:text-slate-600 transition-colors"
               >
@@ -1078,50 +1083,50 @@ export function MovieDetailsPage({
               </button>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-slate-200">
-              <button
-                onClick={() => setSelectedTagTab('browse')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  selectedTagTab === 'browse'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Browse Tags
-              </button>
-              <button
-                onClick={() => setSelectedTagTab('create-new')}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  selectedTagTab === 'create-new'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Create New Tag
-              </button>
-            </div>
-
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {/* Browse Tags Tab - 3 Level Selection */}
-              {selectedTagTab === 'browse' && (
-                <div className="space-y-6">
-                  {tags.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-600 mb-2">No tags yet</p>
-                      <p className="text-sm text-slate-500">
-                        Create your first tag in the "Create New Tag" tab
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Level 1: Category Selection */}
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-3">
-                          1. Select Category
-                        </label>
-                        <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-4">
+                {/* 3-Level Dropdown Selector */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setDropdownLevel(dropdownLevel === 'closed' ? 'category' : 'closed');
+                      setSelectedDropdownCategory(null);
+                      setSelectedDropdownSubcategory(null);
+                    }}
+                    className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-lg hover:border-blue-400 transition-colors flex items-center justify-between text-left"
+                  >
+                    <span className="text-slate-700 font-medium">
+                      {selectedDropdownSubcategory && selectedDropdownCategory ? (
+                        <>
+                          {getCategoryById(selectedDropdownCategory)?.icon} {getCategoryById(selectedDropdownCategory)?.name} 
+                          {' › '}
+                          {subcategories?.find(s => s.id === selectedDropdownSubcategory)?.name}
+                        </>
+                      ) : selectedDropdownCategory ? (
+                        <>
+                          {getCategoryById(selectedDropdownCategory)?.icon} {getCategoryById(selectedDropdownCategory)?.name}
+                        </>
+                      ) : (
+                        'Browse Tags'
+                      )}
+                    </span>
+                    <svg 
+                      className={`h-5 w-5 text-slate-400 transition-transform ${dropdownLevel !== 'closed' ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {dropdownLevel !== 'closed' && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-slate-300 rounded-lg shadow-lg z-10 max-h-80 overflow-y-auto">
+                      {/* Level 1: Categories */}
+                      {dropdownLevel === 'category' && (
+                        <div className="p-2">
                           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(id => {
                             const category = getCategoryById(id);
                             const categoryTags = tags.filter(t => t.category_id === id);
@@ -1131,220 +1136,279 @@ export function MovieDetailsPage({
                               <button
                                 key={id}
                                 onClick={() => {
-                                  setSelectedBrowseCategory(id);
-                                  setSelectedBrowseSubcategory(null);
+                                  setSelectedDropdownCategory(id);
+                                  setSelectedDropdownSubcategory(null);
+                                  setDropdownLevel('subcategory');
                                 }}
-                                className={`p-3 rounded-lg border-2 transition-all text-left ${
-                                  selectedBrowseCategory === id
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                                }`}
+                                className="w-full px-4 py-3 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-between text-left"
                               >
-                                <div className="text-2xl mb-1">{category?.icon}</div>
-                                <div className="text-sm font-medium text-slate-900">{category?.name}</div>
-                                <div className="text-xs text-slate-500">{categoryTags.length} tags</div>
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-2xl">{category?.icon}</span>
+                                  <div>
+                                    <div className="font-medium text-slate-900">{category?.name}</div>
+                                    <div className="text-xs text-slate-500">{categoryTags.length} tags</div>
+                                  </div>
+                                </div>
+                                <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
                               </button>
                             );
                           })}
                         </div>
-                      </div>
+                      )}
 
-                      {/* Level 2: Subcategory Selection */}
-                      {selectedBrowseCategory && (
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-3">
-                            2. Select Subcategory
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {subcategories
-                              ?.filter(s => s.category_id === selectedBrowseCategory)
-                              .map(subcat => {
-                                const subcatTags = tags.filter(
-                                  t => t.category_id === selectedBrowseCategory && t.subcategory_id === subcat.id
-                                );
-                                if (subcatTags.length === 0) return null;
-                                
-                                return (
-                                  <button
-                                    key={subcat.id}
-                                    onClick={() => setSelectedBrowseSubcategory(subcat.id)}
-                                    className={`p-3 rounded-lg border-2 transition-all text-left ${
-                                      selectedBrowseSubcategory === subcat.id
-                                        ? 'border-blue-500 bg-blue-50'
-                                        : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                                    }`}
-                                  >
-                                    <div className="text-sm font-medium text-slate-900">{subcat.name}</div>
+                      {/* Level 2: Subcategories */}
+                      {dropdownLevel === 'subcategory' && selectedDropdownCategory && (
+                        <div className="p-2">
+                          <button
+                            onClick={() => {
+                              setDropdownLevel('category');
+                              setSelectedDropdownCategory(null);
+                            }}
+                            className="w-full px-4 py-2 mb-2 hover:bg-slate-50 rounded-lg transition-colors flex items-center space-x-2 text-sm text-slate-600"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Back to Categories</span>
+                          </button>
+                          {subcategories
+                            ?.filter(s => s.category_id === selectedDropdownCategory)
+                            .map(subcat => {
+                              const subcatTags = tags.filter(
+                                t => t.category_id === selectedDropdownCategory && t.subcategory_id === subcat.id
+                              );
+                              if (subcatTags.length === 0) return null;
+                              
+                              return (
+                                <button
+                                  key={subcat.id}
+                                  onClick={() => {
+                                    setSelectedDropdownSubcategory(subcat.id);
+                                    setDropdownLevel('tag');
+                                  }}
+                                  className="w-full px-4 py-3 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-between text-left"
+                                >
+                                  <div>
+                                    <div className="font-medium text-slate-900">{subcat.name}</div>
                                     <div className="text-xs text-slate-500">{subcatTags.length} tags</div>
-                                  </button>
-                                );
-                              })}
-                          </div>
+                                  </div>
+                                  <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </button>
+                              );
+                            })}
                         </div>
                       )}
 
-                      {/* Level 3: Tag Selection */}
-                      {selectedBrowseCategory && selectedBrowseSubcategory && (
-                        <div>
-                          <label className="block text-sm font-semibold text-slate-700 mb-3">
-                            3. Select Tag
-                          </label>
-                          <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {tags
-                              .filter(
-                                t => 
-                                  t.category_id === selectedBrowseCategory && 
-                                  t.subcategory_id === selectedBrowseSubcategory
-                              )
-                              .map(tag => {
-                                const isAlreadyAdded = contentTags.some(ct => ct.id === tag.id);
-                                return (
-                                  <button
-                                    key={tag.id}
-                                    onClick={() => !isAlreadyAdded && handleAddExistingTag(tag.id)}
-                                    disabled={isAlreadyAdded || addingTag}
-                                    className={`w-full flex items-center space-x-3 p-3 rounded-lg border-2 transition-all text-left ${
-                                      isAlreadyAdded
-                                        ? 'border-green-300 bg-green-50 cursor-not-allowed'
-                                        : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50'
-                                    }`}
-                                  >
-                                    <div 
-                                      className="w-4 h-4 rounded-full flex-shrink-0"
-                                      style={{ backgroundColor: tag.color }}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-slate-900">{tag.name}</div>
-                                      {tag.description && (
-                                        <div className="text-xs text-slate-600 mt-0.5">{tag.description}</div>
-                                      )}
-                                    </div>
-                                    {isAlreadyAdded && (
-                                      <div className="flex items-center space-x-1 text-green-600 flex-shrink-0">
-                                        <Check className="h-4 w-4" />
-                                        <span className="text-xs font-medium">Added</span>
-                                      </div>
+                      {/* Level 3: Tags */}
+                      {dropdownLevel === 'tag' && selectedDropdownCategory && selectedDropdownSubcategory && (
+                        <div className="p-2">
+                          <button
+                            onClick={() => {
+                              setDropdownLevel('subcategory');
+                              setSelectedDropdownSubcategory(null);
+                            }}
+                            className="w-full px-4 py-2 mb-2 hover:bg-slate-50 rounded-lg transition-colors flex items-center space-x-2 text-sm text-slate-600"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <span>Back to Subcategories</span>
+                          </button>
+                          {tags
+                            .filter(
+                              t => 
+                                t.category_id === selectedDropdownCategory && 
+                                t.subcategory_id === selectedDropdownSubcategory
+                            )
+                            .map(tag => {
+                              const isAlreadyAdded = contentTags.some(ct => ct.id === tag.id);
+                              return (
+                                <button
+                                  key={tag.id}
+                                  onClick={() => {
+                                    if (!isAlreadyAdded) {
+                                      handleAddExistingTag(tag.id);
+                                      setDropdownLevel('closed');
+                                    }
+                                  }}
+                                  disabled={isAlreadyAdded || addingTag}
+                                  className={`w-full px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 text-left ${
+                                    isAlreadyAdded
+                                      ? 'bg-green-50 cursor-not-allowed'
+                                      : 'hover:bg-blue-50'
+                                  }`}
+                                >
+                                  <div 
+                                    className="w-4 h-4 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: tag.color }}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-slate-900">{tag.name}</div>
+                                    {tag.description && (
+                                      <div className="text-xs text-slate-600 mt-0.5">{tag.description}</div>
                                     )}
-                                  </button>
-                                );
-                              })}
-                          </div>
+                                  </div>
+                                  {isAlreadyAdded && (
+                                    <div className="flex items-center space-x-1 text-green-600 flex-shrink-0">
+                                      <Check className="h-4 w-4" />
+                                      <span className="text-xs font-medium">Added</span>
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
-              )}
 
-              {/* Create New Tab */}
-              {selectedTagTab === 'create-new' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Tag Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      placeholder="e.g., Mind-Bending, Feel-Good, etc."
-                      maxLength={100}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      value={newTagCategory}
-                      onChange={(e) => {
-                        setNewTagCategory(parseInt(e.target.value));
-                        // Reset subcategory when category changes
-                        const firstSubcat = subcategories?.find(s => s.category_id === parseInt(e.target.value));
-                        if (firstSubcat) setNewTagSubcategory(firstSubcat.id);
-                      }}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(id => {
-                        const cat = getCategoryById(id);
-                        return (
-                          <option key={id} value={id}>
-                            {cat?.icon} {cat?.name}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Subcategory *
-                    </label>
-                    <select
-                      value={newTagSubcategory}
-                      onChange={(e) => setNewTagSubcategory(parseInt(e.target.value))}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      {subcategories
-                        ?.filter(s => s.category_id === newTagCategory && s.is_visible)
-                        .map(subcat => (
-                          <option key={subcat.id} value={subcat.id}>
-                            {subcat.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Description (optional)
-                    </label>
-                    <textarea
-                      value={newTagDescription}
-                      onChange={(e) => setNewTagDescription(e.target.value)}
-                      placeholder="What does this tag represent?"
-                      maxLength={500}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Color
-                    </label>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="color"
-                        value={newTagColor}
-                        onChange={(e) => setNewTagColor(e.target.value)}
-                        className="h-10 w-20 rounded cursor-pointer"
-                      />
-                      <span className="text-sm text-slate-600">{newTagColor}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleCreateAndAddTag}
-                    disabled={!newTagName.trim() || addingTag}
-                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
-                  >
-                    {addingTag ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Creating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="h-4 w-4" />
-                        <span>Create & Add Tag</span>
-                      </>
-                    )}
-                  </button>
+                {/* Or Divider */}
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-slate-200"></div>
+                  <span className="text-sm text-slate-500 font-medium">OR</span>
+                  <div className="flex-1 h-px bg-slate-200"></div>
                 </div>
-              )}
+
+                {/* Create New Tag Button */}
+                {!showCreateNewForm ? (
+                  <button
+                    onClick={() => setShowCreateNewForm(true)}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 font-medium"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Create New Tag</span>
+                  </button>
+                ) : (
+                  /* Create New Tag Form */
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-slate-900">Create New Tag</h4>
+                      <button
+                        onClick={() => {
+                          setShowCreateNewForm(false);
+                          setNewTagName('');
+                          setNewTagDescription('');
+                          setNewTagColor('#3B82F6');
+                        }}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Tag Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        placeholder="e.g., Mind-Bending, Feel-Good, etc."
+                        maxLength={100}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Category *
+                      </label>
+                      <select
+                        value={newTagCategory}
+                        onChange={(e) => {
+                          setNewTagCategory(parseInt(e.target.value));
+                          const firstSubcat = subcategories?.find(s => s.category_id === parseInt(e.target.value));
+                          if (firstSubcat) setNewTagSubcategory(firstSubcat.id);
+                        }}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(id => {
+                          const cat = getCategoryById(id);
+                          return (
+                            <option key={id} value={id}>
+                              {cat?.icon} {cat?.name}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Subcategory *
+                      </label>
+                      <select
+                        value={newTagSubcategory}
+                        onChange={(e) => setNewTagSubcategory(parseInt(e.target.value))}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {subcategories
+                          ?.filter(s => s.category_id === newTagCategory && s.is_visible)
+                          .map(subcat => (
+                            <option key={subcat.id} value={subcat.id}>
+                              {subcat.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Description (optional)
+                      </label>
+                      <textarea
+                        value={newTagDescription}
+                        onChange={(e) => setNewTagDescription(e.target.value)}
+                        placeholder="What does this tag represent?"
+                        maxLength={500}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Color
+                      </label>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="color"
+                          value={newTagColor}
+                          onChange={(e) => setNewTagColor(e.target.value)}
+                          className="h-10 w-20 rounded cursor-pointer"
+                        />
+                        <span className="text-sm text-slate-600">{newTagColor}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleCreateAndAddTag}
+                      disabled={!newTagName.trim() || addingTag}
+                      className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                    >
+                      {addingTag ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Creating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4" />
+                          <span>Create & Add Tag</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
