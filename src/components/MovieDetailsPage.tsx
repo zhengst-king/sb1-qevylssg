@@ -85,6 +85,9 @@ export function MovieDetailsPage({
   'movie'
   );
   const [showTagSelector, setShowTagSelector] = useState(false);
+  const [selectedTagTab, setSelectedTagTab] = useState<'my-tags' | 'shared-tags'>('my-tags');
+  const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
+  const [selectedTagForDetails, setSelectedTagForDetails] = useState<any>(null);
   const [addingTag, setAddingTag] = useState(false);
   const [showCreateNewForm, setShowCreateNewForm] = useState(false);
   const [dropdownLevel, setDropdownLevel] = useState<'closed' | 'category' | 'subcategory' | 'tag'>('closed');
