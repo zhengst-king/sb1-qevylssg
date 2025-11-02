@@ -27,7 +27,7 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
   contentTitle,
   onTagsUpdated,
 }) => {
-  const { tags } = useTags();
+  const { tags, refetch: refetchTags } = useTags();
   const { subcategories } = useTagSubcategories();
   const { contentTags, addTag, removeTag: removeContentTag, refetch: refetchContentTags } = useContentTags(
     contentId,
@@ -86,13 +86,20 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
 
       // Add it to this content
       await contentTagsService.addTagToContent(newTag.id, contentId, contentType);
+      
+      // Refresh both the content tags AND the full tags list
       await refetchContentTags();
+      await refetchTags(); // ✅ ADD THIS LINE
 
-      // Reset form
+      // Reset form and return to browse view
       setNewTagName('');
       setNewTagDescription('');
       setNewTagColor('#3B82F6');
       setShowCreateNewForm(false);
+      
+      // Auto-select the category and subcategory of the newly created tag
+      setSelectedDropdownCategory(newTag.category_id);
+      setSelectedDropdownSubcategory(newTag.subcategory_id);
       
       if (onTagsUpdated) onTagsUpdated();
       alert(`Tag "${newTag.name}" created and added!`);
