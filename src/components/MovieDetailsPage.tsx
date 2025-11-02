@@ -39,6 +39,7 @@ import { contentTagsService } from '../services/contentTagsService';
 import { getCategoryById } from '../data/taggingCategories';
 import type { Tag } from '../types/customCollections';
 import { TagSelectorModal } from './TagSelectorModal';
+import { TagDetailModal } from './TagDetailModal';
 
 interface MovieDetailsPageProps {
   movie: Movie;
