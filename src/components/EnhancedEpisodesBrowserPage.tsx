@@ -46,6 +46,10 @@ import { useCustomCollections } from '../hooks/useCustomCollections';
 import { customCollectionsService } from '../services/customCollectionsService';
 import type { CustomCollection } from '../types/customCollections';
 import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
+import { TagSelectorModal } from './TagSelectorModal';
+import { useTags, useContentTags } from '../hooks/useTags';
+import { getCategoryById } from '../data/taggingCategories';
+import { useTagSubcategories } from '../hooks/useTagSubcategories';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -123,6 +127,14 @@ export function EnhancedEpisodesBrowserPage({
   const [seriesCollections, setSeriesCollections] = useState<CustomCollection[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollectionToView, setSelectedCollectionToView] = useState<CustomCollection | null>(null);
+
+  // Tagging state
+  const [showTagSelector, setShowTagSelector] = useState(false);
+  const { subcategories } = useTagSubcategories();
+  const { contentTags, refetch: refetchContentTags } = useContentTags(
+    series.id ? parseInt(series.id) : null,
+    'tv'
+  );
   
   // Add this handler function after your state declarations
   const handleRecommendationClick = (clickedSeries: Movie) => {
@@ -148,6 +160,20 @@ export function EnhancedEpisodesBrowserPage({
       onViewRecommendation(series);
     }
   };
+
+  // Handle escape key to close modals
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showTagSelector) {
+          setShowTagSelector(false);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showTagSelector]);
   
   // Update local state when series prop changes
   useEffect(() => {
@@ -833,6 +859,61 @@ export function EnhancedEpisodesBrowserPage({
               </div>
             </div>
 
+            {/* ✅ NEW: TAGS SECTION - Between Series Info and User Actions */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 flex items-center space-x-2">
+                  <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  <span>Tags</span>
+                </h3>
+                <button
+                  onClick={() => setShowTagSelector(true)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Tag</span>
+                </button>
+              </div>
+
+              {/* Tags Display */}
+              {contentTags.length === 0 ? (
+                <p className="text-slate-500 text-sm">No tags yet. Add tags to organize and categorize this series.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {contentTags.map((tag) => {
+                    const category = getCategoryById(tag.category_id);
+                    const subcategory = subcategories?.find(s => s.id === tag.subcategory_id);
+                    
+                    return (
+                      <div
+                        key={tag.id}
+                        className="group inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-purple-300 transition-all"
+                        style={{ backgroundColor: `${tag.color}15` }}
+                      >
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        <div className="flex items-center space-x-1 text-sm">
+                          <span className="text-xs text-slate-500">{category?.icon}</span>
+                          <span className="font-medium text-slate-900">{tag.name}</span>
+                        </div>
+                        {tag.description && (
+                          <span className="text-xs text-slate-500 max-w-xs truncate">
+                            - {tag.description}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* User Actions Section - OUTSIDE the white card for full-width layout below */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
               {/* Row 1: Rating, Status, Date Watched, Edit Review */}
@@ -1480,6 +1561,20 @@ export function EnhancedEpisodesBrowserPage({
           onMovieClick={handleRecommendationClick}
           onUpdatePoster={(collectionId, posterUrl) => {
             console.log('Poster updated for collection:', collectionId, posterUrl);
+          }}
+        />
+      )}
+
+      {/* ✅ NEW: Tag Selector Modal */}
+      {showTagSelector && series.id && (
+        <TagSelectorModal
+          isOpen={showTagSelector}
+          onClose={() => setShowTagSelector(false)}
+          contentId={parseInt(series.id)}
+          contentType="tv"
+          contentTitle={series.title}
+          onTagsUpdated={() => {
+            refetchContentTags();
           }}
         />
       )}
