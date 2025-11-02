@@ -698,6 +698,75 @@ export function MovieDetailsPage({
           </div>
         </div>
 
+        {/* ✅ NEW: TAGS SECTION - Between Details and User Actions */}
+        <div className="max-w-6xl mx-auto px-6 pb-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900 flex items-center space-x-2">
+                <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                <span>Tags</span>
+              </h3>
+              <button
+                onClick={() => setShowTagSelector(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Tag</span>
+              </button>
+            </div>
+
+            {/* Tags Display */}
+            {loadingTags ? (
+              <div className="flex items-center space-x-2 text-sm text-slate-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span>Loading tags...</span>
+              </div>
+            ) : contentTags.length === 0 ? (
+              <p className="text-slate-500 text-sm">No tags yet. Add tags to organize and categorize this title.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {contentTags.map((tag) => {
+                  const category = getCategoryById(tag.category_id);
+                  const subcategory = subcategories?.find(s => s.id === tag.subcategory_id);
+                  
+                  return (
+                    <div
+                      key={tag.id}
+                      className="group inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-blue-300 transition-all"
+                      style={{ backgroundColor: `${tag.color}15` }}
+                    >
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      <div className="flex items-center space-x-1 text-sm">
+                        <span className="text-xs text-slate-500">{category?.icon}</span>
+                        <span className="font-medium text-slate-900">{tag.name}</span>
+                      </div>
+                      {tag.description && (
+                        <span className="text-xs text-slate-500 max-w-xs truncate">
+                          - {tag.description}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleRemoveTag(tag.id)}
+                        className="ml-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Remove tag"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* User Actions Section - Separate Card */}
         <div className="max-w-6xl mx-auto px-6">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -1041,6 +1110,320 @@ export function MovieDetailsPage({
             console.log('Poster updated for collection:', collectionId, posterUrl);
           }}
         />
+      )}
+
+      {/* Custom Collection Detail Modal */}
+      {selectedCollectionToView && (
+        <CustomCollectionDetailModal
+          isOpen={!!selectedCollectionToView}
+          onClose={() => setSelectedCollectionToView(null)}
+          collection={selectedCollectionToView}
+          onMovieClick={handleRecommendationClick}
+          onUpdatePoster={(collectionId, posterUrl) => {
+            console.log('Poster updated for collection:', collectionId, posterUrl);
+          }}
+        />
+      )}
+
+      {/* ✅ NEW: Tag Selector Modal */}
+      {showTagSelector && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowTagSelector(false);
+              setTagSearchQuery('');
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-xl font-bold text-slate-900">Add Tags</h3>
+              <button
+                onClick={() => {
+                  setShowTagSelector(false);
+                  setTagSearchQuery('');
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200">
+              <button
+                onClick={() => setSelectedTagTab('my-tags')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  selectedTagTab === 'my-tags'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                My Tags ({tags.length})
+              </button>
+              <button
+                onClick={() => setSelectedTagTab('create-new')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  selectedTagTab === 'create-new'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Create New
+              </button>
+              <button
+                onClick={() => setSelectedTagTab('community')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  selectedTagTab === 'community'
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Community Tags
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* My Tags Tab */}
+              {selectedTagTab === 'my-tags' && (
+                <div className="space-y-4">
+                  {/* Search */}
+                  <input
+                    type="text"
+                    placeholder="Search tags..."
+                    value={tagSearchQuery}
+                    onChange={(e) => setTagSearchQuery(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+
+                  {/* Tags by Category */}
+                  {Object.keys(tagsByCategory).length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-slate-600">No tags found</p>
+                      <p className="text-sm text-slate-500 mt-2">
+                        Create your first tag in the "Create New" tab
+                      </p>
+                    </div>
+                  ) : (
+                    Object.entries(tagsByCategory).map(([categoryId, categoryTags]) => {
+                      const category = getCategoryById(parseInt(categoryId));
+                      return (
+                        <div key={categoryId} className="space-y-2">
+                          <h4 className="text-sm font-semibold text-slate-700 flex items-center space-x-2">
+                            <span>{category?.icon}</span>
+                            <span>{category?.name}</span>
+                            <span className="text-slate-500">({categoryTags.length})</span>
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {categoryTags.map((tag) => {
+                              const isAlreadyAdded = contentTags.some(ct => ct.id === tag.id);
+                              return (
+                                <button
+                                  key={tag.id}
+                                  onClick={() => !isAlreadyAdded && handleAddExistingTag(tag.id)}
+                                  disabled={isAlreadyAdded || addingTag}
+                                  className={`flex items-center space-x-2 p-2 rounded-lg border transition-all text-left ${
+                                    isAlreadyAdded
+                                      ? 'border-green-300 bg-green-50 cursor-not-allowed'
+                                      : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                                  }`}
+                                >
+                                  <div 
+                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: tag.color }}
+                                  />
+                                  <span className="text-sm font-medium text-slate-900 truncate">
+                                    {tag.name}
+                                  </span>
+                                  {isAlreadyAdded && (
+                                    <Check className="h-4 w-4 text-green-600 ml-auto flex-shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Create New Tab */}
+              {selectedTagTab === 'create-new' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Tag Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      placeholder="e.g., Mind-Bending, Feel-Good, etc."
+                      maxLength={100}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      value={newTagCategory}
+                      onChange={(e) => {
+                        setNewTagCategory(parseInt(e.target.value));
+                        // Reset subcategory when category changes
+                        const firstSubcat = subcategories?.find(s => s.category_id === parseInt(e.target.value));
+                        if (firstSubcat) setNewTagSubcategory(firstSubcat.id);
+                      }}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(id => {
+                        const cat = getCategoryById(id);
+                        return (
+                          <option key={id} value={id}>
+                            {cat?.icon} {cat?.name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Subcategory *
+                    </label>
+                    <select
+                      value={newTagSubcategory}
+                      onChange={(e) => setNewTagSubcategory(parseInt(e.target.value))}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {subcategories
+                        ?.filter(s => s.category_id === newTagCategory && s.is_visible)
+                        .map(subcat => (
+                          <option key={subcat.id} value={subcat.id}>
+                            {subcat.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      value={newTagDescription}
+                      onChange={(e) => setNewTagDescription(e.target.value)}
+                      placeholder="What does this tag represent?"
+                      maxLength={500}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Color
+                    </label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={newTagColor}
+                        onChange={(e) => setNewTagColor(e.target.value)}
+                        className="h-10 w-20 rounded cursor-pointer"
+                      />
+                      <span className="text-sm text-slate-600">{newTagColor}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleCreateAndAddTag}
+                    disabled={!newTagName.trim() || addingTag}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {addingTag ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4" />
+                        <span>Create & Add Tag</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Community Tags Tab */}
+              {selectedTagTab === 'community' && (
+                <div className="space-y-4">
+                  {loadingCommunityTags ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : communityTags.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-slate-600">No community tags found for this title</p>
+                      <p className="text-sm text-slate-500 mt-2">
+                        Be the first to add a public tag!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {communityTags.map((tag) => {
+                        const isAlreadyAdded = contentTags.some(ct => ct.id === tag.id);
+                        const category = getCategoryById(tag.category_id);
+                        
+                        return (
+                          <button
+                            key={tag.id}
+                            onClick={() => !isAlreadyAdded && handleAddExistingTag(tag.id)}
+                            disabled={isAlreadyAdded || addingTag}
+                            className={`flex items-center space-x-2 p-2 rounded-lg border transition-all text-left ${
+                              isAlreadyAdded
+                                ? 'border-green-300 bg-green-50 cursor-not-allowed'
+                                : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                            }`}
+                          >
+                            <span className="text-xs">{category?.icon}</span>
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium text-slate-900 truncate block">
+                                {tag.name}
+                              </span>
+                              {tag.description && (
+                                <span className="text-xs text-slate-500 truncate block">
+                                  {tag.description}
+                                </span>
+                              )}
+                            </div>
+                            {isAlreadyAdded && (
+                              <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
