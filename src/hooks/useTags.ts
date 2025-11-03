@@ -261,7 +261,8 @@ export const useTagStats = () => {
  */
 export const useContentTags = (
   contentId: number | null,
-  contentType: 'movie' | 'tv' | null
+  contentType: 'movie' | 'tv' | null,
+  episodeInfo?: { season: number; episode: number }
 ) => {
   const [contentTags, setContentTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -277,8 +278,12 @@ export const useContentTags = (
       setLoading(true);
       setError(null);
       
-      // ✅ USE getContentTagsForItem to get full content_tags records with metadata
-      const data = await contentTagsService.getContentTagsForItem(contentId, contentType);
+      // ✅ Pass episode info to service
+      const data = await contentTagsService.getContentTagsForItem(
+        contentId, 
+        contentType,
+        episodeInfo
+      );
       
       // Map to include both tag data and metadata
       const tagsWithMetadata = data.map((ct: any) => ({
@@ -287,6 +292,8 @@ export const useContentTags = (
         start_time: ct.start_time,
         end_time: ct.end_time,
         notes: ct.notes,
+        season_number: ct.season_number,
+        episode_number: ct.episode_number,
       }));
       
       setContentTags(tagsWithMetadata);
@@ -296,7 +303,7 @@ export const useContentTags = (
     } finally {
       setLoading(false);
     }
-  }, [contentId, contentType]);
+  }, [contentId, contentType, episodeInfo?.season, episodeInfo?.episode]);
 
   useEffect(() => {
     fetchContentTags();
@@ -308,14 +315,14 @@ export const useContentTags = (
       if (!contentId || !contentType) return;
 
       try {
-        await contentTagsService.addTagToContent(tagId, contentId, contentType);
+        await contentTagsService.addTagToContent(tagId, contentId, contentType, episodeInfo);
         await fetchContentTags();
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [contentId, contentType, fetchContentTags]
+    [contentId, contentType, episodeInfo, fetchContentTags]
   );
 
   // Add multiple tags to this content
@@ -324,14 +331,14 @@ export const useContentTags = (
       if (!contentId || !contentType) return;
 
       try {
-        await contentTagsService.addTagsToContent(contentId, contentType, tagIds);
+        await contentTagsService.addTagsToContent(contentId, contentType, tagIds, episodeInfo);
         await fetchContentTags();
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [contentId, contentType, fetchContentTags]
+    [contentId, contentType, episodeInfo, fetchContentTags]
   );
 
   // Remove a tag from this content
@@ -340,14 +347,14 @@ export const useContentTags = (
       if (!contentId || !contentType) return;
 
       try {
-        await contentTagsService.removeTagFromContent(tagId, contentId, contentType);
+        await contentTagsService.removeTagFromContent(tagId, contentId, contentType, episodeInfo);
         setContentTags(prev => prev.filter(t => t.id !== tagId));
       } catch (err) {
         setError(err as Error);
         throw err;
       }
     },
-    [contentId, contentType]
+    [contentId, contentType, episodeInfo]
   );
 
   // Set all tags for this content (replace existing)
