@@ -207,6 +207,14 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    // Always call onSaved if there were any changes
+    if (hasChanges && onSaved) {
+      onSaved();
+    }
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const category = getCategoryById(tag.category_id);
