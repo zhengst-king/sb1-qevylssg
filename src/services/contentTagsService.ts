@@ -9,6 +9,8 @@ export interface ContentTag {
   tag_id: string;
   content_id: number;
   content_type: 'movie' | 'tv';
+  season_number?: number | null;
+  episode_number?: number | null;
   user_id: string;
   created_at: string;
 }
@@ -18,6 +20,8 @@ export interface TaggedContent {
   tag_id: string;
   content_id: number;
   content_type: 'movie' | 'tv';
+  season_number?: number | null;
+  episode_number?: number | null;
   title: string;
   year?: number;
   poster_path?: string;
@@ -28,37 +32,58 @@ export interface TaggedContent {
 
 class ContentTagsService {
   /**
-   * Add a tag to a content item (movie or TV show)
+   * Add a tag to content (movie, TV series, or TV episode)
    */
   async addTagToContent(
     tagId: string,
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    episodeInfo?: { season: number; episode: number }
   ): Promise<ContentTag> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     // Check if already tagged
-    const { data: existing } = await supabase
+    let checkQuery = supabase
       .from('content_tags')
       .select('id')
       .eq('tag_id', tagId)
       .eq('content_id', contentId)
       .eq('content_type', contentType)
-      .single();
+      .eq('user_id', user.id);
+
+    if (episodeInfo) {
+      checkQuery = checkQuery
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      checkQuery = checkQuery
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    const { data: existing } = await checkQuery.single();
 
     if (existing) {
       throw new Error('This content is already tagged with this tag');
     }
 
+    const insertData: any = {
+      tag_id: tagId,
+      content_id: contentId,
+      content_type: contentType,
+      user_id: user.id
+    };
+
+    // Add episode info if provided
+    if (episodeInfo) {
+      insertData.season_number = episodeInfo.season;
+      insertData.episode_number = episodeInfo.episode;
+    }
+
     const { data, error } = await supabase
       .from('content_tags')
-      .insert({
-        tag_id: tagId,
-        content_id: contentId,
-        content_type: contentType,
-        user_id: user.id
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -68,17 +93,18 @@ class ContentTagsService {
   }
 
   /**
-   * Remove a tag from a content item
+   * Remove a tag from content
    */
   async removeTagFromContent(
     tagId: string,
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    episodeInfo?: { season: number; episode: number }
   ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
+    let query = supabase
       .from('content_tags')
       .delete()
       .eq('tag_id', tagId)
@@ -86,6 +112,18 @@ class ContentTagsService {
       .eq('content_type', contentType)
       .eq('user_id', user.id);
 
+    // Filter by episode if provided
+    if (episodeInfo) {
+      query = query
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      query = query
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    const { error } = await query;
     if (error) throw error;
   }
 
@@ -110,12 +148,13 @@ class ContentTagsService {
    */
   async getTagsForContent(
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    episodeInfo?: { season: number; episode: number }
   ): Promise<Tag[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('content_tags')
       .select(`
         tag_id,
@@ -124,6 +163,19 @@ class ContentTagsService {
       .eq('content_id', contentId)
       .eq('content_type', contentType)
       .eq('user_id', user.id);
+
+    // Filter by episode if provided
+    if (episodeInfo) {
+      query = query
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      query = query
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -194,6 +246,8 @@ class ContentTagsService {
           tag_id: item.tag_id,
           content_id: item.content_id,
           content_type: item.content_type,
+          season_number: item.season_number,
+          episode_number: item.episode_number,
           title: contentData?.title || 'Unknown Title',
           year: contentData?.release_year,
           poster_path: contentData?.poster_path,
@@ -213,27 +267,49 @@ class ContentTagsService {
   async setTagsForContent(
     contentId: number,
     contentType: 'movie' | 'tv',
-    tagIds: string[]
+    tagIds: string[],
+    episodeInfo?: { season: number; episode: number }
   ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
     // Remove all existing tags for this content
-    await supabase
+    let deleteQuery = supabase
       .from('content_tags')
       .delete()
       .eq('content_id', contentId)
       .eq('content_type', contentType)
       .eq('user_id', user.id);
 
+    if (episodeInfo) {
+      deleteQuery = deleteQuery
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      deleteQuery = deleteQuery
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    await deleteQuery;
+
     // Add new tags if any
     if (tagIds.length > 0) {
-      const inserts = tagIds.map(tagId => ({
-        tag_id: tagId,
-        content_id: contentId,
-        content_type: contentType,
-        user_id: user.id
-      }));
+      const inserts = tagIds.map(tagId => {
+        const record: any = {
+          tag_id: tagId,
+          content_id: contentId,
+          content_type: contentType,
+          user_id: user.id
+        };
+
+        if (episodeInfo) {
+          record.season_number = episodeInfo.season;
+          record.episode_number = episodeInfo.episode;
+        }
+
+        return record;
+      });
 
       const { error } = await supabase
         .from('content_tags')
@@ -244,12 +320,13 @@ class ContentTagsService {
   }
 
   /**
-   * Add multiple tags to a content item at once
+   * Add multiple tags to content at once
    */
   async addTagsToContent(
     contentId: number,
     contentType: 'movie' | 'tv',
-    tagIds: string[]
+    tagIds: string[],
+    episodeInfo?: { season: number; episode: number }
   ): Promise<ContentTag[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
@@ -258,12 +335,21 @@ class ContentTagsService {
       return [];
     }
 
-    const inserts = tagIds.map(tagId => ({
-      tag_id: tagId,
-      content_id: contentId,
-      content_type: contentType,
-      user_id: user.id
-    }));
+    const inserts = tagIds.map(tagId => {
+      const record: any = {
+        tag_id: tagId,
+        content_id: contentId,
+        content_type: contentType,
+        user_id: user.id
+      };
+
+      if (episodeInfo) {
+        record.season_number = episodeInfo.season;
+        record.episode_number = episodeInfo.episode;
+      }
+
+      return record;
+    });
 
     const { data, error } = await supabase
       .from('content_tags')
@@ -274,13 +360,25 @@ class ContentTagsService {
       // If some tags already exist, filter them out and retry
       if (error.code === '23505') {
         // Get existing tags
-        const { data: existing } = await supabase
+        let existingQuery = supabase
           .from('content_tags')
           .select('tag_id')
           .eq('content_id', contentId)
           .eq('content_type', contentType)
           .in('tag_id', tagIds)
           .eq('user_id', user.id);
+
+        if (episodeInfo) {
+          existingQuery = existingQuery
+            .eq('season_number', episodeInfo.season)
+            .eq('episode_number', episodeInfo.episode);
+        } else {
+          existingQuery = existingQuery
+            .is('season_number', null)
+            .is('episode_number', null);
+        }
+
+        const { data: existing } = await existingQuery;
 
         const existingTagIds = new Set(existing?.map(ct => ct.tag_id) || []);
         const newTagIds = tagIds.filter(id => !existingTagIds.has(id));
@@ -290,12 +388,21 @@ class ContentTagsService {
         }
 
         // Retry with only new tags
-        const newInserts = newTagIds.map(tagId => ({
-          tag_id: tagId,
-          content_id: contentId,
-          content_type: contentType,
-          user_id: user.id
-        }));
+        const newInserts = newTagIds.map(tagId => {
+          const record: any = {
+            tag_id: tagId,
+            content_id: contentId,
+            content_type: contentType,
+            user_id: user.id
+          };
+
+          if (episodeInfo) {
+            record.season_number = episodeInfo.season;
+            record.episode_number = episodeInfo.episode;
+          }
+
+          return record;
+        });
 
         const { data: retryData, error: retryError } = await supabase
           .from('content_tags')
@@ -316,18 +423,30 @@ class ContentTagsService {
    */
   async removeAllTagsFromContent(
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    episodeInfo?: { season: number; episode: number }
   ): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
+    let query = supabase
       .from('content_tags')
       .delete()
       .eq('content_id', contentId)
       .eq('content_type', contentType)
       .eq('user_id', user.id);
 
+    if (episodeInfo) {
+      query = query
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      query = query
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    const { error } = await query;
     if (error) throw error;
   }
 
@@ -348,7 +467,7 @@ class ContentTagsService {
     // Get all content_tags for these tags
     let query = supabase
       .from('content_tags')
-      .select('content_id, content_type, tag_id')
+      .select('content_id, content_type, tag_id, season_number, episode_number')
       .in('tag_id', tagIds)
       .eq('user_id', user.id);
 
@@ -361,10 +480,16 @@ class ContentTagsService {
     if (error) throw error;
 
     // Group by content and count how many tags each has
-    const contentCounts = new Map<string, { count: number; content_id: number; content_type: 'movie' | 'tv' }>();
+    const contentCounts = new Map<string, { 
+      count: number; 
+      content_id: number; 
+      content_type: 'movie' | 'tv';
+      season_number?: number | null;
+      episode_number?: number | null;
+    }>();
     
     taggedItems?.forEach(item => {
-      const key = `${item.content_id}-${item.content_type}`;
+      const key = `${item.content_id}-${item.content_type}-${item.season_number || 'null'}-${item.episode_number || 'null'}`;
       const existing = contentCounts.get(key);
       
       if (existing) {
@@ -373,7 +498,9 @@ class ContentTagsService {
         contentCounts.set(key, {
           count: 1,
           content_id: item.content_id,
-          content_type: item.content_type
+          content_type: item.content_type,
+          season_number: item.season_number,
+          episode_number: item.episode_number
         });
       }
     });
@@ -411,6 +538,8 @@ class ContentTagsService {
           tag_id: tagIds[0], // First tag ID as representative
           content_id: item.content_id,
           content_type: item.content_type,
+          season_number: item.season_number,
+          episode_number: item.episode_number,
           title: contentData?.title || 'Unknown Title',
           year: contentData?.release_year,
           poster_path: contentData?.poster_path,
@@ -460,7 +589,7 @@ class ContentTagsService {
     // Get unique content (remove duplicates)
     const uniqueContent = new Map<string, typeof taggedItems[0]>();
     taggedItems.forEach(item => {
-      const key = `${item.content_id}-${item.content_type}`;
+      const key = `${item.content_id}-${item.content_type}-${item.season_number || 'null'}-${item.episode_number || 'null'}`;
       if (!uniqueContent.has(key)) {
         uniqueContent.set(key, item);
       }
@@ -491,6 +620,8 @@ class ContentTagsService {
           tag_id: item.tag_id,
           content_id: item.content_id,
           content_type: item.content_type,
+          season_number: item.season_number,
+          episode_number: item.episode_number,
           title: contentData?.title || 'Unknown Title',
           year: contentData?.release_year,
           poster_path: contentData?.poster_path,
@@ -510,19 +641,31 @@ class ContentTagsService {
   async hasTag(
     contentId: number,
     contentType: 'movie' | 'tv',
-    tagId: string
+    tagId: string,
+    episodeInfo?: { season: number; episode: number }
   ): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data } = await supabase
+    let query = supabase
       .from('content_tags')
       .select('id')
       .eq('content_id', contentId)
       .eq('content_type', contentType)
       .eq('tag_id', tagId)
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user.id);
+
+    if (episodeInfo) {
+      query = query
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      query = query
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    const { data } = await query.single();
 
     return !!data;
   }
@@ -542,18 +685,31 @@ class ContentTagsService {
       .eq('content_type', 'movie')
       .eq('user_id', user.id);
 
-    // Count TV shows
+    // Count TV shows (series-level only)
     const { count: tvCount } = await supabase
       .from('content_tags')
       .select('*', { count: 'exact', head: true })
       .eq('tag_id', tagId)
       .eq('content_type', 'tv')
+      .is('season_number', null)
+      .is('episode_number', null)
+      .eq('user_id', user.id);
+
+    // Count TV episodes
+    const { count: episodeCount } = await supabase
+      .from('content_tags')
+      .select('*', { count: 'exact', head: true })
+      .eq('tag_id', tagId)
+      .eq('content_type', 'tv')
+      .not('season_number', 'is', null)
+      .not('episode_number', 'is', null)
       .eq('user_id', user.id);
 
     return {
-      total: (movieCount || 0) + (tvCount || 0),
+      total: (movieCount || 0) + (tvCount || 0) + (episodeCount || 0),
       movies: movieCount || 0,
-      tv_shows: tvCount || 0
+      tv_shows: tvCount || 0,
+      tv_episodes: episodeCount || 0
     };
   }
 
@@ -564,73 +720,85 @@ class ContentTagsService {
     sourceContentId: number,
     sourceContentType: 'movie' | 'tv',
     targetContentId: number,
-    targetContentType: 'movie' | 'tv'
+    targetContentType: 'movie' | 'tv',
+    sourceEpisodeInfo?: { season: number; episode: number },
+    targetEpisodeInfo?: { season: number; episode: number }
   ): Promise<void> {
     // Get tags from source
-    const sourceTags = await this.getTagsForContent(sourceContentId, sourceContentType);
+    const sourceTags = await this.getTagsForContent(
+      sourceContentId, 
+      sourceContentType,
+      sourceEpisodeInfo
+    );
     
     // Apply to target
     if (sourceTags.length > 0) {
       const tagIds = sourceTags.map(tag => tag.id);
-      await this.addTagsToContent(targetContentId, targetContentType, tagIds);
+      await this.addTagsToContent(
+        targetContentId, 
+        targetContentType, 
+        tagIds,
+        targetEpisodeInfo
+      );
     }
   }
 
   /**
-   * Copy tags from one content item to another
-   */
-  async copyTagsToContent(
-    sourceContentId: number,
-    sourceContentType: 'movie' | 'tv',
-    targetContentId: number,
-    targetContentType: 'movie' | 'tv'
-  ): Promise<void> {
-    // Get tags from source
-    const sourceTags = await this.getTagsForContent(sourceContentId, sourceContentType);
-    
-    // Apply to target
-    if (sourceTags.length > 0) {
-      const tagIds = sourceTags.map(tag => tag.id);
-      await this.addTagsToContent(targetContentId, targetContentType, tagIds);
-    }
-  }
-
-  /**
-   * Get content_tags records with full metadata for a specific content item
-   * Returns the content_tags records (not just the tags) including start_time, end_time, notes
+   * Get all content_tags records for a specific content item (with tag details)
+   * Optionally filter by episode
    */
   async getContentTagsForItem(
     contentId: number,
-    contentType: 'movie' | 'tv'
+    contentType: 'movie' | 'tv',
+    episodeInfo?: { season: number; episode: number }
   ): Promise<any[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('content_tags')
       .select(`
         id,
         tag_id,
-        content_id,
-        content_type,
         start_time,
         end_time,
         notes,
         created_at,
-        updated_at,
-        tags (*)
+        season_number,
+        episode_number,
+        tags (
+          id,
+          name,
+          description,
+          color,
+          category_id,
+          subcategory_id,
+          is_public,
+          usage_count
+        )
       `)
       .eq('content_id', contentId)
       .eq('content_type', contentType)
       .eq('user_id', user.id);
 
+    // Filter by episode if provided
+    if (episodeInfo) {
+      query = query
+        .eq('season_number', episodeInfo.season)
+        .eq('episode_number', episodeInfo.episode);
+    } else {
+      // If no episode info, only get series-level tags (where season/episode are NULL)
+      query = query
+        .is('season_number', null)
+        .is('episode_number', null);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
     return data || [];
   }
 
-  /**
-   * Update metadata for an assigned tag (content_tags record)
-   */
   /**
    * Update metadata for an assigned tag (content_tags record)
    */
@@ -684,6 +852,8 @@ class ContentTagsService {
         tag_id,
         content_id,
         content_type,
+        season_number,
+        episode_number,
         start_time,
         end_time,
         notes,
