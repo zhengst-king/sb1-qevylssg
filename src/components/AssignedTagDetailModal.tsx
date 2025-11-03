@@ -139,12 +139,23 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50">
-          <div className="flex items-center space-x-3">
-            <div 
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: tag.color }}
-            />
-            <h2 className="text-xl font-bold text-slate-900">Tag Details</h2>
+          <div>
+            <div className="flex items-center space-x-3 mb-2">
+              <div 
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: tag.color }}
+              />
+              <h2 className="text-xl font-bold text-slate-900">{tag.name}</h2>
+            </div>
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <span className="flex items-center space-x-1">
+                <span>{category?.icon}</span>
+                <span className="font-medium">{category?.name || 'Unknown'}</span>
+              </span>
+              <ChevronRight className="h-4 w-4" />
+              <span>{subcategory?.name || 'Unknown'}</span>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -156,110 +167,73 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Section 1: Generic Tag Info (Read-only) */}
-          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center space-x-2">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              <span>Generic Tag Information</span>
-            </h3>
-
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
-              <span className="flex items-center space-x-1">
-                <span>{category?.icon}</span>
-                <span className="font-medium">{category?.name || 'Unknown'}</span>
-              </span>
-              <ChevronRight className="h-4 w-4" />
-              <span>{subcategory?.name || 'Unknown'}</span>
-              <ChevronRight className="h-4 w-4" />
-              <span className="font-semibold text-slate-900">{tag.name}</span>
-            </div>
-
-            {/* Description */}
-            {tag.description && (
-              <div className="text-sm text-slate-700 bg-white rounded p-3 border border-slate-200">
-                {tag.description}
-              </div>
-            )}
-          </div>
-
-          {/* Section 2: Assigned Tag Info (Editable) */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center space-x-2">
-              <FileText className="h-4 w-4" />
-              <span>Assignment Details for "{contentTitle}"</span>
-            </h3>
-
-            {/* Time Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Start Time */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>Start Time</span>
-                  </div>
-                </label>
-                <input
-                  type="text"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  placeholder="HH:MM:SS (e.g., 01:23:45)"
-                  maxLength={8}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
-              </div>
-
-              {/* End Time */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>End Time</span>
-                  </div>
-                </label>
-                <input
-                  type="text"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  placeholder="HH:MM:SS (e.g., 01:25:30)"
-                  maxLength={8}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
-              </div>
-            </div>
-
-            {/* Time Error */}
-            {timeError && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-                {timeError}
-              </div>
-            )}
-
-            {/* Notes */}
+          {/* Time Fields */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Start Time */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 <div className="flex items-center space-x-2">
-                  <FileText className="h-4 w-4" />
-                  <span>Notes</span>
+                  <Clock className="h-4 w-4" />
+                  <span>Start Time</span>
                 </div>
               </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add notes about this tag assignment (e.g., why it applies, specific scenes, etc.)"
-                rows={4}
-                maxLength={1000}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+              <input
+                type="text"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                placeholder="HH:MM:SS (e.g., 01:23:45)"
+                maxLength={8}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
               />
-              <p className="text-xs text-slate-500 mt-1">
-                {notes.length}/1000 characters
-              </p>
+              <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
             </div>
+
+            {/* End Time */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4" />
+                  <span>End Time</span>
+                </div>
+              </label>
+              <input
+                type="text"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                placeholder="HH:MM:SS (e.g., 01:25:30)"
+                maxLength={8}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
+            </div>
+          </div>
+
+          {/* Time Error */}
+          {timeError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+              {timeError}
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              <div className="flex items-center space-x-2">
+                <FileText className="h-4 w-4" />
+                <span>Notes</span>
+              </div>
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add notes about this tag assignment (e.g., why it applies, specific scenes, etc.)"
+              rows={4}
+              maxLength={1000}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              {notes.length}/1000 characters
+            </p>
           </div>
         </div>
 
