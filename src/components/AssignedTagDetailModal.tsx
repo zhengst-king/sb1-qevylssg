@@ -46,6 +46,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -196,6 +197,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
 
       console.log('[handleSaveField] Local state updated, closing edit field');
       setEditingField(null);
+      setHasChanges(true); // ✅ ADD THIS - mark that changes were made
       // Don't call onSaved here - only when modal closes
     } catch (err) {
       console.error('[handleSaveField] Error saving field:', err);
@@ -215,7 +217,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
     >
@@ -244,7 +246,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <X className="h-5 w-5" />
@@ -261,12 +263,12 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
           )}
 
           {/* Start Time and End Time - Same Row */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Start Time */}
-            <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+          <div className="space-y-4">
+            {/* Clip Start Time */}
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 w-32 flex-shrink-0">
                 <Clock className="h-4 w-4" />
-                <span>Start Time</span>
+                <span>Clip Start Time</span>
               </label>
               
               {editingField === 'start_time' ? (
@@ -276,11 +278,11 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onBlur={() => handleBlurSave('start_time')}
-                    placeholder="012345 or 01:23:45"
+                    placeholder="012345"
                     maxLength={8}
                     autoFocus
                     disabled={saving}
-                    className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="w-32 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                   />
                   <button
                     onClick={() => handleSaveField('start_time')}
@@ -298,22 +300,22 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
               ) : (
                 <div 
                   onClick={() => handleStartEdit('start_time', startTime)}
-                  className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors"
+                  className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors w-32"
                 >
                   {startTime ? (
-                    <span className="text-slate-900 font-mono">{startTime}</span>
+                    <span className="text-slate-900 font-mono text-sm">{startTime}</span>
                   ) : (
-                    <span className="text-slate-400 italic">Click to add start time</span>
+                    <span className="text-slate-400 italic text-xs">Click to add</span>
                   )}
                 </div>
               )}
             </div>
 
-            {/* End Time */}
-            <div>
-              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+            {/* Clip End Time */}
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 w-32 flex-shrink-0">
                 <Clock className="h-4 w-4" />
-                <span>End Time</span>
+                <span>Clip End Time</span>
               </label>
               
               {editingField === 'end_time' ? (
@@ -323,11 +325,11 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onBlur={() => handleBlurSave('end_time')}
-                    placeholder="012530 or 01:25:30"
+                    placeholder="012530"
                     maxLength={8}
                     autoFocus
                     disabled={saving}
-                    className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="w-32 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                   />
                   <button
                     onClick={() => handleSaveField('end_time')}
@@ -345,23 +347,23 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
               ) : (
                 <div 
                   onClick={() => handleStartEdit('end_time', endTime)}
-                  className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors"
+                  className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors w-32"
                 >
                   {endTime ? (
-                    <span className="text-slate-900 font-mono">{endTime}</span>
+                    <span className="text-slate-900 font-mono text-sm">{endTime}</span>
                   ) : (
-                    <span className="text-slate-400 italic">Click to add end time</span>
+                    <span className="text-slate-400 italic text-xs">Click to add</span>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Notes on Assigned Tag */}
           <div>
             <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
               <FileText className="h-4 w-4" />
-              <span>Notes</span>
+              <span>Notes on Assigned Tag</span>
             </label>
             
             {editingField === 'notes' ? (
@@ -416,10 +418,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
         {/* Footer - Just Close button */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
           <button
-            onClick={() => {
-              if (onSaved) onSaved();
-              onClose();
-            }}
+            onClick={handleClose}
             className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
           >
             Close
