@@ -86,13 +86,22 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
   };
 
   const handleSaveField = async (field: EditingField) => {
-    if (!field || !initialMetadata?.content_tag_id) return;
+    console.log('[handleSaveField] Called with field:', field);
+    console.log('[handleSaveField] editValue:', editValue);
+    console.log('[handleSaveField] content_tag_id:', initialMetadata?.content_tag_id);
+    
+    if (!field || !initialMetadata?.content_tag_id) {
+      console.log('[handleSaveField] Missing field or content_tag_id, aborting');
+      return;
+    }
 
     const trimmedValue = editValue.trim();
+    console.log('[handleSaveField] trimmedValue:', trimmedValue);
 
     // Validate time fields
     if ((field === 'start_time' || field === 'end_time') && trimmedValue) {
       if (!validateTimeFormat(trimmedValue)) {
+        console.log('[handleSaveField] Invalid time format');
         setError('Time must be in format HH:MM:SS');
         return;
       }
@@ -106,6 +115,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
       const endSeconds = endH * 3600 + endM * 60 + endS;
       
       if (endSeconds <= startSeconds) {
+        console.log('[handleSaveField] End time not after start time');
         setError('End time must be after start time');
         return;
       }
@@ -118,6 +128,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
       const endSeconds = endH * 3600 + endM * 60 + endS;
       
       if (endSeconds <= startSeconds) {
+        console.log('[handleSaveField] Start time not before end time');
         setError('End time must be after start time');
         return;
       }
@@ -127,6 +138,14 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
     setError(null);
 
     try {
+      console.log('[handleSaveField] About to call updateAssignedTagMetadata...');
+      console.log('[handleSaveField] Calling with:', {
+        content_tag_id: initialMetadata.content_tag_id,
+        start_time: field === 'start_time' ? (trimmedValue || null) : startTime || null,
+        end_time: field === 'end_time' ? (trimmedValue || null) : endTime || null,
+        notes: field === 'notes' ? (trimmedValue || null) : notes || null,
+      });
+      
       await contentTagsService.updateAssignedTagMetadata(
         initialMetadata.content_tag_id,
         {
@@ -136,15 +155,17 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
         }
       );
 
+      console.log('[handleSaveField] Update complete, updating local state...');
       // Update local state
       if (field === 'start_time') setStartTime(trimmedValue);
       if (field === 'end_time') setEndTime(trimmedValue);
       if (field === 'notes') setNotes(trimmedValue);
 
+      console.log('[handleSaveField] Local state updated, closing edit field');
       setEditingField(null);
-      
+      // Don't call onSaved here - only when modal closes
     } catch (err) {
-      console.error('Error saving field:', err);
+      console.error('[handleSaveField] Error saving field:', err);
       setError('Failed to save. Please try again.');
     } finally {
       setSaving(false);
