@@ -69,6 +69,14 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
   };
 
   const handleSave = async () => {
+    console.log('[AssignedTagDetailModal] Starting save...');
+    console.log('[AssignedTagDetailModal] Current values:', {
+      startTime,
+      endTime,
+      notes,
+      content_tag_id: initialMetadata?.content_tag_id
+    });
+    
     // Validate time formats
     if (startTime && !validateTimeFormat(startTime)) {
       setTimeError('Start time must be in format HH:MM:SS');
@@ -100,6 +108,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
         throw new Error('No content tag ID provided');
       }
 
+      console.log('[AssignedTagDetailModal] Calling updateAssignedTagMetadata...');
       await contentTagsService.updateAssignedTagMetadata(
         initialMetadata.content_tag_id,
         {
@@ -109,10 +118,11 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
         }
       );
 
+      console.log('[AssignedTagDetailModal] Update successful, calling onSaved...');
       if (onSaved) onSaved();
       onClose();
     } catch (error) {
-      console.error('Error saving assigned tag metadata:', error);
+      console.error('[AssignedTagDetailModal] Error saving:', error);
       alert('Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
