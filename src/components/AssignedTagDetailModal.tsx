@@ -106,6 +106,105 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
     setError(null);
   };
 
+  const handleBlurSave = async (field: EditingField) => {
+    // Only save if we're actually editing this field
+    if (editingField !== field) return;
+    
+    // Call the save function
+    await handleSaveField(field);
+  };
+
+  const handleSaveField = async (field: EditingField) => {
+    console.log('[handleSaveField] Called with field:', field);
+    console.log('[handleSaveField] editValue:', editValue);
+    console.log('[handleSaveField] content_tag_id:', initialMetadata?.content_tag_id);
+    
+    if (!field || !initialMetadata?.content_tag_id) {
+      console.log('[handleSaveField] Missing field or content_tag_id, aborting');
+      return;
+    }
+
+    let trimmedValue = editValue.trim();
+    
+    // Format time fields if they're 6 digits
+    if ((field === 'start_time' || field === 'end_time') && trimmedValue) {
+      trimmedValue = formatTimeInput(trimmedValue);
+      console.log('[handleSaveField] Formatted time value:', trimmedValue);
+      
+      if (!validateTimeFormat(trimmedValue)) {
+        console.log('[handleSaveField] Invalid time format');
+        setError('Time must be 6 digits (HHMMSS) or HH:MM:SS format');
+        return;
+      }
+    }
+
+    console.log('[handleSaveField] trimmedValue:', trimmedValue);
+
+    // Validate end time is after start time
+    if (field === 'end_time' && trimmedValue && startTime) {
+      const [startH, startM, startS] = startTime.split(':').map(Number);
+      const [endH, endM, endS] = trimmedValue.split(':').map(Number);
+      const startSeconds = startH * 3600 + startM * 60 + startS;
+      const endSeconds = endH * 3600 + endM * 60 + endS;
+      
+      if (endSeconds <= startSeconds) {
+        console.log('[handleSaveField] End time not after start time');
+        setError('End time must be after start time');
+        return;
+      }
+    }
+
+    if (field === 'start_time' && trimmedValue && endTime) {
+      const [startH, startM, startS] = trimmedValue.split(':').map(Number);
+      const [endH, endM, endS] = endTime.split(':').map(Number);
+      const startSeconds = startH * 3600 + startM * 60 + startS;
+      const endSeconds = endH * 3600 + endM * 60 + endS;
+      
+      if (endSeconds <= startSeconds) {
+        console.log('[handleSaveField] Start time not before end time');
+        setError('End time must be after start time');
+        return;
+      }
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      console.log('[handleSaveField] About to call updateAssignedTagMetadata...');
+      console.log('[handleSaveField] Calling with:', {
+        content_tag_id: initialMetadata.content_tag_id,
+        start_time: field === 'start_time' ? (trimmedValue || null) : startTime || null,
+        end_time: field === 'end_time' ? (trimmedValue || null) : endTime || null,
+        notes: field === 'notes' ? (trimmedValue || null) : notes || null,
+      });
+      
+      await contentTagsService.updateAssignedTagMetadata(
+        initialMetadata.content_tag_id,
+        {
+          start_time: field === 'start_time' ? (trimmedValue || null) : startTime || null,
+          end_time: field === 'end_time' ? (trimmedValue || null) : endTime || null,
+          notes: field === 'notes' ? (trimmedValue || null) : notes || null,
+        }
+      );
+
+      console.log('[handleSaveField] Update complete, updating local state...');
+      // Update local state
+      if (field === 'start_time') setStartTime(trimmedValue);
+      if (field === 'end_time') setEndTime(trimmedValue);
+      if (field === 'notes') setNotes(trimmedValue);
+
+      console.log('[handleSaveField] Local state updated, closing edit field');
+      setEditingField(null);
+      // Don't call onSaved here - only when modal closes
+    } catch (err) {
+      console.error('[handleSaveField] Error saving field:', err);
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveField = async (field: EditingField) => {
     console.log('[handleSaveField] Called with field:', field);
     console.log('[handleSaveField] editValue:', editValue);
@@ -265,6 +364,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                     type="text"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => handleBlurSave('start_time')}
                     placeholder="012345 or 01:23:45"
                     maxLength={8}
                     autoFocus
@@ -285,18 +385,15 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div 
+                  onClick={() => handleStartEdit('start_time', startTime)}
+                  className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors"
+                >
                   {startTime ? (
                     <span className="text-slate-900 font-mono">{startTime}</span>
                   ) : (
-                    <span className="text-slate-400 italic">No start time</span>
+                    <span className="text-slate-400 italic">Click to add start time</span>
                   )}
-                  <button
-                    onClick={() => handleStartEdit('start_time', startTime)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    edit
-                  </button>
                 </div>
               )}
             </div>
@@ -314,6 +411,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                     type="text"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => handleBlurSave('end_time')}
                     placeholder="012530 or 01:25:30"
                     maxLength={8}
                     autoFocus
@@ -334,18 +432,15 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-2">
+                <div 
+                  onClick={() => handleStartEdit('end_time', endTime)}
+                  className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors"
+                >
                   {endTime ? (
                     <span className="text-slate-900 font-mono">{endTime}</span>
                   ) : (
-                    <span className="text-slate-400 italic">No end time</span>
+                    <span className="text-slate-400 italic">Click to add end time</span>
                   )}
-                  <button
-                    onClick={() => handleStartEdit('end_time', endTime)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    edit
-                  </button>
                 </div>
               )}
             </div>
@@ -353,26 +448,17 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
 
           {/* Notes */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700">
-                <FileText className="h-4 w-4" />
-                <span>Notes</span>
-              </label>
-              {editingField !== 'notes' && (
-                <button
-                  onClick={() => handleStartEdit('notes', notes)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  edit
-                </button>
-              )}
-            </div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+              <FileText className="h-4 w-4" />
+              <span>Notes</span>
+            </label>
             
             {editingField === 'notes' ? (
               <div className="space-y-2">
                 <textarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={() => handleBlurSave('notes')}
                   placeholder="Add notes about this tag assignment..."
                   rows={4}
                   maxLength={1000}
@@ -402,13 +488,14 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                 </div>
               </div>
             ) : (
-              <div>
+              <div 
+                onClick={() => handleStartEdit('notes', notes)}
+                className="px-3 py-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors min-h-[100px]"
+              >
                 {notes ? (
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-slate-900 text-sm whitespace-pre-wrap">{notes}</p>
-                  </div>
+                  <p className="text-slate-900 text-sm whitespace-pre-wrap">{notes}</p>
                 ) : (
-                  <p className="text-slate-400 italic text-sm">No notes</p>
+                  <p className="text-slate-400 italic text-sm">Click to add notes</p>
                 )}
               </div>
             )}
