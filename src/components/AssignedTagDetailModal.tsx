@@ -75,8 +75,29 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
 
   const validateTimeFormat = (time: string): boolean => {
     if (!time) return true;
+    // Accept 6 digits (HHMMSS) or already formatted (HH:MM:SS)
+    const digitRegex = /^[0-9]{6}$/;
     const timeRegex = /^([0-9]{1,2}):([0-5][0-9]):([0-5][0-9])$/;
-    return timeRegex.test(time);
+    return digitRegex.test(time) || timeRegex.test(time);
+  };
+
+  const formatTimeInput = (input: string): string => {
+    // Remove any non-digit characters
+    const digits = input.replace(/\D/g, '');
+    
+    // If we have 6 digits, format as HH:MM:SS
+    if (digits.length === 6) {
+      return `${digits.slice(0, 2)}:${digits.slice(2, 4)}:${digits.slice(4, 6)}`;
+    }
+    
+    // If already formatted correctly, return as is
+    const timeRegex = /^([0-9]{1,2}):([0-5][0-9]):([0-5][0-9])$/;
+    if (timeRegex.test(input)) {
+      return input;
+    }
+    
+    // Otherwise return the input as is (partial entry)
+    return input;
   };
 
   const handleStartEdit = (field: EditingField, currentValue: string) => {
@@ -95,14 +116,16 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
       return;
     }
 
-    const trimmedValue = editValue.trim();
-    console.log('[handleSaveField] trimmedValue:', trimmedValue);
-
-    // Validate time fields
+    let trimmedValue = editValue.trim();
+    
+    // Format time fields if they're 6 digits
     if ((field === 'start_time' || field === 'end_time') && trimmedValue) {
+      trimmedValue = formatTimeInput(trimmedValue);
+      console.log('[handleSaveField] Formatted time value:', trimmedValue);
+      
       if (!validateTimeFormat(trimmedValue)) {
         console.log('[handleSaveField] Invalid time format');
-        setError('Time must be in format HH:MM:SS');
+        setError('Time must be 6 digits (HHMMSS) or HH:MM:SS format');
         return;
       }
     }
@@ -227,112 +250,123 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
             </div>
           )}
 
-          {/* Start Time */}
-          <div>
-            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
-              <Clock className="h-4 w-4" />
-              <span>Start Time</span>
-            </label>
-            
-            {editingField === 'start_time' ? (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  placeholder="HH:MM:SS (e.g., 01:23:45)"
-                  maxLength={8}
-                  autoFocus
-                  disabled={saving}
-                  className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <button
-                  onClick={() => handleSaveField('start_time')}
-                  disabled={saving}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  title="Save"
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          {/* Start Time and End Time - Same Row */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Start Time */}
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+                <Clock className="h-4 w-4" />
+                <span>Start Time</span>
+              </label>
+              
+              {editingField === 'start_time' ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    placeholder="012345 or 01:23:45"
+                    maxLength={8}
+                    autoFocus
+                    disabled={saving}
+                    className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  />
+                  <button
+                    onClick={() => handleSaveField('start_time')}
+                    disabled={saving}
+                    className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    title="Save"
+                  >
+                    {saving ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  {startTime ? (
+                    <span className="text-slate-900 font-mono">{startTime}</span>
                   ) : (
-                    <Check className="h-4 w-4" />
+                    <span className="text-slate-400 italic">No start time</span>
                   )}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                {startTime ? (
-                  <span className="text-slate-900 font-mono">{startTime}</span>
-                ) : (
-                  <span className="text-slate-400 italic">No start time</span>
-                )}
-                <button
-                  onClick={() => handleStartEdit('start_time', startTime)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  edit
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
-          </div>
+                  <button
+                    onClick={() => handleStartEdit('start_time', startTime)}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    edit
+                  </button>
+                </div>
+              )}
+            </div>
 
-          {/* End Time */}
-          <div>
-            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
-              <Clock className="h-4 w-4" />
-              <span>End Time</span>
-            </label>
-            
-            {editingField === 'end_time' ? (
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  placeholder="HH:MM:SS (e.g., 01:25:30)"
-                  maxLength={8}
-                  autoFocus
-                  disabled={saving}
-                  className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                <button
-                  onClick={() => handleSaveField('end_time')}
-                  disabled={saving}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  title="Save"
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            {/* End Time */}
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+                <Clock className="h-4 w-4" />
+                <span>End Time</span>
+              </label>
+              
+              {editingField === 'end_time' ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    placeholder="012530 or 01:25:30"
+                    maxLength={8}
+                    autoFocus
+                    disabled={saving}
+                    className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  />
+                  <button
+                    onClick={() => handleSaveField('end_time')}
+                    disabled={saving}
+                    className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    title="Save"
+                  >
+                    {saving ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  {endTime ? (
+                    <span className="text-slate-900 font-mono">{endTime}</span>
                   ) : (
-                    <Check className="h-4 w-4" />
+                    <span className="text-slate-400 italic">No end time</span>
                   )}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                {endTime ? (
-                  <span className="text-slate-900 font-mono">{endTime}</span>
-                ) : (
-                  <span className="text-slate-400 italic">No end time</span>
-                )}
-                <button
-                  onClick={() => handleStartEdit('end_time', endTime)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  edit
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
+                  <button
+                    onClick={() => handleStartEdit('end_time', endTime)}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    edit
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
-              <FileText className="h-4 w-4" />
-              <span>Notes</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="flex items-center space-x-2 text-sm font-medium text-slate-700">
+                <FileText className="h-4 w-4" />
+                <span>Notes</span>
+              </label>
+              {editingField !== 'notes' && (
+                <button
+                  onClick={() => handleStartEdit('notes', notes)}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  edit
+                </button>
+              )}
+            </div>
             
             {editingField === 'notes' ? (
               <div className="space-y-2">
@@ -368,7 +402,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div>
                 {notes ? (
                   <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="text-slate-900 text-sm whitespace-pre-wrap">{notes}</p>
@@ -376,12 +410,6 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
                 ) : (
                   <p className="text-slate-400 italic text-sm">No notes</p>
                 )}
-                <button
-                  onClick={() => handleStartEdit('notes', notes)}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                >
-                  edit
-                </button>
               </div>
             )}
           </div>
