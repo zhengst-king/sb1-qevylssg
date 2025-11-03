@@ -263,7 +263,7 @@ export const useContentTags = (
   contentId: number | null,
   contentType: 'movie' | 'tv' | null
 ) => {
-  const [contentTags, setContentTags] = useState<Tag[]>([]);
+  const [contentTags, setContentTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -276,8 +276,20 @@ export const useContentTags = (
     try {
       setLoading(true);
       setError(null);
-      const data = await contentTagsService.getTagsForContent(contentId, contentType);
-      setContentTags(data);
+      
+      // ✅ USE getContentTagsForItem to get full content_tags records with metadata
+      const data = await contentTagsService.getContentTagsForItem(contentId, contentType);
+      
+      // Map to include both tag data and metadata
+      const tagsWithMetadata = data.map((ct: any) => ({
+        ...ct.tags,
+        content_tag_id: ct.id,
+        start_time: ct.start_time,
+        end_time: ct.end_time,
+        notes: ct.notes,
+      }));
+      
+      setContentTags(tagsWithMetadata);
     } catch (err) {
       setError(err as Error);
       console.error('Error fetching content tags:', err);
