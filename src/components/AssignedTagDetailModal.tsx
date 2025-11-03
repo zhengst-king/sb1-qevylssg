@@ -2,7 +2,7 @@
 // Modal for viewing and editing metadata of a tag assigned to specific content
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, FileText, ChevronRight } from 'lucide-react';
+import { X, Clock, FileText, ChevronRight, Check, Edit2 } from 'lucide-react';
 import { getCategoryById } from '../data/taggingCategories';
 import { useTagSubcategories } from '../hooks/useTagSubcategories';
 import { contentTagsService } from '../services/contentTagsService';
@@ -24,6 +24,8 @@ interface AssignedTagDetailModalProps {
   onSaved?: () => void;
 }
 
+type EditingField = 'start_time' | 'end_time' | 'notes' | null;
+
 export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
   isOpen,
   onClose,
@@ -39,15 +41,19 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
   const [startTime, setStartTime] = useState(initialMetadata?.start_time || '');
   const [endTime, setEndTime] = useState(initialMetadata?.end_time || '');
   const [notes, setNotes] = useState(initialMetadata?.notes || '');
-  const [isSaving, setIsSaving] = useState(false);
-  const [timeError, setTimeError] = useState<string | null>(null);
+  
+  const [editingField, setEditingField] = useState<EditingField>(null);
+  const [editValue, setEditValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setStartTime(initialMetadata?.start_time || '');
       setEndTime(initialMetadata?.end_time || '');
       setNotes(initialMetadata?.notes || '');
-      setTimeError(null);
+      setEditingField(null);
+      setError(null);
     }
   }, [isOpen, initialMetadata]);
 
@@ -55,77 +61,94 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        if (editingField) {
+          setEditingField(null);
+          setError(null);
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, editingField, onClose]);
 
   const validateTimeFormat = (time: string): boolean => {
-    if (!time) return true; // Empty is valid
+    if (!time) return true;
     const timeRegex = /^([0-9]{1,2}):([0-5][0-9]):([0-5][0-9])$/;
     return timeRegex.test(time);
   };
 
-  const handleSave = async () => {
-    console.log('[AssignedTagDetailModal] Starting save...');
-    console.log('[AssignedTagDetailModal] Current values:', {
-      startTime,
-      endTime,
-      notes,
-      content_tag_id: initialMetadata?.content_tag_id
-    });
-    
-    // Validate time formats
-    if (startTime && !validateTimeFormat(startTime)) {
-      setTimeError('Start time must be in format HH:MM:SS');
-      return;
-    }
-    if (endTime && !validateTimeFormat(endTime)) {
-      setTimeError('End time must be in format HH:MM:SS');
-      return;
+  const handleStartEdit = (field: EditingField, currentValue: string) => {
+    setEditingField(field);
+    setEditValue(currentValue);
+    setError(null);
+  };
+
+  const handleSaveField = async (field: EditingField) => {
+    if (!field || !initialMetadata?.content_tag_id) return;
+
+    const trimmedValue = editValue.trim();
+
+    // Validate time fields
+    if ((field === 'start_time' || field === 'end_time') && trimmedValue) {
+      if (!validateTimeFormat(trimmedValue)) {
+        setError('Time must be in format HH:MM:SS');
+        return;
+      }
     }
 
-    // Validate that end time is after start time
-    if (startTime && endTime) {
+    // Validate end time is after start time
+    if (field === 'end_time' && trimmedValue && startTime) {
       const [startH, startM, startS] = startTime.split(':').map(Number);
+      const [endH, endM, endS] = trimmedValue.split(':').map(Number);
+      const startSeconds = startH * 3600 + startM * 60 + startS;
+      const endSeconds = endH * 3600 + endM * 60 + endS;
+      
+      if (endSeconds <= startSeconds) {
+        setError('End time must be after start time');
+        return;
+      }
+    }
+
+    if (field === 'start_time' && trimmedValue && endTime) {
+      const [startH, startM, startS] = trimmedValue.split(':').map(Number);
       const [endH, endM, endS] = endTime.split(':').map(Number);
       const startSeconds = startH * 3600 + startM * 60 + startS;
       const endSeconds = endH * 3600 + endM * 60 + endS;
       
       if (endSeconds <= startSeconds) {
-        setTimeError('End time must be after start time');
+        setError('End time must be after start time');
         return;
       }
     }
 
-    setTimeError(null);
-    setIsSaving(true);
+    setSaving(true);
+    setError(null);
 
     try {
-      if (!initialMetadata?.content_tag_id) {
-        throw new Error('No content tag ID provided');
-      }
-
-      console.log('[AssignedTagDetailModal] Calling updateAssignedTagMetadata...');
       await contentTagsService.updateAssignedTagMetadata(
         initialMetadata.content_tag_id,
         {
-          start_time: startTime || null,
-          end_time: endTime || null,
-          notes: notes || null,
+          start_time: field === 'start_time' ? (trimmedValue || null) : startTime || null,
+          end_time: field === 'end_time' ? (trimmedValue || null) : endTime || null,
+          notes: field === 'notes' ? (trimmedValue || null) : notes || null,
         }
       );
 
-      console.log('[AssignedTagDetailModal] Update successful, calling onSaved...');
+      // Update local state
+      if (field === 'start_time') setStartTime(trimmedValue);
+      if (field === 'end_time') setEndTime(trimmedValue);
+      if (field === 'notes') setNotes(trimmedValue);
+
+      setEditingField(null);
+      
       if (onSaved) onSaved();
-      onClose();
-    } catch (error) {
-      console.error('[AssignedTagDetailModal] Error saving:', error);
-      alert('Failed to save. Please try again.');
+    } catch (err) {
+      console.error('Error saving field:', err);
+      setError('Failed to save. Please try again.');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
@@ -177,101 +200,180 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Time Fields */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Start Time */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4" />
-                  <span>Start Time</span>
-                </div>
-              </label>
-              <input
-                type="text"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                placeholder="HH:MM:SS (e.g., 01:23:45)"
-                maxLength={8}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-              />
-              <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
-            </div>
-
-            {/* End Time */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4" />
-                  <span>End Time</span>
-                </div>
-              </label>
-              <input
-                type="text"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                placeholder="HH:MM:SS (e.g., 01:25:30)"
-                maxLength={8}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-              />
-              <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
-            </div>
-          </div>
-
-          {/* Time Error */}
-          {timeError && (
+          {/* Error Display */}
+          {error && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-              {timeError}
+              {error}
             </div>
           )}
 
+          {/* Start Time */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+              <Clock className="h-4 w-4" />
+              <span>Start Time</span>
+            </label>
+            
+            {editingField === 'start_time' ? (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  placeholder="HH:MM:SS (e.g., 01:23:45)"
+                  maxLength={8}
+                  autoFocus
+                  disabled={saving}
+                  className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                />
+                <button
+                  onClick={() => handleSaveField('start_time')}
+                  disabled={saving}
+                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  title="Save"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                {startTime ? (
+                  <span className="text-slate-900 font-mono">{startTime}</span>
+                ) : (
+                  <span className="text-slate-400 italic">No start time</span>
+                )}
+                <button
+                  onClick={() => handleStartEdit('start_time', startTime)}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  edit
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
+          </div>
+
+          {/* End Time */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+              <Clock className="h-4 w-4" />
+              <span>End Time</span>
+            </label>
+            
+            {editingField === 'end_time' ? (
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  placeholder="HH:MM:SS (e.g., 01:25:30)"
+                  maxLength={8}
+                  autoFocus
+                  disabled={saving}
+                  className="flex-1 px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                />
+                <button
+                  onClick={() => handleSaveField('end_time')}
+                  disabled={saving}
+                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  title="Save"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                {endTime ? (
+                  <span className="text-slate-900 font-mono">{endTime}</span>
+                ) : (
+                  <span className="text-slate-400 italic">No end time</span>
+                )}
+                <button
+                  onClick={() => handleStartEdit('end_time', endTime)}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  edit
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mt-1">Format: HH:MM:SS</p>
+          </div>
+
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4" />
-                <span>Notes</span>
-              </div>
+            <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 mb-2">
+              <FileText className="h-4 w-4" />
+              <span>Notes</span>
             </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add notes about this tag assignment (e.g., why it applies, specific scenes, etc.)"
-              rows={4}
-              maxLength={1000}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              {notes.length}/1000 characters
-            </p>
+            
+            {editingField === 'notes' ? (
+              <div className="space-y-2">
+                <textarea
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  placeholder="Add notes about this tag assignment..."
+                  rows={4}
+                  maxLength={1000}
+                  autoFocus
+                  disabled={saving}
+                  className="w-full px-3 py-2 border border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">{editValue.length}/1000 characters</p>
+                  <button
+                    onClick={() => handleSaveField('notes')}
+                    disabled={saving}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-4 w-4" />
+                        <span>Save</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {notes ? (
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-slate-900 text-sm whitespace-pre-wrap">{notes}</p>
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic text-sm">No notes</p>
+                )}
+                <button
+                  onClick={() => handleStartEdit('notes', notes)}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  edit
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end space-x-3">
+        {/* Footer - Just Close button */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
           <button
             onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors disabled:opacity-50"
+            className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
-          >
-            {isSaving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                <span>Save</span>
-              </>
-            )}
+            Close
           </button>
         </div>
       </div>
