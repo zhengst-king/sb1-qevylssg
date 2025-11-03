@@ -50,6 +50,8 @@ import { TagSelectorModal } from './TagSelectorModal';
 import { useTags, useContentTags } from '../hooks/useTags';
 import { getCategoryById } from '../data/taggingCategories';
 import { useTagSubcategories } from '../hooks/useTagSubcategories';
+import { AssignedTagDetailModal } from './AssignedTagDetailModal';
+import { contentTagsService } from '../services/contentTagsService';
 
 interface EnhancedEpisodesBrowserPageProps {
   series: Movie;
@@ -135,6 +137,16 @@ export function EnhancedEpisodesBrowserPage({
     series.id ? parseInt(series.id) : null,
     'tv'
   );
+
+  const [selectedAssignedTag, setSelectedAssignedTag] = useState<{
+    tag: any;
+    metadata: {
+      content_tag_id: string;
+      start_time?: string | null;
+      end_time?: string | null;
+      notes?: string | null;
+    }
+  } | null>(null);
   
   // Add this handler function after your state declarations
   const handleRecommendationClick = (clickedSeries: Movie) => {
@@ -158,6 +170,63 @@ export function EnhancedEpisodesBrowserPage({
     setSelectedPersonId(null);
     if (onViewRecommendation) {
       onViewRecommendation(series);
+    }
+  };
+
+  // ✅ ADD THIS: Handler for opening assigned tag details
+  const handleOpenAssignedTagDetails = async (tag: any) => {
+    console.log('[handleOpenAssignedTagDetails] Clicked tag:', tag);
+    console.log('[handleOpenAssignedTagDetails] Has content_tag_id?', tag.content_tag_id);
+    
+    try {
+      if (!series.id) {
+        console.log('[handleOpenAssignedTagDetails] No series.id');
+        alert('Error: No series ID found');
+        return;
+      }
+      
+      if (!tag.content_tag_id) {
+        console.log('[handleOpenAssignedTagDetails] No content_tag_id, tag object:', tag);
+        alert('Error: No content tag ID found');
+        return;
+      }
+    
+      console.log('[handleOpenAssignedTagDetails] Setting selectedAssignedTag with metadata:', {
+        content_tag_id: tag.content_tag_id,
+        start_time: tag.start_time,
+        end_time: tag.end_time,
+        notes: tag.notes,
+      });
+      
+      setSelectedAssignedTag({
+        tag: tag,
+        metadata: {
+          content_tag_id: tag.content_tag_id,
+          start_time: tag.start_time,
+          end_time: tag.end_time,
+          notes: tag.notes,
+        }
+      });
+    } catch (error) {
+      console.error('[handleOpenAssignedTagDetails] Error loading assigned tag:', error);
+      alert('Error opening tag details. Check console for details.');
+    }
+  };
+
+  // ✅ ADD THIS: Handler for removing a tag
+  const handleRemoveTag = async (tagId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the detail modal
+    
+    if (!series.id) return;
+    
+    if (!window.confirm('Remove this tag from the series?')) return;
+    
+    try {
+      await contentTagsService.removeTagFromContent(tagId, parseInt(series.id), 'tv');
+      await refetchContentTags();
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      alert('Failed to remove tag. Please try again.');
     }
   };
 
@@ -859,14 +928,14 @@ export function EnhancedEpisodesBrowserPage({
               </div>
             </div>
 
-            {/* ✅ NEW: TAGS SECTION - Between Series Info and User Actions */}
+            {/* ✅ SERIES TAGS SECTION - Between Series Info and User Actions */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900 flex items-center space-x-2">
                   <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
-                  <span>Tags</span>
+                  <span>Series Tags</span>
                 </h3>
                 <button
                   onClick={() => setShowTagSelector(true)}
@@ -891,22 +960,41 @@ export function EnhancedEpisodesBrowserPage({
                     return (
                       <div
                         key={tag.id}
-                        className="group inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-purple-300 transition-all"
-                        style={{ backgroundColor: `${tag.color}15` }}
+                        className="group relative flex items-center space-x-2 px-3 py-2 border border-slate-200 hover:border-blue-300 rounded-lg transition-all cursor-pointer"
+                        style={{ backgroundColor: `${tag.color}08` }}
+                        title={tag.description || tag.name}
+                        onClick={() => handleOpenAssignedTagDetails(tag)}
                       >
+                        {/* Color Dot */}
                         <div 
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          className="w-2 h-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: tag.color }}
                         />
-                        <div className="flex items-center space-x-1 text-sm">
-                          <span className="text-xs text-slate-500">{category?.icon}</span>
-                          <span className="font-medium text-slate-900">{tag.name}</span>
-                        </div>
-                        {tag.description && (
-                          <span className="text-xs text-slate-500 max-w-xs truncate">
-                            - {tag.description}
-                          </span>
+                        
+                        {/* Category Icon */}
+                        <span className="text-xs flex-shrink-0">{category?.icon}</span>
+                        
+                        {/* Tag Name - Allow 2 lines */}
+                        <span className="font-medium text-slate-900 text-sm flex-1 line-clamp-2 min-w-0">
+                          {tag.name}
+                        </span>
+                        
+                        {/* Metadata indicator */}
+                        {(tag.start_time || tag.end_time || tag.notes) && (
+                          <div className="flex-shrink-0 w-1.5 h-1.5 bg-blue-500 rounded-full" title="Has metadata" />
                         )}
+                        
+                        {/* Action Icons */}
+                        <div className="flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          {/* Remove button */}
+                          <button
+                            onClick={(e) => handleRemoveTag(tag.id, e)}
+                            className="p-1 hover:bg-red-100 rounded transition-colors"
+                            title="Remove tag"
+                          >
+                            <X className="h-3.5 w-3.5 text-red-600" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1566,6 +1654,38 @@ export function EnhancedEpisodesBrowserPage({
       )}
 
       {/* ✅ NEW: Tag Selector Modal */}
+      {showTagSelector && series.id && !isNaN(parseInt(series.id)) && (
+        <TagSelectorModal
+          isOpen={showTagSelector}
+          onClose={() => setShowTagSelector(false)}
+          contentId={parseInt(series.id)}
+          contentType="tv"
+          contentTitle={series.title}
+          onTagsUpdated={() => {
+            refetchContentTags();
+          }}
+        />
+      )}
+
+      {/* ✅ Assigned Tag Detail Modal for Series */}
+      {selectedAssignedTag && series.id && (
+        <AssignedTagDetailModal
+          isOpen={!!selectedAssignedTag}
+          onClose={() => setSelectedAssignedTag(null)}
+          tag={selectedAssignedTag.tag}
+          contentId={parseInt(series.id)}
+          contentType="tv"
+          contentTitle={series.title}
+          initialMetadata={selectedAssignedTag.metadata}
+          onSaved={async () => {
+            console.log('[EnhancedEpisodesBrowserPage] onSaved called, refetching tags...');
+            await refetchContentTags();
+            console.log('[EnhancedEpisodesBrowserPage] Tags refetched');
+          }}
+        />
+      )}
+
+      {/* ✅ Tag Selector Modal */}
       {showTagSelector && series.id && !isNaN(parseInt(series.id)) && (
         <TagSelectorModal
           isOpen={showTagSelector}
