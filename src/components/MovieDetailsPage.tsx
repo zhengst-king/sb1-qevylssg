@@ -40,6 +40,7 @@ import { getCategoryById } from '../data/taggingCategories';
 import type { Tag } from '../types/customCollections';
 import { TagSelectorModal } from './TagSelectorModal';
 import { TagDetailModal } from './TagDetailModal';
+import { AssignedTagDetailModal } from './AssignedTagDetailModal';
 
 interface MovieDetailsPageProps {
   movie: Movie;
@@ -112,6 +113,16 @@ export function MovieDetailsPage({
   const [movieCollections, setMovieCollections] = useState<CustomCollection[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollectionToView, setSelectedCollectionToView] = useState<CustomCollection | null>(null);
+
+  const [selectedAssignedTag, setSelectedAssignedTag] = useState<{
+    tag: Tag;
+    metadata: {
+      content_tag_id: string;
+      start_time?: string | null;
+      end_time?: string | null;
+      notes?: string | null;
+    };
+  } | null>(null);
 
   const handleRecommendationClick = (clickedMovie: Movie) => {
     if (onViewRecommendation) {
@@ -430,8 +441,26 @@ export function MovieDetailsPage({
     });
   };
 
-  const handleOpenTagDetails = (tag: any) => {
-    setSelectedTagForDetails(tag);
+  const handleOpenAssignedTagDetails = async (tag: any) => {
+    // Fetch the content_tag record to get metadata
+    try {
+      const contentTag = await contentTagsService.getContentTagsForItem(contentId, contentType);
+      const assignedTag = contentTag.find((ct: any) => ct.tag_id === tag.id);
+    
+      if (assignedTag) {
+        setSelectedAssignedTag({
+          tag: tag,
+          metadata: {
+            content_tag_id: assignedTag.id,
+            start_time: assignedTag.start_time,
+            end_time: assignedTag.end_time,
+            notes: assignedTag.notes,
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading assigned tag:', error);
+    }
   };
 
   return (
@@ -722,6 +751,7 @@ export function MovieDetailsPage({
                         className="group relative flex items-center space-x-2 px-3 py-2 border border-slate-200 hover:border-blue-300 rounded-lg transition-all"
                         style={{ backgroundColor: `${tag.color}08` }}
                         title={tag.description || tag.name}
+                        onClick={() => handleOpenAssignedTagDetails(tag)}
                       >
                         {/* Color Dot */}
                         <div 
@@ -1155,6 +1185,23 @@ export function MovieDetailsPage({
           onClose={() => setSelectedTagForDetails(null)}
           onTagUpdated={() => {
             refetchContentTags();
+          }}
+        />
+      )}
+
+      {/* Assigned Tag Detail Modal */}
+      {selectedAssignedTag && (
+        <AssignedTagDetailModal
+          isOpen={!!selectedAssignedTag}
+          onClose={() => setSelectedAssignedTag(null)}
+          tag={selectedAssignedTag.tag}
+          contentId={parseInt(movie.id!)}
+          contentType="movie"
+          contentTitle={movie.title}
+          initialMetadata={selectedAssignedTag.metadata}
+          onSaved={() => {
+            refetchContentTags();
+            setSelectedAssignedTag(null);
           }}
         />
       )}
