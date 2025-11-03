@@ -575,6 +575,115 @@ class ContentTagsService {
       await this.addTagsToContent(targetContentId, targetContentType, tagIds);
     }
   }
+
+  /**
+   * Copy tags from one content item to another
+   */
+  async copyTagsToContent(
+    sourceContentId: number,
+    sourceContentType: 'movie' | 'tv',
+    targetContentId: number,
+    targetContentType: 'movie' | 'tv'
+  ): Promise<void> {
+    // Get tags from source
+    const sourceTags = await this.getTagsForContent(sourceContentId, sourceContentType);
+    
+    // Apply to target
+    if (sourceTags.length > 0) {
+      const tagIds = sourceTags.map(tag => tag.id);
+      await this.addTagsToContent(targetContentId, targetContentType, tagIds);
+    }
+  }
+
+  /**
+   * Get content_tags records with full metadata for a specific content item
+   * Returns the content_tags records (not just the tags) including start_time, end_time, notes
+   */
+  async getContentTagsForItem(
+    contentId: number,
+    contentType: 'movie' | 'tv'
+  ): Promise<any[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('content_tags')
+      .select(`
+        id,
+        tag_id,
+        content_id,
+        content_type,
+        start_time,
+        end_time,
+        notes,
+        created_at,
+        updated_at,
+        tags (*)
+      `)
+      .eq('content_id', contentId)
+      .eq('content_type', contentType)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Update metadata for an assigned tag (content_tags record)
+   */
+  async updateAssignedTagMetadata(
+    contentTagId: string,
+    metadata: {
+      start_time?: string | null;
+      end_time?: string | null;
+      notes?: string | null;
+    }
+  ): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('content_tags')
+      .update({
+        start_time: metadata.start_time,
+        end_time: metadata.end_time,
+        notes: metadata.notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', contentTagId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+  }
+
+  /**
+   * Get a single assigned tag with full metadata
+   */
+  async getAssignedTag(contentTagId: string): Promise<any> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('content_tags')
+      .select(`
+        id,
+        tag_id,
+        content_id,
+        content_type,
+        start_time,
+        end_time,
+        notes,
+        created_at,
+        updated_at,
+        tags (*)
+      `)
+      .eq('id', contentTagId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
 }
 
 export const contentTagsService = new ContentTagsService();
