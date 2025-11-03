@@ -82,7 +82,7 @@ export function MovieDetailsPage({
   // Tagging state
   const { tags } = useTags();
   const { subcategories } = useTagSubcategories();
-  const { contentTags, addTag, removeTag: removeContentTag, refetch: refetchContentTags } = useContentTags(
+  const { contentTags, addTag, removeTag: removeContentTags, refetch: refetchContentTags } = useContentTags(
     movie.id ? parseInt(movie.id) : null,
   'movie'
   );
@@ -421,7 +421,7 @@ export function MovieDetailsPage({
 
   const handleRemoveTag = async (tagId: string) => {
     try {
-      await removeContentTag(tagId);
+      await removeContentTags(tagId);
       await refetchContentTags();
     } catch (error) {
       console.error('Error removing tag:', error);
@@ -447,7 +447,7 @@ export function MovieDetailsPage({
       if (!movie.id) return;
     
       const contentTags = await contentTagsService.getContentTagsForItem(parseInt(movie.id), 'movie');
-      const assignedTags = contentTag.find((ct: any) => ct.tag_id === tag.id);
+      const assignedTags = contentTags.find((ct: any) => ct.tag_id === tag.id);
     
       if (assignedTag) {
         setSelectedAssignedTag({
