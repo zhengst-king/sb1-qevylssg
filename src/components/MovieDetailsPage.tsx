@@ -442,24 +442,36 @@ export function MovieDetailsPage({
   };
 
   const handleOpenAssignedTagDetails = async (tag: any) => {
-    // Fetch the content_tag record to get metadata
+    console.log('[handleOpenAssignedTagDetails] Clicked tag:', tag);
+    console.log('[handleOpenAssignedTagDetails] Has content_tag_id?', tag.content_tag_id);
+  
     try {
-      if (!movie.id) return;
-    
-      const contentTags = await contentTagsService.getContentTagsForItem(parseInt(movie.id), 'movie');
-      const assignedTag = contentTags.find((ct: any) => ct.tag_id === tag.id);
-    
-      if (assignedTag) {
-        setSelectedAssignedTag({
-          tag: tag,
-          metadata: {
-            content_tag_id: assignedTag.id,
-            start_time: assignedTag.start_time,
-            end_time: assignedTag.end_time,
-            notes: assignedTag.notes,
-          }
-        });
+      if (!movie.id) {
+        console.log('[handleOpenAssignedTagDetails] No movie.id');
+        return;
       }
+    
+      if (!tag.content_tag_id) {
+        console.log('[handleOpenAssignedTagDetails] No content_tag_id, tag object:', tag);
+        return;
+      }
+  
+      console.log('[handleOpenAssignedTagDetails] Setting selectedAssignedTag with metadata:', {
+        content_tag_id: tag.content_tag_id,
+        start_time: tag.start_time,
+        end_time: tag.end_time,
+        notes: tag.notes,
+      });
+    
+      setSelectedAssignedTag({
+        tag: tag,
+        metadata: {
+          content_tag_id: tag.content_tag_id,
+          start_time: tag.start_time,
+          end_time: tag.end_time,
+          notes: tag.notes,
+        }
+      });
     } catch (error) {
       console.error('Error loading assigned tag:', error);
     }
