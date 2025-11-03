@@ -271,7 +271,7 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
           )}
 
           {/* Start Time and End Time - Same Row */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-6">
             {/* Clip Start Time */}
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2 text-sm font-medium text-slate-700 w-32 flex-shrink-0">
