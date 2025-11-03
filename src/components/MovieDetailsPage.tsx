@@ -448,11 +448,13 @@ export function MovieDetailsPage({
     try {
       if (!movie.id) {
         console.log('[handleOpenAssignedTagDetails] No movie.id');
-        return;
-      }
+      alert('Error: No movie ID found');
+      return;
+    }
     
-      if (!tag.content_tag_id) {
-        console.log('[handleOpenAssignedTagDetails] No content_tag_id, tag object:', tag);
+    if (!tag.content_tag_id) {
+      console.log('[handleOpenAssignedTagDetails] No content_tag_id, tag object:', tag);
+        alert('Error: No content tag ID found');
         return;
       }
   
@@ -473,7 +475,8 @@ export function MovieDetailsPage({
         }
       });
     } catch (error) {
-      console.error('Error loading assigned tag:', error);
+      console.error('[handleOpenAssignedTagDetails] Error loading assigned tag:', error);
+      alert('Error opening tag details. Check console for details.');
     }
   };
 
