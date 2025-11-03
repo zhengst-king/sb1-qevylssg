@@ -444,7 +444,9 @@ export function MovieDetailsPage({
   const handleOpenAssignedTagDetails = async (tag: any) => {
     // Fetch the content_tag record to get metadata
     try {
-      const contentTag = await contentTagsService.getContentTagsForItem(contentId, contentType);
+      if (!movie.id) return;
+    
+      const contentTags = await contentTagsService.getContentTagsForItem(parseInt(movie.id), 'movie');
       const assignedTag = contentTag.find((ct: any) => ct.tag_id === tag.id);
     
       if (assignedTag) {
@@ -748,7 +750,7 @@ export function MovieDetailsPage({
                     return (
                       <div
                         key={tag.id}
-                        className="group relative flex items-center space-x-2 px-3 py-2 border border-slate-200 hover:border-blue-300 rounded-lg transition-all"
+                        className="group relative flex items-center space-x-2 px-3 py-2 border border-slate-200 hover:border-blue-300 rounded-lg transition-all cursor-pointer"
                         style={{ backgroundColor: `${tag.color}08` }}
                         title={tag.description || tag.name}
                         onClick={() => handleOpenAssignedTagDetails(tag)}
@@ -771,9 +773,12 @@ export function MovieDetailsPage({
                         <div className="flex items-center space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           {/* Tag Details Icon */}
                           <button
-                            onClick={() => handleOpenTagDetails(tag)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTagForDetails(tag);
+                            }}
                             className="text-slate-400 hover:text-blue-600 transition-colors p-1"
-                            title="View tag details"
+                            title="View generic tag info"
                           >
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -782,7 +787,10 @@ export function MovieDetailsPage({
                           
                           {/* Remove Icon */}
                           <button
-                            onClick={() => handleRemoveTag(tag.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveTag(tag.id);
+                            }}
                             className="text-slate-400 hover:text-red-600 transition-colors p-1"
                             title="Remove tag"
                           >
