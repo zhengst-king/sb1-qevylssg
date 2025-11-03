@@ -650,38 +650,43 @@ export function MovieDetailsPage({
           </div>
         </div>
 
-        {/* ✅ {/* ✅ ENHANCED: TAGS SECTION - Between Details and User Actions */}
+        {/* ✅ ENHANCED: TAGS SECTION - Between Details and User Actions */}
         <div className="max-w-6xl mx-auto px-6 pb-4">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             {/* Header with Tabs and Add Button */}
             <div className="flex items-center justify-between mb-4">
-              {/* Tabs - styled exactly like Cast/Crew tabs */}
-              <div className="flex items-center space-x-2">
+              {/* Tabs - styled EXACTLY like Cast/Crew tabs */}
+              <div className="flex items-center space-x-4 border-b border-slate-200">
                 <button
                   onClick={() => setSelectedTagTab('my-tags')}
-                  className={`inline-flex items-center space-x-2 px-6 py-2.5 rounded-full font-medium transition-all ${
+                  className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
                     selectedTagTab === 'my-tags'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  <span>My Tags</span>
+                  <div className="flex items-center space-x-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    <span>My Tags</span>
+                  </div>
                 </button>
+                
                 <button
                   onClick={() => setSelectedTagTab('shared-tags')}
-                  className={`inline-flex items-center space-x-2 px-6 py-2.5 rounded-full font-medium transition-all ${
+                  className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
                     selectedTagTab === 'shared-tags'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                  </svg>
-                  <span>Shared Tags</span>
+                  <div className="flex items-center space-x-2">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    <span>Shared Tags</span>
+                  </div>
                 </button>
               </div>
 
@@ -754,8 +759,6 @@ export function MovieDetailsPage({
                             <X className="h-3 w-3" />
                           </button>
                         </div>
-
-                        {/* Tooltip for description on hover - using title attribute above */}
                       </div>
                     );
                   })}
