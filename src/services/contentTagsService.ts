@@ -631,6 +631,9 @@ class ContentTagsService {
   /**
    * Update metadata for an assigned tag (content_tags record)
    */
+  /**
+   * Update metadata for an assigned tag (content_tags record)
+   */
   async updateAssignedTagMetadata(
     contentTagId: string,
     metadata: {
@@ -642,7 +645,10 @@ class ContentTagsService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
+    console.log('[updateAssignedTagMetadata] Updating content_tag:', contentTagId);
+    console.log('[updateAssignedTagMetadata] With metadata:', metadata);
+
+    const { data, error } = await supabase
       .from('content_tags')
       .update({
         start_time: metadata.start_time,
@@ -651,9 +657,17 @@ class ContentTagsService {
         updated_at: new Date().toISOString()
       })
       .eq('id', contentTagId)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .select();
 
-    if (error) throw error;
+    console.log('[updateAssignedTagMetadata] Update result:', { data, error });
+
+    if (error) {
+      console.error('[updateAssignedTagMetadata] Error:', error);
+      throw error;
+    }
+    
+    console.log('[updateAssignedTagMetadata] Update successful!');
   }
 
   /**
