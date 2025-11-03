@@ -1219,8 +1219,10 @@ export function MovieDetailsPage({
           contentType="movie"
           contentTitle={movie.title}
           initialMetadata={selectedAssignedTag.metadata}
-          onSaved={() => {
-            refetchContentTags();
+          onSaved={async () => {
+            console.log('[MovieDetailsPage] onSaved called, refetching tags...');
+            await refetchContentTags();
+            console.log('[MovieDetailsPage] Tags refetched');
             setSelectedAssignedTag(null);
           }}
         />
