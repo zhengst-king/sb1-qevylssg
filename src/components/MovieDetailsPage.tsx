@@ -447,7 +447,7 @@ export function MovieDetailsPage({
       if (!movie.id) return;
     
       const contentTags = await contentTagsService.getContentTagsForItem(parseInt(movie.id), 'movie');
-      const assignedTags = contentTags.find((ct: any) => ct.tag_id === tag.id);
+      const assignedTag = contentTags.find((ct: any) => ct.tag_id === tag.id);
     
       if (assignedTag) {
         setSelectedAssignedTag({
