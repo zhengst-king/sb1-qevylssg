@@ -143,7 +143,6 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
 
       setEditingField(null);
       
-      if (onSaved) onSaved();
     } catch (err) {
       console.error('Error saving field:', err);
       setError('Failed to save. Please try again.');
@@ -370,7 +369,10 @@ export const AssignedTagDetailModal: React.FC<AssignedTagDetailModalProps> = ({
         {/* Footer - Just Close button */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (onSaved) onSaved();
+              onClose();
+            }}
             className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
           >
             Close
