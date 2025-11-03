@@ -138,6 +138,18 @@ export function EnhancedEpisodesBrowserPage({
     'tv'
   );
 
+  const [selectedEpisodeForTag, setSelectedEpisodeForTag] = useState<Episode | null>(null);
+  const [selectedEpisodeAssignedTag, setSelectedEpisodeAssignedTag] = useState<{
+    tag: any;
+    metadata: {
+      content_tag_id: string;
+      start_time?: string | null;
+      end_time?: string | null;
+      notes?: string | null;
+    };
+    episode: { season: number; episode: number };
+  } | null>(null);
+
   const [selectedAssignedTag, setSelectedAssignedTag] = useState<{
     tag: any;
     metadata: {
@@ -602,6 +614,65 @@ export function EnhancedEpisodesBrowserPage({
     }
   };
 
+  // ✅ ADD: Episode tag handlers
+  const handleOpenEpisodeTagSelector = (episode: Episode) => {
+    setSelectedEpisodeForTag(episode);
+    setShowTagSelector(true);
+  };
+
+  const handleOpenEpisodeAssignedTagDetails = async (tag: any, episode: Episode) => {
+    console.log('[handleOpenEpisodeAssignedTagDetails] Clicked tag:', tag);
+    
+    try {
+      if (!series.id) {
+        alert('Error: No series ID found');
+        return;
+      }
+      
+      if (!tag.content_tag_id) {
+        alert('Error: No content tag ID found');
+        return;
+      }
+      
+      setSelectedEpisodeAssignedTag({
+        tag: tag,
+        metadata: {
+          content_tag_id: tag.content_tag_id,
+          start_time: tag.start_time,
+          end_time: tag.end_time,
+          notes: tag.notes,
+        },
+        episode: { season: episode.season, episode: episode.episode }
+      });
+    } catch (error) {
+      console.error('[handleOpenEpisodeAssignedTagDetails] Error:', error);
+      alert('Error opening tag details.');
+    }
+  };
+
+  const handleRemoveEpisodeTag = async (tagId: string, episode: Episode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!series.id) return;
+    
+    if (!window.confirm('Remove this tag from the episode?')) return;
+    
+    try {
+      await contentTagsService.removeTagFromContent(
+        tagId, 
+        parseInt(series.id), 
+        'tv',
+        { season: episode.season, episode: episode.episode }
+      );
+      
+      // Trigger re-render by updating episodes array
+      setEpisodes([...episodes]);
+    } catch (error) {
+      console.error('Error removing episode tag:', error);
+      alert('Failed to remove tag.');
+    }
+  };
+
   const handleToggleCollection = (collectionId: string) => {
     setSelectedCollections(prev => {
       const newSet = new Set(prev);
@@ -657,6 +728,92 @@ export function EnhancedEpisodesBrowserPage({
       console.error('Error removing from collection:', error);
       alert('Failed to remove from collection.');
     }
+  };
+
+  // ✅ Component for displaying episode tags
+  const EpisodeTagsSection: React.FC<{ episode: Episode }> = ({ episode }) => {
+    const { contentTags, refetch } = useContentTags(
+      series.id ? parseInt(series.id) : null,
+      'tv',
+      { season: episode.season, episode: episode.episode }
+    );
+
+    React.useEffect(() => {
+      refetch();
+    }, [episodes, refetch]);
+
+    if (contentTags.length === 0) {
+      return (
+        <div className="border-t border-slate-200 pt-3 mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-slate-700">Episode Tags</span>
+            <button
+              onClick={() => handleOpenEpisodeTagSelector(episode)}
+              className="inline-flex items-center space-x-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition-colors text-xs"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add Tag</span>
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">No tags for this episode</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="border-t border-slate-200 pt-3 mt-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-slate-700">Episode Tags</span>
+          <button
+            onClick={() => handleOpenEpisodeTagSelector(episode)}
+            className="inline-flex items-center space-x-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition-colors text-xs"
+          >
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Tag</span>
+          </button>
+        </div>
+        
+        {/* ✅ 2 tags per row */}
+        <div className="grid grid-cols-2 gap-2">
+          {contentTags.map((tag) => {
+            const category = getCategoryById(tag.category_id);
+            
+            return (
+              <div
+                key={tag.id}
+                className="group relative flex items-center space-x-1.5 px-2 py-1.5 border border-slate-200 hover:border-blue-300 rounded-lg transition-all cursor-pointer text-xs"
+                style={{ backgroundColor: `${tag.color}08` }}
+                title={tag.description || tag.name}
+                onClick={() => handleOpenEpisodeAssignedTagDetails(tag, episode)}
+              >
+                <div 
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: tag.color }}
+                />
+                <span className="text-[10px] flex-shrink-0">{category?.icon}</span>
+                <span className="font-medium text-slate-900 flex-1 truncate text-xs">
+                  {tag.name}
+                </span>
+                {(tag.start_time || tag.end_time || tag.notes) && (
+                  <div className="flex-shrink-0 w-1 h-1 bg-blue-500 rounded-full" />
+                )}
+                <button
+                  onClick={(e) => handleRemoveEpisodeTag(tag.id, episode, e)}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-100 rounded transition-all flex-shrink-0"
+                  title="Remove"
+                >
+                  <X className="h-2.5 w-2.5 text-red-600" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1444,6 +1601,9 @@ export function EnhancedEpisodesBrowserPage({
                             </div>
                           </div>
                         )}
+
+                        {/* ✅ ADD: Episode Tags Section */}
+                        <EpisodeTagsSection episode={episode} />
                       </div>
                       {/* ===== END: Episode Tracking Section ===== */}
                     
@@ -1695,6 +1855,53 @@ export function EnhancedEpisodesBrowserPage({
           contentTitle={series.title}
           onTagsUpdated={() => {
             refetchContentTags();
+          }}
+        />
+      )}
+
+      {/* ✅ Episode Tag Detail Modal */}
+      {selectedEpisodeAssignedTag && series.id && (
+        <AssignedTagDetailModal
+          isOpen={!!selectedEpisodeAssignedTag}
+          onClose={() => setSelectedEpisodeAssignedTag(null)}
+          tag={selectedEpisodeAssignedTag.tag}
+          contentId={parseInt(series.id)}
+          contentType="tv"
+          contentTitle={`${series.title} - S${selectedEpisodeAssignedTag.episode.season}E${selectedEpisodeAssignedTag.episode.episode}`}
+          initialMetadata={selectedEpisodeAssignedTag.metadata}
+          onSaved={() => {
+            // Trigger episode tags refresh
+            setEpisodes([...episodes]);
+          }}
+        />
+      )}
+
+      {/* ✅ Tag Selector Modal - Handles both series and episode tags */}
+      {showTagSelector && series.id && !isNaN(parseInt(series.id)) && (
+        <TagSelectorModal
+          isOpen={showTagSelector}
+          onClose={() => {
+            setShowTagSelector(false);
+            setSelectedEpisodeForTag(null);
+          }}
+          contentId={parseInt(series.id)}
+          contentType="tv"
+          contentTitle={
+            selectedEpisodeForTag
+              ? `${series.title} - S${selectedEpisodeForTag.season}E${selectedEpisodeForTag.episode}${selectedEpisodeForTag.title ? ': ' + selectedEpisodeForTag.title : ''}`
+              : series.title
+          }
+          episodeInfo={
+            selectedEpisodeForTag
+              ? { season: selectedEpisodeForTag.season, episode: selectedEpisodeForTag.episode }
+              : undefined
+          }
+          onTagsUpdated={() => {
+            if (selectedEpisodeForTag) {
+              setEpisodes([...episodes]);
+            } else {
+              refetchContentTags();
+            }
           }}
         />
       )}
