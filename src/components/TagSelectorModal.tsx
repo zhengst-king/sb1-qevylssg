@@ -17,6 +17,7 @@ interface TagSelectorModalProps {
   contentType: 'movie' | 'tv';
   contentTitle: string;
   onTagsUpdated?: () => void;
+  episodeInfo?: { season: number; episode: number }; 
 }
 
 export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
@@ -26,12 +27,14 @@ export const TagSelectorModal: React.FC<TagSelectorModalProps> = ({
   contentType,
   contentTitle,
   onTagsUpdated,
+  episodeInfo,
 }) => {
   const { tags, refetch: refetchTags } = useTags();
   const { subcategories } = useTagSubcategories();
   const { contentTags, addTag, removeTag: removeContentTag, refetch: refetchContentTags } = useContentTags(
     contentId,
-    contentType
+    contentType,
+    episodeInfo
   );
 
   const [showCreateNewForm, setShowCreateNewForm] = useState(false);
