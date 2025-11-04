@@ -741,13 +741,23 @@ class TMDBCastService {
   }
 
   /**
-   * Save cast members to people table (upsert)
+   * Save cast members to people table (upsert) - FIXED VERSION WITH DEDUPLICATION
    */
   private async saveCastMembersToPeopleTable(castMembers: TMDBCastMember[]): Promise<void> {
     if (!castMembers || castMembers.length === 0) return;
 
     try {
-      const peopleData = castMembers.map(member => ({
+      // FIXED: Deduplicate by tmdb_person_id before processing
+      const uniqueMembers = new Map<number, TMDBCastMember>();
+      castMembers.forEach(member => {
+        // Keep the entry with more data (higher popularity usually means more complete data)
+        const existing = uniqueMembers.get(member.id);
+        if (!existing || (member.popularity || 0) > (existing.popularity || 0)) {
+          uniqueMembers.set(member.id, member);
+        }
+      });
+
+      const peopleData = Array.from(uniqueMembers.values()).map(member => ({
         tmdb_person_id: member.id,
         name: member.name,
         known_for_department: member.known_for_department,
@@ -769,7 +779,7 @@ class TMDBCastService {
       if (error) {
         console.error('[TMDBCast] Error saving cast members:', error);
       } else {
-        console.log(`[TMDBCast] Saved ${peopleData.length} cast members to people table`);
+        console.log(`[TMDBCast] Saved ${peopleData.length} unique cast members to people table`);
       }
     } catch (error) {
       console.error('[TMDBCast] Error in saveCastMembersToPeopleTable:', error);
@@ -777,13 +787,22 @@ class TMDBCastService {
   }
 
   /**
-   * Save aggregate cast to people table
+   * Save aggregate cast to people table - FIXED VERSION WITH DEDUPLICATION
    */
   private async saveAggregateCastToPeopleTable(castMembers: SeriesAggregateCast[]): Promise<void> {
     if (!castMembers || castMembers.length === 0) return;
 
     try {
-      const peopleData = castMembers.map(member => ({
+      // FIXED: Deduplicate by tmdb_person_id before processing
+      const uniqueMembers = new Map<number, SeriesAggregateCast>();
+      castMembers.forEach(member => {
+        const existing = uniqueMembers.get(member.id);
+        if (!existing || (member.popularity || 0) > (existing.popularity || 0)) {
+          uniqueMembers.set(member.id, member);
+        }
+      });
+
+      const peopleData = Array.from(uniqueMembers.values()).map(member => ({
         tmdb_person_id: member.id,
         name: member.name,
         known_for_department: member.known_for_department,
@@ -805,7 +824,7 @@ class TMDBCastService {
       if (error) {
         console.error('[TMDBCast] Error saving aggregate cast:', error);
       } else {
-        console.log(`[TMDBCast] Saved ${peopleData.length} series cast to people table`);
+        console.log(`[TMDBCast] Saved ${peopleData.length} unique series cast to people table`);
       }
     } catch (error) {
       console.error('[TMDBCast] Error in saveAggregateCastToPeopleTable:', error);
