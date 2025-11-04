@@ -72,7 +72,7 @@ class FavoriteCrewService {
         .select('id')
         .eq('user_id', user.id)
         .eq('tmdb_person_id', tmdbPersonId)
-        .single();
+        .maybeSingle();
 
       return !error && !!data;
     } catch {
