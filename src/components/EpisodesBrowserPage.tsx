@@ -226,20 +226,25 @@ export function EpisodesBrowserPage({ series, onBack }: EpisodesBrowserPageProps
   };
 
   const handleRefresh = async () => {
-    // First check if there are any cached episodes
-    if (episodes.length === 0) {
-      // No episodes cached - queue a discovery job
-      console.log('[Episodes] No episodes cached, queuing discovery...');
-      await serverSideEpisodeService.addSeriesToQueue(
-        series.imdb_id!,
-        series.title,
-        'high' // High priority for manual user request
-      );
+    console.log('[Episodes] Manual refresh triggered');
+  
+    // If no episodes cached, queue discovery
+    if (episodes.length === 0 && !loading) {
+      console.log('[Episodes] No episodes found, queuing discovery...');
     
-      // Show feedback to user
-      alert(`Discovery started for ${series.title}! Episodes will be cached in the background. This may take a few minutes.`);
+      try {
+        await serverSideEpisodeService.addSeriesToQueue(
+          series.imdb_id!,
+          series.title,
+          'high'
+        );
+        alert(`Discovery started for ${series.title}!\n\nEpisodes will be cached in the background. This may take a few minutes. Refresh the page to check progress.`);
+      } catch (err) {
+        console.error('[Episodes] Error queuing discovery:', err);
+        alert('Failed to start discovery. Please try again.');
+      }
     } else {
-      // Episodes exist, just reload from cache
+      // Episodes exist or loading, just reload from cache
       loadEpisodesWithCache(currentSeason, true);
     }
   };
