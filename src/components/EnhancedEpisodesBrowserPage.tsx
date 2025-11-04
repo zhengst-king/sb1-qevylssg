@@ -491,7 +491,22 @@ export function EnhancedEpisodesBrowserPage({
     
     try {
       console.log('[Episodes] Manual refresh triggered');
+      
+      // Try loading from cache first
       await loadEpisodesFromCache(currentSeason);
+    
+      // If still no episodes after loading, queue discovery
+      if (episodes.length === 0) {
+        console.log('[Episodes] No episodes in cache, queueing discovery...');
+      
+        await serverSideEpisodeService.addSeriesToQueue(
+          series.imdb_id,
+          series.title,
+          'high'
+        );
+      
+        setError('Discovery job queued! Episodes will be cached in the background. Check back in a few minutes or refresh to see progress.');
+      }
     } catch (error) {
       console.error('[Episodes] Manual refresh failed:', error);
       setError('Refresh failed. Please try again.');
