@@ -1393,9 +1393,30 @@ export function EnhancedEpisodesBrowserPage({
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-8">
                 <div className="flex items-start space-x-3">
                   <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-medium text-amber-900 mb-1">Notice</h3>
-                    <p className="text-amber-800 text-sm">{error}</p>
+                    <p className="text-amber-800 text-sm mb-3">{error}</p>
+                    {episodes.length === 0 && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await serverSideEpisodeService.addSeriesToQueue(
+                              series.imdb_id!,
+                              series.title,
+                              'high'
+                            );
+                            setError('Discovery started! Episodes will be cached in the background. Check back in a few minutes or refresh to see progress.');
+                          } catch (err) {
+                            console.error('Error starting discovery:', err);
+                            alert('Failed to start discovery. Please try again.');
+                          }
+                        }}
+                        className="inline-flex items-center space-x-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        <span>Start Discovery</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
