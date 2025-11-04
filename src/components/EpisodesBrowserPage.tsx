@@ -25,6 +25,7 @@ import {
 import { Movie } from '../lib/supabase';
 import { omdbApi, OMDBEpisodeDetails } from '../lib/omdb';
 import { ReviewModal } from './ReviewModal';
+import { serverSideEpisodeService } from '../services/serverSideEpisodeService';
 
 interface EpisodesBrowserPageProps {
   series: Movie;
@@ -224,8 +225,23 @@ export function EpisodesBrowserPage({ series, onBack }: EpisodesBrowserPageProps
     setSelectedEpisode(null);
   };
 
-  const handleRefresh = () => {
-    loadEpisodesWithCache(currentSeason, true); // Force refresh
+  const handleRefresh = async () => {
+    // First check if there are any cached episodes
+    if (episodes.length === 0) {
+      // No episodes cached - queue a discovery job
+      console.log('[Episodes] No episodes cached, queuing discovery...');
+      await serverSideEpisodeService.addSeriesToQueue(
+        series.imdb_id!,
+        series.title,
+        'high' // High priority for manual user request
+      );
+    
+      // Show feedback to user
+      alert(`Discovery started for ${series.title}! Episodes will be cached in the background. This may take a few minutes.`);
+    } else {
+      // Episodes exist, just reload from cache
+      loadEpisodesWithCache(currentSeason, true);
+    }
   };
 
   const handlePreviousSeason = () => {
@@ -385,6 +401,41 @@ export function EpisodesBrowserPage({ series, onBack }: EpisodesBrowserPageProps
                       <span>Go to Season 1</span>
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* No Episodes Notice - ADD THIS */}
+          {!loading && episodes.length === 0 && !error && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-6 w-6 text-amber-500 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium text-amber-800">
+                    Season {currentSeason} episodes haven't been cached yet
+                  </h3>
+                  <p className="text-amber-600 mt-1 text-sm">
+                    Click the button below to start discovering episodes in the background.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await serverSideEpisodeService.addSeriesToQueue(
+                          series.imdb_id!,
+                          series.title,
+                          'high'
+                        );
+                        alert('Discovery started! Episodes will be cached in the background. Check back in a few minutes.');
+                      } catch (err) {
+                        alert('Failed to start discovery. Please try again.');
+                      }
+                    }}
+                    className="mt-4 inline-flex items-center space-x-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Start Discovery</span>
+                  </button>
                 </div>
               </div>
             </div>
