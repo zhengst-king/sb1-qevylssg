@@ -61,7 +61,7 @@ class FavoriteActorsService {
       .select('id')
       .eq('user_id', user.id)
       .eq('actor_id', actorId)
-      .single();
+      .maybeSingle();
 
     return !!data;
   }
