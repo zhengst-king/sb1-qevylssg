@@ -145,9 +145,9 @@ class BackgroundJobProcessor {
           status: 'processing',
           started_at: new Date().toISOString()
         })
-        .eq('id', jobId);
-      .select('started_at')
-      .single(); 
+        .eq('id', jobId)
+        .select('started_at')
+        .single(); 
 
       if (error || !data || !data.started_at) {
         console.error('[BackgroundJobProcessor] Error marking job as processing:', error);
