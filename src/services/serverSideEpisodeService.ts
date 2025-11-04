@@ -458,17 +458,53 @@ class ServerSideEpisodeService {
       for (let seasonNum = 1; seasonNum <= maxSeasonsToTry; seasonNum++) {
         console.log(`[ServerSideEpisodes] Discovering Season ${seasonNum}...`);
         
-        const episodeData = await omdbApi.discoverSeasonEpisodes(
-          seriesImdbId,
-          seasonNum,
-          {
-            maxEpisodes: 50,
-            maxConsecutiveFailures: 5,
-            onProgress: (found, tried) => {
-              console.log(`  Progress: ${found} episodes found (${tried} tried)`);
+        try {
+          const episodeData = await omdbApi.discoverSeasonEpisodes(
+            seriesImdbId,
+            seasonNum,
+            {
+              maxEpisodes: 50,
+              maxConsecutiveFailures: 5,
+              onProgress: (found, tried) => {
+                console.log(`  Progress: ${found} episodes found (${tried} tried)`);
+              }
+            }
+          );
+
+          if (episodeData.length > 0) {
+            consecutiveEmptySeasons = 0;
+            totalSeasons = seasonNum;
+            totalEpisodes += episodeData.length;
+            console.log(`  ✓ Season ${seasonNum}: ${episodeData.length} episodes`);
+
+            // Cache each episode
+            for (const episode of episodeData) {
+              await this.cacheEpisode(seriesImdbId, seasonNum, episode);
+            }
+
+            // Rate limit delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            consecutiveEmptySeasons++;
+            console.log(`  ✗ Season ${seasonNum} empty (${consecutiveEmptySeasons}/${maxConsecutiveEmptySeasons})`);
+            
+            if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
+              console.log(`  Stopping after ${consecutiveEmptySeasons} empty seasons`);
+              break;
             }
           }
-        );
+        } catch (error) {
+          console.error(`  ✗ Season ${seasonNum} error:`, error);
+          consecutiveEmptySeasons++;
+          
+          if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
+            console.log(`  Stopping after ${consecutiveEmptySeasons} failed attempts`);
+            break;
+          }
+          
+          // Continue to next season
+          continue;
+        }
 
         if (episodeData.length > 0) {
           consecutiveEmptySeasons = 0;
