@@ -337,7 +337,7 @@ class ServerSideEpisodeService {
       // Default to 7 days if no TTL calculated
       const finalTtlDays = ttlDays || 7;
       const ttlMilliseconds = finalTtlDays * 24 * 60 * 60 * 1000;
-      const cacheAge = Date.now() - metadata.last_discovery_attempt.getTime();
+      const cacheAge = Date.now() - new Date(metadata.last_discovery_attempt).getTime();
 
       const isValid = cacheAge < ttlMilliseconds;
       
