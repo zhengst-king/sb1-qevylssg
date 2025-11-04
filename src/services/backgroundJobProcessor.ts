@@ -215,7 +215,7 @@ class BackgroundJobProcessor {
   private async processNextJob(): Promise<void> {
     const job = await this.getNextJob();
     if (!job) {
-      return; // No jobs to process
+      return;
     }
 
     this.isProcessing = true;
@@ -223,13 +223,20 @@ class BackgroundJobProcessor {
 
     console.log(`[BackgroundJobProcessor] Processing job: ${job.series_title || job.series_imdb_id} (${job.discovery_type})`);
 
-    // Mark job as processing
     const marked = await this.markJobAsProcessing(job.id);
     if (!marked) {
       this.isProcessing = false;
       this.currentJobId = null;
       return;
     }
+
+    // ADD TIMEOUT HERE ↓
+    const processingTimeout = setTimeout(async () => {
+      console.error(`[BackgroundJobProcessor] ⏱️ Job timeout: ${job.series_title}`);
+      await this.markJobAsFailed(job.id, 'Processing timeout (30 minutes)');
+      this.isProcessing = false;
+      this.currentJobId = null;
+    }, 30 * 60 * 1000); // 30 minutes
 
     try {
       switch (job.discovery_type) {
@@ -246,9 +253,11 @@ class BackgroundJobProcessor {
           throw new Error(`Unknown discovery type: ${job.discovery_type}`);
       }
 
+      clearTimeout(processingTimeout); // ← CLEAR TIMEOUT ON SUCCESS
       console.log(`[BackgroundJobProcessor] ✅ Completed job: ${job.series_title || job.series_imdb_id}`);
 
     } catch (error) {
+      clearTimeout(processingTimeout); // ← CLEAR TIMEOUT ON ERROR
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`[BackgroundJobProcessor] ❌ Failed job: ${job.series_title || job.series_imdb_id}:`, errorMessage);
       await this.markJobAsFailed(job.id, errorMessage);
