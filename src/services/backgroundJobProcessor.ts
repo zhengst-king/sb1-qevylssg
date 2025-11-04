@@ -40,8 +40,37 @@ class BackgroundJobProcessor {
   private readonly MAX_SEASONS_TO_TRY = 20; // Reasonable limit for unknown series
   private readonly MAX_CONSECUTIVE_EMPTY_SEASONS = 2; // Stop after 2 empty seasons
 
+  /**
+   * Clean up stuck jobs on startup (jobs processing for more than 10 minutes)
+   */
+  private async cleanupStuckJobs(): Promise<void> {
+    try {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('episode_discovery_queue')
+        .update({
+          status: 'queued',
+          started_at: null,
+          error_message: 'Reset from stuck processing state (timeout)'
+        })
+        .eq('status', 'processing')
+        .lt('started_at', tenMinutesAgo)
+        .select('id');
+
+      if (error) {
+        console.error('[BackgroundJobProcessor] Error cleaning stuck jobs:', error);
+      } else {
+        console.log(`[BackgroundJobProcessor] Cleaned up ${data?.length || 0} stuck jobs`);
+      }
+    } catch (error) {
+      console.error('[BackgroundJobProcessor] Error in cleanupStuckJobs:', error);
+    }
+  }
+
   constructor() {
     console.log('[BackgroundJobProcessor] Initialized');
+    this.cleanupStuckJobs();
     this.startProcessing();
   }
 
