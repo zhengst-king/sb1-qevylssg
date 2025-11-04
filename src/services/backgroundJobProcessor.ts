@@ -139,7 +139,7 @@ class BackgroundJobProcessor {
    */
   private async markJobAsProcessing(jobId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('episode_discovery_queue')
         .update({
           status: 'processing',
@@ -147,16 +147,21 @@ class BackgroundJobProcessor {
         })
         .eq('id', jobId)
         .select('started_at')
-        .single(); 
+        .single();
 
-      if (error || !data || !data.started_at) {
-        console.error('[BackgroundJobProcessor] Error marking job as processing:', error);
+      if (error) {
+        console.error('[BackgroundJobProcessor] Failed to mark job as processing:', error);
+        return false;
+      }
+
+      if (!data || !data.started_at) {
+        console.error('[BackgroundJobProcessor] No data returned when marking as processing');
         return false;
       }
 
       return true;
-    } catch (error) {
-      console.error('[BackgroundJobProcessor] Error updating job status:', error);
+    } catch (err) {
+      console.error('[BackgroundJobProcessor] Error updating job status:', err);
       return false;
     }
   }
