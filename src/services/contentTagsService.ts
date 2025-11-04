@@ -43,6 +43,8 @@ class ContentTagsService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    console.log('[addTagToContent] Adding tag:', { tagId, contentId, contentType, episodeInfo });
+
     // Check if already tagged
     let checkQuery = supabase
       .from('content_tags')
@@ -65,6 +67,7 @@ class ContentTagsService {
     const { data: existing } = await checkQuery.single();
 
     if (existing) {
+      console.log('[addTagToContent] Tag already exists:', existing);
       throw new Error('This content is already tagged with this tag');
     }
 
@@ -81,14 +84,26 @@ class ContentTagsService {
       insertData.episode_number = episodeInfo.episode;
     }
 
+    console.log('[addTagToContent] Inserting:', insertData);
+
     const { data, error } = await supabase
       .from('content_tags')
       .insert(insertData)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[addTagToContent] Database error:', error);
+      console.error('[addTagToContent] Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
 
+    console.log('[addTagToContent] Successfully added:', data);
     return data;
   }
 
