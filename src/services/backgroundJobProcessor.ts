@@ -84,7 +84,13 @@ class BackgroundJobProcessor {
 
     this.processInterval = setInterval(async () => {
       if (!this.isProcessing) {
-        await this.processNextJob();
+        try {
+          await this.processNextJob();
+        } catch (error) {
+          console.error('[BackgroundJobProcessor] Error in processing loop:', error);
+          this.isProcessing = false;  // ← Ensure flag gets reset
+          this.currentJobId = null;
+        }
       }
     }, this.PROCESSING_INTERVAL);
 
@@ -111,6 +117,7 @@ class BackgroundJobProcessor {
         .from('episode_discovery_queue')
         .select('*')
         .eq('status', 'queued')
+        .lt('attempts', 3)
         .order('priority', { ascending: false })
         .order('created_at', { ascending: true })
         .limit(1);
@@ -137,10 +144,13 @@ class BackgroundJobProcessor {
         .update({
           status: 'processing',
           started_at: new Date().toISOString()
+          attempts: supabase.raw('attempts + 1')
         })
         .eq('id', jobId);
+      .select('started_at')
+      .single(); 
 
-      if (error) {
+      if (error || !data || !data.started_at) {
         console.error('[BackgroundJobProcessor] Error marking job as processing:', error);
         return false;
       }
@@ -581,7 +591,7 @@ class BackgroundJobProcessor {
         .eq('imdb_id', seriesImdbId)
         .eq('season_number', seasonNumber)
         .eq('episode_number', episodeNumber)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
         console.error('[BackgroundJobProcessor] Error fetching existing episode:', error);
