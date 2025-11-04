@@ -1,6 +1,10 @@
+// src/hooks/useMovies.ts
+// COMPLETE FIXED VERSION - Replace your entire useMovies.ts with this
+
 import { useState, useEffect } from 'react';
 import { supabase, Movie } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { serverSideEpisodeService } from '../services/serverSideEpisodeService'; // ✅ ADD THIS IMPORT
 
 export function useMovies(mediaType?: 'movie' | 'series') {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -92,6 +96,25 @@ export function useMovies(mediaType?: 'movie' | 'series') {
       }
       
       console.log('[useMovies] Movie added successfully:', data);
+      
+      // ✅ NEW: Automatically queue episode discovery for TV series
+      if (data.media_type === 'series' && data.imdb_id) {
+        console.log('[useMovies] 📺 Queueing episode discovery for:', data.title);
+        
+        try {
+          await serverSideEpisodeService.addSeriesToQueue(
+            data.imdb_id,
+            data.title,
+            'low' // Use low priority for automatic background discovery
+          );
+          
+          console.log('[useMovies] ✅ Episode discovery queued successfully');
+        } catch (discoveryError) {
+          // Don't fail the entire operation if episode discovery fails
+          console.error('[useMovies] ⚠️ Failed to queue episode discovery:', discoveryError);
+          // User can still manually trigger discovery later via "View Episodes"
+        }
+      }
       
       // Only add to local state if it matches the current filter
       if (!mediaType || data.media_type === mediaType) {
