@@ -177,7 +177,7 @@ class EpisodeDiscoveryService {
         .eq('imdb_id', imdbId)
         .eq('season_number', seasonNum)
         .eq('episode_number', episodeNum)
-        .single();
+        .maybeSingle();
 
       if (error || !data) return null;
 
@@ -506,7 +506,7 @@ class EpisodeDiscoveryService {
         .from('series_episode_counts')
         .select('*')
         .eq('imdb_id', imdbId)
-        .single();
+        .maybeSingle();
 
       if (error || !data) return null;
 
@@ -530,7 +530,7 @@ class EpisodeDiscoveryService {
     try {
       const { data, error } = await supabase
         .rpc('get_series_discovery_progress', { p_imdb_id: imdbId })
-        .single();
+        .maybeSingle();
 
       if (error || !data) return null;
 
