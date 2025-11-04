@@ -587,7 +587,7 @@ class ServerSideEpisodeService {
         .from('series_episode_counts')
         .select('*')
         .eq('imdb_id', seriesImdbId)
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         return null;
