@@ -73,7 +73,7 @@ class FavoriteCharactersService {
       query = query.eq('series_imdb_id', seriesImdbId);
     }
 
-    const { data } = await query.single();
+    const { data } = await query.maybeSingle();
 
     return !!data;
   }
