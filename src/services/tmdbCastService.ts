@@ -500,7 +500,7 @@ class TMDBCastService {
           .from('tmdb_series_cache')
           .select('tmdb_id')
           .eq('imdb_id', imdbId)
-          .single();
+          .maybeSingle();
 
         if (error || !data) {
           console.log('[TMDBCast] No TMDB ID found in series cache for:', imdbId);
@@ -517,7 +517,7 @@ class TMDBCastService {
           .eq('imdb_id', imdbId)
           .not('tmdb_id', 'is', null)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (error || !data) {
           console.log('[TMDBCast] No TMDB ID found in movies table for:', imdbId);
