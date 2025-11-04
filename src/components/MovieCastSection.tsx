@@ -57,15 +57,6 @@ export function MovieCastSection({
     loadFavorites();
   }, []);
 
-  // Load favorite crew
-  useEffect(() => {
-    const loadFavorites = async () => {
-      const favorites = await favoriteCrewService.getAllFavorites();
-      setFavoriteCrewIds(new Set(favorites.map(f => f.tmdb_person_id)));
-    };
-    loadFavorites();
-  }, []);
-
   useEffect(() => {
     const fetchCredits = async () => {
       try {
