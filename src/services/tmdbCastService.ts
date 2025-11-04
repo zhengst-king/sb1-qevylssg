@@ -395,7 +395,7 @@ class TMDBCastService {
         .eq('fetch_success', true)
         .order('last_fetched_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         if (error.code !== 'PGRST116') { // Not found error
@@ -598,7 +598,7 @@ class TMDBCastService {
         .eq('fetch_success', true)
         .order('last_fetched_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -680,7 +680,7 @@ class TMDBCastService {
         .eq('fetch_success', true)
         .order('last_fetched_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         if (error.code === 'PGRST116') {
