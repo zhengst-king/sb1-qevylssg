@@ -144,7 +144,6 @@ class BackgroundJobProcessor {
         .update({
           status: 'processing',
           started_at: new Date().toISOString()
-          attempts: supabase.raw('attempts + 1')
         })
         .eq('id', jobId);
       .select('started_at')
