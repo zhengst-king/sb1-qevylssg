@@ -404,6 +404,9 @@ class TMDBCastService {
         return null;
       }
 
+      // If no data found, return null
+      if (!data) return null;
+
       // Check if cache is fresh (30 days)
       const cacheAge = Date.now() - new Date(data.last_fetched_at).getTime();
       const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
