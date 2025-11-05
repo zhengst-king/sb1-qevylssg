@@ -1,7 +1,7 @@
 // src/services/serverSideEpisodeService.ts
-// Server-side episode caching service using Supabase database
+// Server-side episode caching service using TMDB API + Supabase database
 import { supabase } from '../lib/supabase';
-import { omdbApi, OMDBEpisodeDetails } from '../lib/omdb';
+import { tmdbService, TMDBEpisode, TMDBSeasonDetails } from '../lib/tmdb';
 
 // Cache management interfaces
 interface SeriesStatus {
@@ -10,6 +10,7 @@ interface SeriesStatus {
   totalEpisodes: number;
   lastUpdated: Date | null;
   isBeingFetched: boolean;
+  availableSeasons: number[];
 }
 
 interface QueueStatus {
@@ -29,18 +30,35 @@ interface SeriesMetadata {
   last_discovery_attempt?: Date;
 }
 
+// Episode details format for our app (compatible with existing code)
+export interface EpisodeDetails {
+  season: number;
+  episode: number;
+  imdbID?: string;
+  title?: string;
+  plot?: string;
+  released?: string;
+  runtime?: string;
+  imdbRating?: string;
+  poster?: string;
+  director?: string;
+  writer?: string;
+  actors?: string;
+  seriesID: string;
+}
+
 class ServerSideEpisodeService {
   private readonly PROCESSING_TIMEOUT = 30000; // 30 seconds
   private activeDiscoveryProcesses = new Set<string>();
 
   constructor() {
-    console.log('[ServerSideEpisodes] Service initialized');
+    console.log('[ServerSideEpisodes] Service initialized with TMDB');
   }
 
   /**
    * Get cached episodes for a specific season from database
    */
-  async getSeasonEpisodes(seriesImdbId: string, seasonNumber: number): Promise<OMDBEpisodeDetails[] | null> {
+  async getSeasonEpisodes(seriesImdbId: string, seasonNumber: number): Promise<EpisodeDetails[] | null> {
     try {
       // First check if episodes exist in cache
       const { data: episodes, error } = await supabase
@@ -63,8 +81,8 @@ class ServerSideEpisodeService {
       // Update access time for cache management
       await this.updateEpisodeAccessTime(seriesImdbId, seasonNumber);
 
-      // Convert database records to OMDBEpisodeDetails format
-      const formattedEpisodes: OMDBEpisodeDetails[] = episodes.map(ep => ({
+      // Convert database records to EpisodeDetails format
+      const formattedEpisodes: EpisodeDetails[] = episodes.map(ep => ({
         season: ep.season_number,
         episode: ep.episode_number,
         seriesID: ep.imdb_id,
@@ -151,13 +169,24 @@ class ServerSideEpisodeService {
       const metadata = await this.getSeriesMetadata(seriesImdbId);
       const isBeingFetched = await this.isSeriesBeingFetched(seriesImdbId);
 
+      // Get available seasons from cache
+      const { data: cachedSeasons } = await supabase
+        .from('episodes_cache')
+        .select('season_number')
+        .eq('imdb_id', seriesImdbId);
+
+      const availableSeasons = cachedSeasons 
+        ? Array.from(new Set(cachedSeasons.map(s => s.season_number))).sort((a, b) => a - b)
+        : [];
+
       if (!metadata) {
         return {
           cached: false,
           totalSeasons: 0,
           totalEpisodes: 0,
           lastUpdated: null,
-          isBeingFetched
+          isBeingFetched,
+          availableSeasons
         };
       }
 
@@ -169,7 +198,8 @@ class ServerSideEpisodeService {
         totalSeasons: metadata.total_seasons || 0,
         totalEpisodes: metadata.total_episodes || 0,
         lastUpdated: metadata.last_discovery_attempt || null,
-        isBeingFetched
+        isBeingFetched,
+        availableSeasons
       };
 
     } catch (error) {
@@ -179,7 +209,8 @@ class ServerSideEpisodeService {
         totalSeasons: 0,
         totalEpisodes: 0,
         lastUpdated: null,
-        isBeingFetched: false
+        isBeingFetched: false,
+        availableSeasons: []
       };
     }
   }
@@ -316,7 +347,7 @@ class ServerSideEpisodeService {
         return false;
       }
 
-      // Calculate TTL based on IMDB rating (using the database function)
+      // Calculate TTL based on IMDB rating
       let ttlDays = metadata.calculated_ttl_days;
       
       if (!ttlDays && metadata.imdb_rating) {
@@ -404,8 +435,8 @@ class ServerSideEpisodeService {
       this.activeDiscoveryProcesses.add(job.series_imdb_id);
 
       try {
-        // Start episode discovery (implement in next step)
-        await this.discoverSeriesEpisodes(job.series_imdb_id, job.series_title);
+        // Start episode discovery using TMDB
+        await this.discoverSeriesEpisodesFromTMDB(job.series_imdb_id, job.series_title);
 
         // Mark job as completed
         await supabase
@@ -442,95 +473,62 @@ class ServerSideEpisodeService {
   }
 
   /**
-   * COMPLETE IMPLEMENTATION: Discover and cache episodes for a series
+   * ✅ NEW: Discover and cache episodes for a series using TMDB
    */
-  private async discoverSeriesEpisodes(seriesImdbId: string, seriesTitle: string): Promise<void> {
-    console.log(`[ServerSideEpisodes] 🚀 Starting discovery for ${seriesTitle}`);
+  private async discoverSeriesEpisodesFromTMDB(seriesImdbId: string, seriesTitle: string): Promise<void> {
+    console.log(`[ServerSideEpisodes] 🚀 Starting TMDB discovery for ${seriesTitle} (${seriesImdbId})`);
     
-    const maxSeasonsToTry = 30;
-    const maxConsecutiveEmptySeasons = 3;
     let totalSeasons = 0;
     let totalEpisodes = 0;
-    let consecutiveEmptySeasons = 0;
     
     try {
-      // Discover season by season
-      for (let seasonNum = 1; seasonNum <= maxSeasonsToTry; seasonNum++) {
+      // Step 1: Get series details from TMDB to find out how many seasons
+      const seriesDetails = await tmdbService.getTVSeriesByImdbId(seriesImdbId);
+      
+      if (!seriesDetails) {
+        throw new Error(`Series not found in TMDB: ${seriesImdbId}`);
+      }
+
+      const numberOfSeasons = seriesDetails.number_of_seasons || 0;
+      console.log(`[ServerSideEpisodes] Series has ${numberOfSeasons} seasons`);
+
+      if (numberOfSeasons === 0) {
+        throw new Error(`Series has no seasons: ${seriesTitle}`);
+      }
+
+      // Step 2: Discover each season
+      for (let seasonNum = 1; seasonNum <= numberOfSeasons; seasonNum++) {
         console.log(`[ServerSideEpisodes] Discovering Season ${seasonNum}...`);
         
         try {
-          const episodeData = await omdbApi.discoverSeasonEpisodes(
-            seriesImdbId,
-            seasonNum,
-            {
-              maxEpisodes: 50,
-              maxConsecutiveFailures: 5,
-              onProgress: (found, tried) => {
-                console.log(`  Progress: ${found} episodes found (${tried} tried)`);
-              }
-            }
-          );
-
-          if (episodeData.length > 0) {
-            consecutiveEmptySeasons = 0;
-            totalSeasons = seasonNum;
-            totalEpisodes += episodeData.length;
-            console.log(`  ✓ Season ${seasonNum}: ${episodeData.length} episodes`);
-
-            // Cache each episode
-            for (const episode of episodeData) {
-              await this.cacheEpisode(seriesImdbId, seasonNum, episode);
-            }
-
-            // Rate limit delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-          } else {
-            consecutiveEmptySeasons++;
-            console.log(`  ✗ Season ${seasonNum} empty (${consecutiveEmptySeasons}/${maxConsecutiveEmptySeasons})`);
-            
-            if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
-              console.log(`  Stopping after ${consecutiveEmptySeasons} empty seasons`);
-              break;
-            }
+          const seasonData = await tmdbService.getTVSeasonByImdbId(seriesImdbId, seasonNum);
+          
+          if (!seasonData || !seasonData.episodes || seasonData.episodes.length === 0) {
+            console.log(`  ✗ Season ${seasonNum} has no episodes`);
+            continue;
           }
+
+          const episodeCount = seasonData.episodes.length;
+          totalSeasons = seasonNum;
+          totalEpisodes += episodeCount;
+          console.log(`  ✓ Season ${seasonNum}: ${episodeCount} episodes`);
+
+          // Step 3: Cache each episode
+          for (const episode of seasonData.episodes) {
+            await this.cacheEpisodeFromTMDB(seriesImdbId, seasonNum, episode);
+          }
+
+          // Rate limit delay (TMDB has 50 requests per second limit, but we'll be conservative)
+          await new Promise(resolve => setTimeout(resolve, 250));
+
         } catch (error) {
           console.error(`  ✗ Season ${seasonNum} error:`, error);
-          consecutiveEmptySeasons++;
-          
-          if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
-            console.log(`  Stopping after ${consecutiveEmptySeasons} failed attempts`);
-            break;
-          }
-          
-          // Continue to next season
+          // Continue to next season even if this one fails
           continue;
-        }
-
-        if (episodeData.length > 0) {
-          consecutiveEmptySeasons = 0;
-          totalSeasons = seasonNum;
-          totalEpisodes += episodeData.length;
-          console.log(`  ✓ Season ${seasonNum}: ${episodeData.length} episodes`);
-
-          // Cache each episode
-          for (const episode of episodeData) {
-            await this.cacheEpisode(seriesImdbId, seasonNum, episode);
-          }
-
-          // Rate limit delay
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } else {
-          consecutiveEmptySeasons++;
-          console.log(`  ✗ Season ${seasonNum} empty (${consecutiveEmptySeasons}/${maxConsecutiveEmptySeasons})`);
-          
-          if (consecutiveEmptySeasons >= maxConsecutiveEmptySeasons) {
-            console.log(`  Stopping after ${consecutiveEmptySeasons} empty seasons`);
-            break;
-          }
         }
       }
 
-      // Update metadata
+      // Step 4: Update metadata
       await supabase
         .from('series_episode_counts')
         .upsert({
@@ -553,30 +551,50 @@ class ServerSideEpisodeService {
   }
 
   /**
-   * Cache a single episode in the database
+   * ✅ NEW: Cache a single episode from TMDB data
    */
-  private async cacheEpisode(
+  private async cacheEpisodeFromTMDB(
     seriesImdbId: string, 
     seasonNumber: number, 
-    episode: OMDBEpisodeDetails
+    episode: TMDBEpisode
   ): Promise<void> {
     try {
+      // Extract director and writer from crew
+      const director = episode.crew
+        ?.filter(c => c.job === 'Director')
+        .map(c => c.name)
+        .join(', ') || null;
+      
+      const writer = episode.crew
+        ?.filter(c => c.department === 'Writing')
+        .map(c => c.name)
+        .slice(0, 3)
+        .join(', ') || null;
+
+      // Extract main guest stars
+      const actors = episode.guest_stars
+        ?.slice(0, 5)
+        .map(g => g.name)
+        .join(', ') || null;
+
       const { error } = await supabase
         .from('episodes_cache')
         .upsert({
           imdb_id: seriesImdbId,
           season_number: seasonNumber,
-          episode_number: episode.episode,
-          title: episode.title || null,
-          plot: episode.plot || null,
-          rating: episode.imdbRating || null,
-          air_date: episode.released ? new Date(episode.released).toISOString().split('T')[0] : null,
-          runtime_minutes: episode.runtime ? parseInt(episode.runtime) : null,
-          director: episode.director || null,
-          writer: episode.writer || null,
-          actors: episode.actors || null,
-          poster_url: episode.poster || null,
-          imdb_rating: episode.imdbRating ? parseFloat(episode.imdbRating) : null,
+          episode_number: episode.episode_number,
+          title: episode.name || null,
+          plot: episode.overview || null,
+          rating: null, // TMDB doesn't provide content rating per episode
+          air_date: episode.air_date || null,
+          runtime_minutes: episode.runtime || null,
+          director: director,
+          writer: writer,
+          actors: actors,
+          poster_url: episode.still_path 
+            ? `https://image.tmdb.org/t/p/w300${episode.still_path}` 
+            : null,
+          imdb_rating: episode.vote_average || null,
           last_fetched_at: new Date().toISOString(),
           fetch_success: true
         }, {
