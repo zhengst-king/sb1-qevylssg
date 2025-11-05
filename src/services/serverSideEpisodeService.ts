@@ -221,14 +221,27 @@ class ServerSideEpisodeService {
   async addSeriesToQueue(
     seriesImdbId: string, 
     seriesTitle: string, 
-    priority: 'high' | 'medium' | 'low' = 'medium'
+    priority: 'high' | 'medium' | 'low' = 'medium',
+    force: boolean = false
   ): Promise<void> {
     try {
       // Check if series is already being processed or recently cached
-      const status = await this.getSeriesStatus(seriesImdbId);
-      if (status.cached || status.isBeingFetched) {
-        console.log(`[ServerSideEpisodes] Series ${seriesTitle} already cached or being fetched`);
-        return;
+      // Skip this check if force is true
+      if (!force) {
+        const status = await this.getSeriesStatus(seriesImdbId);
+        if (status.cached || status.isBeingFetched) {
+          console.log(`[ServerSideEpisodes] Series ${seriesTitle} already cached or being fetched`);
+          return;
+        }
+      } else {
+        console.log(`[ServerSideEpisodes] Force refresh requested for ${seriesTitle}`);
+        
+        // Check if already being fetched even on force
+        const status = await this.getSeriesStatus(seriesImdbId);
+        if (status.isBeingFetched) {
+          console.log(`[ServerSideEpisodes] Series ${seriesTitle} is already being fetched, skipping duplicate request`);
+          return;
+        }
       }
 
       // Convert priority to numeric value
@@ -263,17 +276,18 @@ class ServerSideEpisodeService {
   }
 
   /**
-   * Force refresh a series (clear cache and re-discover)
+   * Force refresh a series (re-discover without clearing cache)
+   * This will update existing episodes and add any missing ones
    */
   async forceRefreshSeries(seriesImdbId: string, seriesTitle: string): Promise<void> {
     try {
       console.log(`[ServerSideEpisodes] Force refreshing ${seriesTitle}`);
 
-      // Clear existing cache data
-      await this.clearSeriesCache(seriesImdbId);
-
-      // Add to queue with high priority
-      await this.addSeriesToQueue(seriesImdbId, seriesTitle, 'high');
+      // Don't clear cache - upsert will update existing and add new episodes
+      // This preserves user tracking data and is faster
+      
+      // Add to queue with high priority and force flag
+      await this.addSeriesToQueue(seriesImdbId, seriesTitle, 'high', true);
 
     } catch (error) {
       console.error('[ServerSideEpisodes] Error force refreshing series:', error);
