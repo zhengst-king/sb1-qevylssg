@@ -492,24 +492,29 @@ export function EnhancedEpisodesBrowserPage({
     try {
       console.log('[Episodes] Manual refresh triggered');
       
-      // Try loading from cache first
-      await loadEpisodesFromCache(currentSeason);
+      // Set loading state
+      setLoading(true);
+      setError(null);
     
-      // If still no episodes after loading, queue discovery
-      if (episodes.length === 0) {
-        console.log('[Episodes] No episodes in cache, queueing discovery...');
+      // ✅ FIX: Always trigger force refresh, not just when episodes.length === 0
+      // This will re-discover all episodes and fill in any gaps
+      console.log('[Episodes] Triggering force refresh to discover all episodes...');
+    
+      await serverSideEpisodeService.forceRefreshSeries(
+        series.imdb_id,
+        series.title
+      );
+    
+      setError('Force refresh started! All episodes will be discovered in the background. This may take a minute. Refresh this page in 30-60 seconds to see the complete episode list.');
+    
+      // Try loading what we have now
+      await loadEpisodesFromCache(currentSeason);
       
-        await serverSideEpisodeService.addSeriesToQueue(
-          series.imdb_id,
-          series.title,
-          'high'
-        );
-      
-        setError('Discovery job queued! Episodes will be cached in the background. Check back in a few minutes or refresh to see progress.');
-      }
     } catch (error) {
       console.error('[Episodes] Manual refresh failed:', error);
       setError('Refresh failed. Please try again.');
+      } finally {
+      setLoading(false);
     }
   };
 
