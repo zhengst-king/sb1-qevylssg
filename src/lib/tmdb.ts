@@ -1,5 +1,5 @@
 // src/lib/tmdb.ts
-// TMDB API service with Supabase server-side caching
+// TMDB API service with Supabase server-side caching + TV EPISODE SUPPORT
 
 import { supabase } from './supabase';
 
@@ -61,7 +61,6 @@ export interface TMDBSeriesCredits {
   id: number;
 }
 
-// ✅ NEW: Recommendations interfaces
 export interface TMDBRecommendation {
   adult: boolean;
   backdrop_path: string | null;
@@ -138,25 +137,26 @@ export interface TMDBTVSeriesDetails {
   };
   'watch/providers'?: WatchProvidersData;
   credits?: TMDBSeriesCredits;
-  // ✅ NEW: Add recommendations and similar
   recommendations?: TMDBRecommendationsResponse;
   similar?: TMDBRecommendationsResponse;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
 }
 
-// Movie-specific interfaces (add these after TMDBRecommendationsResponse)
+// Movie-specific interfaces
 export interface TMDBMovieRecommendation {
   adult: boolean;
   backdrop_path: string | null;
   id: number;
-  title: string; // Movies use 'title' instead of 'name'
+  title: string;
   original_language: string;
-  original_title: string; // Movies use 'original_title' instead of 'original_name'
+  original_title: string;
   overview: string;
   poster_path: string | null;
   media_type: string;
   genre_ids: number[];
   popularity: number;
-  release_date: string; // Movies use 'release_date' instead of 'first_air_date'
+  release_date: string;
   vote_average: number;
   vote_count: number;
   video: boolean;
@@ -186,6 +186,60 @@ export interface TMDBMovieDetails {
   recommendations?: TMDBMovieRecommendationsResponse;
   similar?: TMDBMovieRecommendationsResponse;
   'watch/providers'?: WatchProvidersData;
+}
+
+// ✅ NEW: TV Season and Episode interfaces
+export interface TMDBEpisode {
+  air_date: string;
+  episode_number: number;
+  id: number;
+  name: string;
+  overview: string;
+  production_code: string;
+  runtime: number | null;
+  season_number: number;
+  show_id: number;
+  still_path: string | null;
+  vote_average: number;
+  vote_count: number;
+  crew: Array<{
+    department: string;
+    job: string;
+    credit_id: string;
+    adult: boolean;
+    gender: number;
+    id: number;
+    known_for_department: string;
+    name: string;
+    original_name: string;
+    popularity: number;
+    profile_path: string | null;
+  }>;
+  guest_stars: Array<{
+    character: string;
+    credit_id: string;
+    order: number;
+    adult: boolean;
+    gender: number;
+    id: number;
+    known_for_department: string;
+    name: string;
+    original_name: string;
+    popularity: number;
+    profile_path: string | null;
+  }>;
+}
+
+export interface TMDBSeasonDetails {
+  _id: string;
+  air_date: string;
+  episodes: TMDBEpisode[];
+  name: string;
+  overview: string;
+  id: number;
+  poster_path: string | null;
+  season_number: number;
+  vote_average: number;
 }
 
 // Collection interfaces
@@ -348,7 +402,6 @@ interface CachedTMDBData {
     cast: TMDBCastMember[];
     crew: TMDBCrewMember[];
   };
-  // ✅ NEW: Add recommendations and similar
   recommendations?: TMDBRecommendationsResponse;
   similar?: TMDBRecommendationsResponse;
   api_response: any;
@@ -388,7 +441,6 @@ class TMDBService {
       const cached = await this.getCachedData(imdbId);
       if (cached) {
         console.log('[TMDB] Cache hit for:', imdbId);
-        console.log('[TMDB] Cached watch providers:', cached.watch_providers ? 'EXISTS' : 'NULL');
         await this.updateLastAccessed(imdbId);
         return this.formatCachedData(cached);
       }
@@ -404,29 +456,107 @@ class TMDBService {
 
       console.log('[TMDB] Found TMDB ID:', tmdbId);
 
-      // Get full details with watch providers
+      // Get full details
       const details = await this.getTVSeriesDetails(tmdbId);
       if (!details) {
         console.error('[TMDB] Failed to get series details');
         return null;
       }
 
-      // CRITICAL FIX: Extract watch providers from the response
       const watchProviders = details['watch/providers'];
-      console.log('[TMDB] Watch providers from API:', watchProviders ? 'FOUND' : 'NOT FOUND');
-      if (watchProviders?.results) {
-        const regions = Object.keys(watchProviders.results);
-        console.log('[TMDB] Available regions:', regions);
-        console.log('[TMDB] Sample region data (US):', watchProviders.results.US ? 'has data' : 'no US data');
-      }
-
-      // Save to cache with watch providers explicitly passed
       await this.saveToCacheMVP(imdbId, details, watchProviders);
 
-      // Return details with watch providers properly attached
       return details;
     } catch (error) {
       console.error('[TMDB] Error in getTVSeriesByImdbId:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ✅ NEW: Get season details with all episodes
+   */
+  async getTVSeasonDetails(tmdbId: number, seasonNumber: number): Promise<TMDBSeasonDetails | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const url = `${this.baseUrl}/tv/${tmdbId}/season/${seasonNumber}?api_key=${this.apiKey}`;
+      console.log(`[TMDB] Fetching season ${seasonNumber} for TMDB ID ${tmdbId}`);
+      
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        console.error('[TMDB] Get season details failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log(`[TMDB] Season ${seasonNumber} has ${data.episodes?.length || 0} episodes`);
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting season details:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ✅ NEW: Get season details by IMDb ID
+   */
+  async getTVSeasonByImdbId(imdbId: string, seasonNumber: number): Promise<TMDBSeasonDetails | null> {
+    try {
+      // First find TMDB ID
+      const tmdbId = await this.findByImdbId(imdbId);
+      if (!tmdbId) {
+        console.error('[TMDB] TV series not found for IMDb ID:', imdbId);
+        return null;
+      }
+
+      // Then get season details
+      return await this.getTVSeasonDetails(tmdbId, seasonNumber);
+    } catch (error) {
+      console.error('[TMDB] Error getting season by IMDb ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ✅ NEW: Get specific episode details
+   */
+  async getTVEpisodeDetails(
+    tmdbId: number, 
+    seasonNumber: number, 
+    episodeNumber: number
+  ): Promise<TMDBEpisode | null> {
+    if (!this.apiKey) {
+      console.error('[TMDB] API key not configured');
+      return null;
+    }
+
+    try {
+      const url = `${this.baseUrl}/tv/${tmdbId}/season/${seasonNumber}/episode/${episodeNumber}?api_key=${this.apiKey}`;
+      console.log(`[TMDB] Fetching S${seasonNumber}E${episodeNumber} for TMDB ID ${tmdbId}`);
+      
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`[TMDB] Episode S${seasonNumber}E${episodeNumber} not found`);
+          return null;
+        }
+        console.error('[TMDB] Get episode details failed:', response.status);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log(`[TMDB] Episode found: ${data.name}`);
+      
+      return data;
+    } catch (error) {
+      console.error('[TMDB] Error getting episode details:', error);
       return null;
     }
   }
@@ -436,7 +566,6 @@ class TMDBService {
    */
   private async getCachedData(imdbId: string): Promise<CachedTMDBData | null> {
     try {
-      // Get the most recent cache entry for this IMDb ID
       const { data, error } = await supabase
         .from('tmdb_series_cache')
         .select('*')
@@ -447,18 +576,10 @@ class TMDBService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Not found - this is normal
-          console.log('[TMDB] No cache found for:', imdbId);
           return null;
         }
         console.error('[TMDB] Error reading cache:', error);
         return null;
-      }
-
-      if (data) {
-        console.log('[TMDB] Cache data retrieved for:', imdbId);
-        console.log('[TMDB] Cache has watch_providers:', !!data.watch_providers);
-        console.log('[TMDB] Last fetched:', data.last_fetched_at);
       }
 
       return data;
@@ -473,7 +594,6 @@ class TMDBService {
    */
   private async updateLastAccessed(imdbId: string): Promise<void> {
     try {
-      // First get current access count
       const { data: currentData } = await supabase
         .from('tmdb_series_cache')
         .select('access_count')
@@ -482,24 +602,20 @@ class TMDBService {
 
       const newAccessCount = (currentData?.access_count || 0) + 1;
 
-      const { error } = await supabase
+      await supabase
         .from('tmdb_series_cache')
         .update({
           last_accessed_at: new Date().toISOString(),
           access_count: newAccessCount
         })
         .eq('imdb_id', imdbId);
-
-      if (error) {
-        console.error('[TMDB] Error updating last accessed:', error);
-      }
     } catch (error) {
       console.error('[TMDB] Last accessed update error:', error);
     }
   }
 
   /**
-   * Save data to cache (MVP version - simple save)
+   * Save data to cache
    */
   private async saveToCacheMVP(
     imdbId: string, 
@@ -507,16 +623,7 @@ class TMDBService {
     watchProviders?: WatchProvidersData
   ): Promise<void> {
     try {
-      // CRITICAL FIX: Extract watch providers from the API response
-      // The API returns it as 'watch/providers' (with slash)
       const extractedWatchProviders = watchProviders || details['watch/providers'] || null;
-      
-      console.log('[TMDB] Saving to cache...');
-      console.log('[TMDB] Watch providers being saved:', extractedWatchProviders ? 'EXISTS' : 'NULL');
-      
-      if (extractedWatchProviders) {
-        console.log('[TMDB] Watch providers regions:', Object.keys(extractedWatchProviders.results || {}));
-      }
       
       const cacheEntry = {
         imdb_id: imdbId,
@@ -534,13 +641,11 @@ class TMDBService {
         keywords: details.keywords?.results || [],
         videos: details.videos?.results || [],
         external_ids: details.external_ids,
-        // CRITICAL: Save watch providers with correct structure
         watch_providers: extractedWatchProviders,
         credits: details.credits ? {
           cast: details.credits.cast,
           crew: details.credits.crew
         } : undefined,
-        // ✅ NEW: Save recommendations and similar
         recommendations: details.recommendations,
         similar: details.similar,
         api_response: details,
@@ -556,11 +661,9 @@ class TMDBService {
         });
 
       if (error) {
-        console.error('[TMDB] ❌ Error saving to cache:', error);
-        console.error('[TMDB] Failed entry:', cacheEntry);
+        console.error('[TMDB] Error saving to cache:', error);
       } else {
-        console.log('[TMDB] ✅ Successfully saved to cache:', imdbId);
-        console.log('[TMDB] ✅ Watch providers saved:', !!extractedWatchProviders);
+        console.log('[TMDB] Successfully saved to cache:', imdbId);
       }
     } catch (error) {
       console.error('[TMDB] Cache save error:', error);
@@ -571,13 +674,6 @@ class TMDBService {
    * Format cached data to match API response structure
    */
   private formatCachedData(cached: CachedTMDBData): TMDBTVSeriesDetails {
-    console.log('[TMDB] Formatting cached data for:', cached.imdb_id);
-    console.log('[TMDB] Cached watch_providers exists:', !!cached.watch_providers);
-    
-    if (cached.watch_providers) {
-      console.log('[TMDB] Cached watch_providers structure:', Object.keys(cached.watch_providers));
-    }
-
     const formatted: TMDBTVSeriesDetails = {
       id: cached.tmdb_id,
       name: cached.name,
@@ -597,26 +693,21 @@ class TMDBService {
         results: cached.videos || []
       },
       external_ids: cached.external_ids,
-      // FIX: Properly return watch providers from cache
       'watch/providers': cached.watch_providers || undefined,
       credits: cached.credits ? {
         cast: cached.credits.cast || [],
         crew: cached.credits.crew || [],
         id: cached.tmdb_id
       } : undefined,
-      // ✅ NEW: Return recommendations and similar from cache
       recommendations: cached.recommendations,
       similar: cached.similar
     };
-
-    console.log('[TMDB] Formatted data has watch/providers:', !!(formatted['watch/providers']));
-    console.log('[TMDB] Formatted data has credits:', !!(formatted.credits));
     
     return formatted;
   }
 
   /**
-   * Search for TV series by IMDb ID (direct API call, not cached)
+   * Search for TV series by IMDb ID
    */
   private async findByImdbId(imdbId: string): Promise<number | null> {
     try {
@@ -637,11 +728,10 @@ class TMDBService {
   }
 
   /**
-   * Get TV series details from TMDB API (direct API call)
+   * Get TV series details from TMDB API
    */
   private async getTVSeriesDetails(tmdbId: number): Promise<TMDBTVSeriesDetails | null> {
     try {
-      // ✅ UPDATED: Add recommendations and similar to append_to_response
       const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=videos,keywords,external_ids,watch/providers,credits,recommendations,similar`;
       console.log('[TMDB] Fetching URL:', url);
     
@@ -654,11 +744,6 @@ class TMDBService {
 
       const data = await response.json();
       console.log('[TMDB] API Response received');
-      console.log('[TMDB] Watch providers in response:', data['watch/providers']);
-      console.log('[TMDB] Credits in response:', data.credits ? `${data.credits.cast?.length} cast members` : 'No credits');
-      // ✅ NEW: Log recommendations and similar
-      console.log('[TMDB] Recommendations in response:', data.recommendations ? `${data.recommendations.results?.length} items` : 'No recommendations');
-      console.log('[TMDB] Similar titles in response:', data.similar ? `${data.similar.results?.length} items` : 'No similar');
     
       return data;
     } catch (error) {
@@ -676,7 +761,7 @@ class TMDBService {
   }
 
   /**
-   * Get watch providers separately (if needed)
+   * Get watch providers separately
    */
   async getWatchProviders(tmdbId: number): Promise<WatchProvidersData | null> {
     try {
@@ -689,7 +774,6 @@ class TMDBService {
       }
     
       const data = await response.json();
-      console.log('[TMDB] Watch providers standalone call:', data);
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting watch providers:', error);
@@ -698,7 +782,7 @@ class TMDBService {
   }
 
   /**
-   * Update cached entry with IMDb rating (for smart TTL calculation)
+   * Update cached entry with IMDb rating
    */
   async updateCacheRating(imdbId: string, rating: number): Promise<void> {
     try {
@@ -709,8 +793,6 @@ class TMDBService {
 
       if (error) {
         console.error('[TMDB] Error updating cache rating:', error);
-      } else {
-        console.log('[TMDB] Updated cache rating for:', imdbId);
       }
     } catch (error) {
       console.error('[TMDB] Cache rating update error:', error);
@@ -740,7 +822,7 @@ class TMDBService {
   }
 
   /**
-   * Clear cache for a specific series (useful for debugging)
+   * Clear cache for a specific series
    */
   async clearCacheForSeries(imdbId: string): Promise<void> {
     try {
@@ -790,18 +872,12 @@ class TMDBService {
     }
 
     try {
-      console.log('[TMDB] Looking up movie:', imdbId);
-
-      // Find TMDB ID from IMDb ID
       const tmdbId = await this.findMovieByImdbId(imdbId);
       if (!tmdbId) {
         console.error('[TMDB] Movie not found for IMDb ID:', imdbId);
         return null;
       }
 
-      console.log('[TMDB] Found TMDB movie ID:', tmdbId);
-
-      // Get full movie details with recommendations and similar
       const details = await this.getMovieDetails(tmdbId);
       return details;
     } catch (error) {
@@ -819,7 +895,6 @@ class TMDBService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Find movie by IMDb ID failed:', response.status);
         return null;
       }
 
@@ -837,21 +912,14 @@ class TMDBService {
   private async getMovieDetails(tmdbId: number): Promise<TMDBMovieDetails | null> {
     try {
       const url = `${this.baseUrl}/movie/${tmdbId}?api_key=${this.apiKey}&append_to_response=recommendations,similar,watch/providers`;
-      console.log('[TMDB] Fetching movie URL:', url);
-    
+      
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Get movie details failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Movie API Response received');
-      console.log('[TMDB] Movie Recommendations:', data.recommendations ? `${data.recommendations.results?.length} items` : 'No recommendations');
-      console.log('[TMDB] Similar Movies:', data.similar ? `${data.similar.results?.length} items` : 'No similar');
-      console.log('[TMDB] Watch Providers:', data['watch/providers'] ? 'Available' : 'Not available');
-    
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting movie details:', error);
@@ -864,25 +932,20 @@ class TMDBService {
    */
   async searchCollections(query: string): Promise<TMDBCollectionSearchResponse | null> {
     if (!this.apiKey) {
-      console.error('[TMDB] API key not configured');
       return null;
     }
 
     try {
       const encodedQuery = encodeURIComponent(query);
       const url = `${this.baseUrl}/search/collection?api_key=${this.apiKey}&query=${encodedQuery}`;
-      console.log('[TMDB] Searching collections:', query);
 
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Search collections failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Found', data.results?.length || 0, 'collections');
-      
       return data;
     } catch (error) {
       console.error('[TMDB] Error searching collections:', error);
@@ -895,24 +958,19 @@ class TMDBService {
    */
   async getCollectionDetails(collectionId: number): Promise<TMDBCollection | null> {
     if (!this.apiKey) {
-      console.error('[TMDB] API key not configured');
       return null;
     }
 
     try {
       const url = `${this.baseUrl}/collection/${collectionId}?api_key=${this.apiKey}`;
-      console.log('[TMDB] Fetching collection details:', collectionId);
 
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Get collection details failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Collection has', data.parts?.length || 0, 'movies');
-      
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting collection details:', error);
@@ -925,25 +983,20 @@ class TMDBService {
    */
   async searchMovies(query: string, page: number = 1): Promise<TMDBMovieSearchResponse | null> {
     if (!this.apiKey) {
-      console.error('[TMDB] API key not configured');
       return null;
     }
 
     try {
       const encodedQuery = encodeURIComponent(query);
       const url = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodedQuery}&page=${page}&include_adult=false`;
-      console.log('[TMDB] Searching movies:', query);
 
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Search movies failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Found', data.results?.length || 0, 'movies');
-      
       return data;
     } catch (error) {
       console.error('[TMDB] Error searching movies:', error);
@@ -956,25 +1009,20 @@ class TMDBService {
    */
   async searchTV(query: string, page: number = 1): Promise<TMDBTVSearchResponse | null> {
     if (!this.apiKey) {
-      console.error('[TMDB] API key not configured');
       return null;
     }
 
     try {
       const encodedQuery = encodeURIComponent(query);
       const url = `${this.baseUrl}/search/tv?api_key=${this.apiKey}&query=${encodedQuery}&page=${page}&include_adult=false`;
-      console.log('[TMDB] Searching TV series:', query);
 
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Search TV failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Found', data.results?.length || 0, 'TV series');
-      
       return data;
     } catch (error) {
       console.error('[TMDB] Error searching TV series:', error);
@@ -987,26 +1035,19 @@ class TMDBService {
    */
   async getMovieDetailsFull(tmdbId: number): Promise<TMDBMovieDetailsFull | null> {
     if (!this.apiKey) {
-      console.error('[TMDB] API key not configured');
       return null;
     }
 
     try {
       const url = `${this.baseUrl}/movie/${tmdbId}?api_key=${this.apiKey}&append_to_response=credits,external_ids,watch/providers`;
-      console.log('[TMDB] Fetching full movie details:', tmdbId);
       
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Get full movie details failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Full movie details received');
-      console.log('[TMDB] IMDb ID:', data.external_ids?.imdb_id);
-      console.log('[TMDB] Credits:', data.credits ? `${data.credits.cast?.length} cast, ${data.credits.crew?.length} crew` : 'No credits');
-      
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting full movie details:', error);
@@ -1019,26 +1060,19 @@ class TMDBService {
    */
   async getTVDetailsFull(tmdbId: number): Promise<TMDBTVDetailsFull | null> {
     if (!this.apiKey) {
-      console.error('[TMDB] API key not configured');
       return null;
     }
 
     try {
       const url = `${this.baseUrl}/tv/${tmdbId}?api_key=${this.apiKey}&append_to_response=credits,external_ids,watch/providers`;
-      console.log('[TMDB] Fetching full TV details:', tmdbId);
       
       const response = await fetch(url);
 
       if (!response.ok) {
-        console.error('[TMDB] Get full TV details failed:', response.status);
         return null;
       }
 
       const data = await response.json();
-      console.log('[TMDB] Full TV details received');
-      console.log('[TMDB] IMDb ID:', data.external_ids?.imdb_id);
-      console.log('[TMDB] Credits:', data.credits ? `${data.credits.cast?.length} cast, ${data.credits.crew?.length} crew` : 'No credits');
-      
       return data;
     } catch (error) {
       console.error('[TMDB] Error getting full TV details:', error);
