@@ -490,31 +490,152 @@ export function EnhancedEpisodesBrowserPage({
     if (!series.imdb_id) return;
     
     try {
-      console.log('[Episodes] Manual refresh triggered');
+      console.log('[Episodes] Manual refresh triggered - starting IMMEDIATE discovery');
       
-      // Set loading state
       setLoading(true);
-      setError(null);
-    
-      // ✅ FIX: Always trigger force refresh, not just when episodes.length === 0
-      // This will re-discover all episodes and fill in any gaps
-      console.log('[Episodes] Triggering force refresh to discover all episodes...');
-    
-      await serverSideEpisodeService.forceRefreshSeries(
-        series.imdb_id,
-        series.title
-      );
-    
-      setError('Force refresh started! All episodes will be discovered in the background. This may take a minute. Refresh this page in 30-60 seconds to see the complete episode list.');
-    
-      // Try loading what we have now
+      setError('Discovering all episodes now... This may take 1-2 minutes.');
+      
+      // ✅ Do the discovery IMMEDIATELY in the browser
+      // This ensures it happens right now, not in a queue that never processes
+      
+      // Step 1: Get TMDB series details to find total seasons
+      console.log('[Episodes] Step 1: Getting series details...');
+      const seriesDetails = await tmdbService.getTVSeriesByImdbId(series.imdb_id);
+      
+      if (!seriesDetails) {
+        throw new Error('Could not fetch series details from TMDB');
+      }
+      
+      const totalSeasonsCount = seriesDetails.number_of_seasons || 0;
+      console.log(`[Episodes] Found ${totalSeasonsCount} seasons`);
+      
+      if (totalSeasonsCount === 0) {
+        throw new Error('Series has no seasons');
+      }
+      
+      // Step 2: Discover each season
+      let totalEpisodesDiscovered = 0;
+      
+      for (let seasonNum = 1; seasonNum <= totalSeasonsCount; seasonNum++) {
+        console.log(`[Episodes] Discovering Season ${seasonNum}/${totalSeasonsCount}...`);
+        setError(`Discovering Season ${seasonNum}/${totalSeasonsCount}... (${totalEpisodesDiscovered} episodes found so far)`);
+        
+        try {
+          // Fetch season details from TMDB
+          const seasonData = await tmdbService.getTVSeasonByImdbId(series.imdb_id, seasonNum);
+          
+          if (!seasonData || !seasonData.episodes || seasonData.episodes.length === 0) {
+            console.log(`  Season ${seasonNum} has no episodes, skipping...`);
+            continue;
+          }
+          
+          const episodeCount = seasonData.episodes.length;
+          console.log(`  Season ${seasonNum}: ${episodeCount} episodes`);
+          
+          // Cache each episode in this season
+          for (const episode of seasonData.episodes) {
+            await cacheEpisodeFromTMDB(series.imdb_id, seasonNum, episode);
+            totalEpisodesDiscovered++;
+          }
+          
+          // Rate limiting - wait 250ms between seasons
+          await new Promise(resolve => setTimeout(resolve, 250));
+          
+        } catch (seasonError) {
+          console.error(`  Error discovering Season ${seasonNum}:`, seasonError);
+          // Continue to next season even if one fails
+          continue;
+        }
+      }
+      
+      // Step 3: Update series metadata
+      await supabase
+        .from('series_episode_counts')
+        .upsert({
+          imdb_id: series.imdb_id,
+          series_title: series.title,
+          total_seasons: totalSeasonsCount,
+          total_episodes: totalEpisodesDiscovered,
+          fully_discovered: true,
+          last_discovery_attempt: new Date().toISOString()
+        }, {
+          onConflict: 'imdb_id'
+        });
+      
+      console.log(`[Episodes] ✅ Discovery complete! ${totalSeasonsCount} seasons, ${totalEpisodesDiscovered} episodes`);
+      setError(`✅ Discovery complete! Found ${totalEpisodesDiscovered} episodes across ${totalSeasonsCount} seasons.`);
+      
+      // Reload the current season to show new episodes
       await loadEpisodesFromCache(currentSeason);
       
+      // Update the series status
+      const newStatus = await serverSideEpisodeService.getSeriesStatus(series.imdb_id);
+      setCacheStatus(newStatus);
+      setTotalSeasons(newStatus.totalSeasons);
+      setAvailableSeasons(newStatus.availableSeasons);
+      
     } catch (error) {
-      console.error('[Episodes] Manual refresh failed:', error);
-      setError('Refresh failed. Please try again.');
-      } finally {
+      console.error('[Episodes] Discovery failed:', error);
+      setError(`Discovery failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+    } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper function to cache a single episode from TMDB
+  const cacheEpisodeFromTMDB = async (
+    seriesImdbId: string,
+    seasonNumber: number,
+    episode: any
+  ): Promise<void> => {
+    try {
+      // Extract director and writer from crew
+      const director = episode.crew
+        ?.filter((c: any) => c.job === 'Director')
+        .map((c: any) => c.name)
+        .join(', ') || null;
+      
+      const writer = episode.crew
+        ?.filter((c: any) => c.department === 'Writing')
+        .map((c: any) => c.name)
+        .slice(0, 3)
+        .join(', ') || null;
+
+      // Extract main guest stars
+      const actors = episode.guest_stars
+        ?.slice(0, 5)
+        .map((g: any) => g.name)
+        .join(', ') || null;
+
+      const { error } = await supabase
+        .from('episodes_cache')
+        .upsert({
+          imdb_id: seriesImdbId,
+          season_number: seasonNumber,
+          episode_number: episode.episode_number,
+          title: episode.name || null,
+          plot: episode.overview || null,
+          rating: null,
+          air_date: episode.air_date || null,
+          runtime_minutes: episode.runtime || null,
+          director: director,
+          writer: writer,
+          actors: actors,
+          poster_url: episode.still_path 
+            ? `https://image.tmdb.org/t/p/w300${episode.still_path}` 
+            : null,
+          imdb_rating: episode.vote_average || null,
+          last_fetched_at: new Date().toISOString(),
+          fetch_success: true
+        }, {
+          onConflict: 'imdb_id,season_number,episode_number'
+        });
+
+      if (error) {
+        console.error('[cacheEpisode] Error:', error);
+      }
+    } catch (error) {
+      console.error('[cacheEpisode] Error:', error);
     }
   };
 
