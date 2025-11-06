@@ -265,13 +265,19 @@ class EpisodeDiscoveryService {
    */
   private async cacheEpisode(episodeData: EpisodeData): Promise<void> {
     try {
+      const { data: movie } = await supabase
+        .from('movies')
+        .select('title')
+        .eq('imdb_id', episodeData.imdb_id)
+        .single();
+      
       const { error } = await supabase
         .from('episodes_cache')
         .upsert({
           imdb_id: episodeData.imdb_id,
           season_number: episodeData.season_number,
           episode_number: episodeData.episode_number,
-          title: episodeData.title,              // Series title
+          title: movie?.title || episodeData.title || null,              // Series title
           episode_title: episodeData.episode_title, // Episode title
           plot: episodeData.plot,
           rating: episodeData.rating,
