@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { MediaLibraryItemDetailModal } from './MediaLibraryItemDetailModal';
 import { EditLibraryItemModal } from './EditLibraryItemModal';
-import { CollectionStatusBadge, CollectionTypeActions } from './CollectionStatusBadge';
+import { ItemStatusBadge, ItemStatusActions } from './ItemStatusBadge';
 import type { 
   PhysicalMediaCollection, 
   BlurayTechnicalSpecs,
@@ -208,7 +208,7 @@ export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
               <FormatBadge format={item.format} specs={specs} />
               {/* Item Status Badge - Only show for non-owned items */}
               {collectionType !== 'owned' && (
-                <CollectionStatusBadge 
+                <ItemStatusBadge 
                   type={collectionType}
                   size="sm"
                   showIcon={true}
@@ -301,7 +301,7 @@ export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
               <div className="text-xs font-medium text-slate-600 mb-2 px-2">
                 Move to:
               </div>
-              <CollectionTypeActions
+              <ItemStatusActions
                 currentType={collectionType}
                 onTypeChange={handleMoveToType}
                 itemTitle={item.title}
