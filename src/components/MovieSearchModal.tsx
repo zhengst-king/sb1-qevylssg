@@ -126,7 +126,7 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto max-h-[60vh]">
+        <div className="flex-1 overflow-y-auto max-h-[90vh]">
           {/* Search Error Display */}
           {error && (
             <div className="m-6 bg-red-50 border border-red-200 rounded-xl p-4">
