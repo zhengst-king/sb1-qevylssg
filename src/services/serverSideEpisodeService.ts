@@ -531,7 +531,7 @@ class ServerSideEpisodeService {
 
           // Step 3: Cache each episode
           for (const episode of seasonData.episodes) {
-            await this.cacheEpisodeFromTMDB(seriesImdbId, seasonNum, episode);
+            await this.cacheEpisodeFromTMDB(seriesImdbId, seasonNum, episode, seriesTitle);
           }
 
           // Rate limit delay (TMDB has 50 requests per second limit, but we'll be conservative)
@@ -572,7 +572,8 @@ class ServerSideEpisodeService {
   private async cacheEpisodeFromTMDB(
     seriesImdbId: string, 
     seasonNumber: number, 
-    episode: TMDBEpisode
+    episode: TMDBEpisode,
+    seriesTitle?: string
   ): Promise<void> {
     try {
       // Extract director and writer from crew
@@ -599,6 +600,7 @@ class ServerSideEpisodeService {
           imdb_id: seriesImdbId,
           season_number: seasonNumber,
           episode_number: episode.episode_number,
+          title: seriesTitle || null,
           episode_title: episode.name || null,  // Episode title
           plot: episode.overview || null,
           rating: null, // TMDB doesn't provide content rating per episode
