@@ -1,3 +1,4 @@
+// src/components/CollectionItemDetailModal.tsx
 import React from 'react';
 import { X, Star, Calendar, DollarSign, MapPin, ExternalLink, Edit, Trash2 } from 'lucide-react';
 import type { PhysicalMediaCollection } from '../lib/supabase';
