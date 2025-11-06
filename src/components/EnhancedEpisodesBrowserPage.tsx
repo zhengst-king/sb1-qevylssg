@@ -613,7 +613,7 @@ export function EnhancedEpisodesBrowserPage({
           imdb_id: seriesImdbId,
           season_number: seasonNumber,
           episode_number: episode.episode_number,
-          title: episode.name || null,
+          episode_title: episode.name || null,
           plot: episode.overview || null,
           rating: null,
           air_date: episode.air_date || null,
@@ -1559,7 +1559,7 @@ export function EnhancedEpisodesBrowserPage({
                       <div className="relative h-48 bg-slate-200">
                         <img 
                           src={episode.poster} 
-                          alt={episode.title}
+                          alt={episode.episode_title}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
@@ -1582,8 +1582,8 @@ export function EnhancedEpisodesBrowserPage({
                           {/* Row 1: Episode Number + Title */}
                           <div className="flex items-center gap-2 mb-0.5">
                             <div className="text-sm font-semibold text-slate-900">Episode {episode.episode}</div>
-                            {episode.title && (
-                              <div className="text-sm font-semibold text-slate-900">{episode.title}</div>
+                            {episode.episode_title && (
+                              <div className="text-sm font-semibold text-slate-900">{episode.episode_title}</div>
                             )}
                           </div>
                           
