@@ -9,7 +9,8 @@ export interface EpisodeData {
   imdb_id: string;
   season_number: number;
   episode_number: number;
-  title?: string;
+  title?: string;         // Series title (from movies table)
+  episode_title?: string; // Episode title
   plot?: string;
   rating?: string;
   air_date?: Date;
@@ -186,7 +187,8 @@ class EpisodeDiscoveryService {
         imdb_id: data.imdb_id,
         season_number: data.season_number,
         episode_number: data.episode_number,
-        title: data.title,
+        title: data.title,              // Series title
+        episode_title: data.episode_title, // Episode title
         plot: data.plot,
         rating: data.rating,
         air_date: data.air_date,
@@ -234,7 +236,7 @@ class EpisodeDiscoveryService {
         imdb_id: imdbId,
         season_number: seasonNum,
         episode_number: episodeNum,
-        title: response.Title,
+        episode_title: response.Title,  // Episode title from OMDb
         plot: response.Plot,
         rating: response.Rated,
         air_date: response.Released ? new Date(response.Released) : undefined,
@@ -269,7 +271,8 @@ class EpisodeDiscoveryService {
           imdb_id: episodeData.imdb_id,
           season_number: episodeData.season_number,
           episode_number: episodeData.episode_number,
-          title: episodeData.title,
+          title: episodeData.title,              // Series title
+          episode_title: episodeData.episode_title, // Episode title
           plot: episodeData.plot,
           rating: episodeData.rating,
           air_date: episodeData.air_date,
@@ -564,7 +567,8 @@ class EpisodeDiscoveryService {
         imdb_id: item.imdb_id,
         season_number: item.season_number,
         episode_number: item.episode_number,
-        title: item.title,
+        title: item.title,              // Series title
+        episode_title: item.episode_title, // Episode title
         plot: item.plot,
         rating: item.rating,
         air_date: item.air_date,
