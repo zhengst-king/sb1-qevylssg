@@ -1,432 +1,590 @@
-// src/components/MediaLibraryItemCard.tsx - RENAMED FROM CollectionItemCard
-import React, { useState, useEffect } from 'react';
-import {
-  Calendar,
-  DollarSign,
-  MapPin,
-  Edit,
-  Trash2,
+// src/components/MyMediaLibraryPage.tsx - RENAMED FROM MyCollectionsPage
+import React, { useState, useMemo } from 'react';
+import { 
+  Plus, 
+  Search, 
+  Filter, 
+  SortAsc, 
+  Package, 
+  Disc3,
+  FileVideo,
+  Monitor,
+  Sparkles,
+  Volume2,
+  Award,
   Eye,
-  Package,
+  BarChart3,
+  DollarSign,
   Heart,
   UserCheck,
-  Disc,
-  Award,
-  Star,
-  Sparkles,
-  Volume2
+  AlertTriangle,
+  Download,
+  Upload,
+  Grid3X3,
+  CheckCircle,
+  X,
+  AlertCircle
 } from 'lucide-react';
-import { MediaLibraryItemDetailModal } from './MediaLibraryItemDetailModal';
-import { EditLibraryItemModal } from './EditLibraryItemModal';
-import { CollectionStatusBadge, CollectionTypeActions } from './CollectionStatusBadge';
-import type { 
-  PhysicalMediaCollection, 
-  BlurayTechnicalSpecs,
-  CollectionType 
-} from '../lib/supabase';
+import { useCollections } from '../hooks/useCollections';
+import { useAuth } from '../hooks/useAuth';
+import { MediaLibraryItemCard } from './MediaLibraryItemCard';
+import { AddToLibraryModal } from './AddToLibraryModal';
+import { ImportListsModal } from './ImportListsModal';
+import { csvExportService } from '../services/csvExportService';
+import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
-interface MediaLibraryItemCardProps {
-  item: PhysicalMediaCollection & {
-    technical_specs?: BlurayTechnicalSpecs;
-  };
-  onUpdate?: () => void;
-  onDelete?: (id: string) => void;
-  isSelected?: boolean;
-  onSelect?: (selected: boolean) => void;
-  onEdit?: (item: PhysicalMediaCollection) => void;
-  onMoveToType?: (newType: CollectionType) => void;
+// Enhanced Stats Card Component
+interface CollectionStatsCardProps {
+  label: string;
+  value: number | string;
+  icon?: React.ComponentType<{ className?: string }>;
+  color?: 'blue' | 'red' | 'green' | 'purple' | 'orange' | 'slate';
+  subtitle?: string;
+  onClick?: () => void;
 }
 
-// Inline StarRating component
-interface StarRatingProps {
-  rating: number;
-  maxRating?: number;
-  size?: 'sm' | 'md' | 'lg';
-  showRating?: boolean;
-  variant?: 'default' | 'imdb' | 'personal';
-}
-
-const StarRating: React.FC<StarRatingProps> = ({ 
-  rating, 
-  maxRating = 10, 
-  size = 'sm', 
-  showRating = false,
-  variant = 'default'
+const CollectionStatsCard: React.FC<CollectionStatsCardProps> = ({
+  label,
+  value,
+  icon: Icon,
+  color = 'blue',
+  subtitle,
+  onClick
 }) => {
-  const sizeClasses = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4', 
-    lg: 'h-5 w-5'
-  };
-  
-  const starSize = sizeClasses[size];
-  const normalizedRating = variant === 'imdb' ? (rating / 2) : (rating / 2);
-  
-  const bgColors = {
-    default: 'bg-black bg-opacity-75',
-    imdb: 'bg-yellow-600',
-    personal: 'bg-blue-600'
+  const colorClasses = {
+    blue: 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100',
+    red: 'text-red-600 bg-red-50 border-red-200 hover:bg-red-100',
+    green: 'text-green-600 bg-green-50 border-green-200 hover:bg-green-100',
+    purple: 'text-purple-600 bg-purple-50 border-purple-200 hover:bg-purple-100',
+    orange: 'text-orange-600 bg-orange-50 border-orange-200 hover:bg-orange-100',
+    slate: 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'
   };
 
   return (
-    <div className={`${bgColors[variant]} text-white px-2 py-1 rounded-full flex items-center space-x-1`}>
-      <div className="flex items-center">
-        {[...Array(Math.floor(normalizedRating))].map((_, i) => (
-          <Star key={i} className={`${starSize} fill-current`} />
-        ))}
-        {normalizedRating % 1 !== 0 && (
-          <Star className={`${starSize} fill-current opacity-50`} />
+    <div 
+      className={`bg-white rounded-xl p-4 shadow-sm border transition-all cursor-pointer ${colorClasses[color]} ${
+        onClick ? 'hover:scale-105' : ''
+      }`}
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-600">{label}</p>
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+          {subtitle && (
+            <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+          )}
+        </div>
+        {Icon && (
+          <div className={`p-2 rounded-lg ${colorClasses[color].split(' ')[1]} ${colorClasses[color].split(' ')[0]}`}>
+            <Icon className="h-5 w-5" />
+          </div>
         )}
       </div>
-      {showRating && (
-        <span className="text-xs font-medium">
-          {variant === 'imdb' ? `${rating}/10` : `${rating}/10`}
-        </span>
-      )}
     </div>
   );
 };
 
-// Inline FormatBadge component
-interface FormatBadgeProps {
-  format: string;
-  specs?: BlurayTechnicalSpecs;
+// Item Status Filter Tabs
+interface CollectionTypeTabsProps {
+  activeType: CollectionType | 'all';
+  onTypeChange: (type: CollectionType | 'all') => void;
+  stats: Record<string, number>;
 }
 
-const FormatBadge: React.FC<FormatBadgeProps> = ({ format, specs }) => {
-  const formatBadgeColor = {
-    'DVD': 'bg-red-100 text-red-800 border-red-200',
-    'Blu-ray': 'bg-blue-100 text-blue-800 border-blue-200',
-    '4K UHD': 'bg-purple-100 text-purple-800 border-purple-200',
-    '3D Blu-ray': 'bg-green-100 text-green-800 border-green-200'
-  };
+const CollectionTypeTabs: React.FC<CollectionTypeTabsProps> = ({
+  activeType,
+  onTypeChange,
+  stats
+}) => {
+  const tabs = [
+    { id: 'all' as const, label: 'All Items', icon: Package, color: 'text-slate-600' },
+    { id: 'owned' as const, label: 'Owned', icon: Disc3, color: 'text-blue-600' },
+    { id: 'wishlist' as const, label: 'Wishlist', icon: Heart, color: 'text-red-600' },
+    { id: 'for_sale' as const, label: 'For Sale', icon: DollarSign, color: 'text-green-600' },
+    { id: 'loaned_out' as const, label: 'Loaned Out', icon: UserCheck, color: 'text-orange-600' },
+    { id: 'missing' as const, label: 'Missing', icon: AlertTriangle, color: 'text-red-600' },
+  ];
 
   return (
-    <div className="flex flex-wrap gap-1">
-      {/* Main Format Badge - ALWAYS VISIBLE */}
-      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format as keyof typeof formatBadgeColor] || 'bg-slate-100 text-slate-800 border-slate-200'}`}>
-        {format}
-      </span>
-      
-      {/* Video Quality Badges */}
-      {specs?.video_resolution && (
-        <span className="px-2 py-1 text-xs font-medium bg-slate-700 text-white rounded-full">
-          {specs.video_resolution}
-        </span>
-      )}
-      
-      {/* HDR Badges */}
-      {specs?.hdr_format && specs.hdr_format.length > 0 && (
-        <span className="px-2 py-1 text-xs font-medium bg-orange-500 text-white rounded-full flex items-center">
-          <Sparkles className="h-2 w-2 mr-1" />
-          {specs.hdr_format[0]}
-        </span>
-      )}
+    <div className="flex flex-wrap gap-2 mb-6">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeType === tab.id;
+        const count = tab.id === 'all' ? stats.total : stats[tab.id] || 0;
+        
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onTypeChange(tab.id)}
+            className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+              isActive 
+                ? 'bg-white shadow-sm border border-slate-200'
+                : 'bg-slate-50 hover:bg-slate-100'
+            }`}
+          >
+            <Icon className={`h-3 w-3 ${tab.color}`} />
+            <span className={isActive ? 'text-slate-900' : 'text-slate-600'}>
+              {tab.label} ({count})
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 };
 
-export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
-  item,
-  onUpdate,
-  onDelete,
-  onEdit,
-  isSelected = false,
-  onSelect,
-  onMoveToType
-}) => {
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showTypeActions, setShowTypeActions] = useState(false);
+interface MyMediaLibraryPageProps {}
 
-  const collectionType = (item.collection_type || 'owned') as CollectionType;
-  const specs = item.technical_specs;
-  const hasSpecs = Boolean(specs);
+export const MyMediaLibraryPage: React.FC<MyMediaLibraryPageProps> = () => {
+  const { user } = useAuth();
+  
+  // Item status state
+  const [activeCollectionType, setActiveCollectionType] = useState<CollectionType | 'all'>('all');
+  
+  // Use collections hook (note: keeping the hook name for now, will rename in Phase 3)
+  const { 
+    collections: libraryItems,
+    loading, 
+    error, 
+    addToCollection: addToLibrary, 
+    removeFromCollection: removeFromLibrary, 
+    updateCollection: updateLibraryItem,
+    refetch 
+  } = useCollections();
 
-  const handleMoveToType = async (newType: CollectionType) => {
-    if (onMoveToType) {
-      await onMoveToType(newType);
-      setShowTypeActions(false);
-    }
-  };
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  
+  // Filter and sort states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [formatFilter, setFormatFilter] = useState<'all' | 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('all');
+  const [sortBy, setSortBy] = useState<'title' | 'year' | 'dateAdded' | 'value'>('title');
+  
+  // CSV Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
-  const handleDelete = async () => {
-    if (!onDelete || isDeleting) return;
-    
-    const confirmed = window.confirm(`Are you sure you want to delete "${item.title}" from your library?`);
-    if (confirmed) {
-      setIsDeleting(true);
-      try {
-        await onDelete(item.id);
-      } catch (error) {
-        console.error('[MediaLibraryItemCard] Error deleting item:', error);
-        setIsDeleting(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showTypeActions) {
-        setShowTypeActions(false);
-      }
+  // Get library statistics
+  const libraryStats = useMemo(() => {
+    return {
+      owned: libraryItems.filter(item => (item.collection_type || 'owned') === 'owned').length,
+      wishlist: libraryItems.filter(item => item.collection_type === 'wishlist').length,
+      for_sale: libraryItems.filter(item => item.collection_type === 'for_sale').length,
+      loaned_out: libraryItems.filter(item => item.collection_type === 'loaned_out').length,
+      missing: libraryItems.filter(item => item.collection_type === 'missing').length,
+      total: libraryItems.length
     };
+  }, [libraryItems]);
 
-    if (showTypeActions) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+  // Enhanced stats calculations
+  const enhancedStats = useMemo(() => {
+    const ownedItems = libraryItems.filter(item => (item.collection_type || 'owned') === 'owned');
+    const wishlistItems = libraryItems.filter(item => item.collection_type === 'wishlist');
+    const ratedItems = libraryItems.filter(item => item.personal_rating && item.personal_rating > 0);
+    
+    const totalValue = ownedItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+    const wishlistValue = wishlistItems.reduce((sum, item) => sum + (item.purchase_price || 0), 0);
+    const avgRating = ratedItems.length > 0 
+      ? ratedItems.reduce((sum, item) => sum + (item.personal_rating || 0), 0) / ratedItems.length 
+      : 0;
+
+    return {
+      totalValue,
+      wishlistValue,
+      avgRating,
+      mostExpensive: ownedItems.reduce((max, item) => 
+        (item.purchase_price || 0) > (max.purchase_price || 0) ? item : max, 
+        ownedItems[0] || {} as PhysicalMediaCollection
+      )
+    };
+  }, [libraryItems]);
+
+  // Handle item status change
+  const handleCollectionTypeChange = (type: CollectionType | 'all') => {
+    setActiveCollectionType(type);
+    setSearchQuery('');
+    setFormatFilter('all');
+  };
+
+  // Move item to different status
+  const handleMoveToType = async (item: PhysicalMediaCollection, newType: CollectionType) => {
+    try {
+      await updateLibraryItem(item.id, { collection_type: newType });
+      refetch();
+    } catch (error) {
+      console.error('[MediaLibrary] Error moving item:', error);
+      alert('Failed to move item. Please try again.');
     }
-  }, [showTypeActions]);
+  };
 
-  return (
-    <>
-      <div
-        className={`group relative bg-white rounded-lg shadow-sm border hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer ${
-          isSelected ? 'ring-2 ring-blue-500 border-blue-200' : 'border-slate-200'
-        }`}
-        onClick={() => setShowDetailModal(true)}
-      >
-        {/* Poster Image */}
-        <div className="aspect-[2/3] relative bg-slate-100">
-          {item.poster_url ? (
-            <img
-              src={item.poster_url}
-              alt={`${item.title} poster`}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-400">
-              <Package className="h-12 w-12" />
-            </div>
-          )}
+  // CSV Export functionality
+  const handleExportCSV = async () => {
+    if (!user?.id) {
+      alert('Please log in to export your library');
+      return;
+    }
 
-          {/* Item Status and Format Badges */}
-          <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
-            <div className="flex flex-col space-y-1">
-              <FormatBadge format={item.format} specs={specs} />
-              {/* Item Status Badge - Only show for non-owned items */}
-              {collectionType !== 'owned' && (
-                <CollectionStatusBadge 
-                  type={collectionType}
-                  size="sm"
-                  showIcon={true}
-                  showLabel={true}
-                />
-              )}
-            </div>
-            
-            {/* IMDB Rating */}
-            {item.imdb_score && (
-              <StarRating 
-                rating={item.imdb_score} 
-                variant="imdb" 
-                size="sm"
-                showRating={false}
-              />
-            )}
-          </div>
+    if (libraryItems.length === 0) {
+      alert('No library items to export');
+      return;
+    }
 
-          {/* Selection Checkbox */}
-          {onSelect && (
-            <div className="absolute top-2 left-2">
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  onSelect(e.target.checked);
-                }}
-                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-              />
-            </div>
-          )}
+    setIsExporting(true);
+    setExportSuccess(null);
 
-          {/* Hover Overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
-            <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </div>
+    try {
+      const result = await csvExportService.exportCollectionToCSV(user.id, {
+        includeHeaders: true,
+        includeTechnicalSpecs: true,
+        dateFormat: 'iso',
+        filename: `my-${activeCollectionType === 'all' ? 'complete' : activeCollectionType}-library`
+      });
 
-          {/* Action Buttons */}
-          <div className="absolute bottom-2 right-2 flex space-x-1 z-10">
-            {/* Item Status Actions Button */}
-            {onMoveToType && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setShowTypeActions(!showTypeActions);
-                }}
-                className={`bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity ${
-                  showTypeActions ? 'bg-blue-600 bg-opacity-90' : ''
-                }`}
-                title="Change item status"
-              >
-                <Package className="h-3 w-3" />
-              </button>
-            )}
+      if (result.success) {
+        setExportSuccess(`Successfully exported ${result.recordCount} items to ${result.filename}`);
+        setTimeout(() => setExportSuccess(null), 5000);
+      } else {
+        throw new Error(result.error || 'Export failed');
+      }
+    } catch (error) {
+      console.error('[MediaLibrary] CSV export error:', error);
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
-            {/* Edit Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setShowEditModal(true);
-              }}
-              className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-            >
-              <Edit className="h-3 w-3" />
-            </button>
+  // Handle import success
+  const handleImportSuccess = () => {
+    setShowImportModal(false);
+    refetch();
+    setExportSuccess('Import completed successfully!');
+    setTimeout(() => setExportSuccess(null), 5000);
+  };
 
-            {/* Delete Button */}
-            {onDelete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleDelete();
-                }}
-                className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-                disabled={isDeleting}
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+  // Filter and sort library items
+  const filteredAndSortedLibraryItems = useMemo(() => {
+    let filtered = [...libraryItems];
 
-          {/* Item Status Actions Dropdown */}
-          {showTypeActions && onMoveToType && (
-            <div className="absolute bottom-12 right-2 bg-white border border-slate-200 rounded-lg shadow-lg p-2 z-20 min-w-48">
-              <div className="text-xs font-medium text-slate-600 mb-2 px-2">
-                Move to:
-              </div>
-              <CollectionTypeActions
-                currentType={collectionType}
-                onTypeChange={handleMoveToType}
-                itemTitle={item.title}
-              />
-            </div>
-          )}
-        </div>
+    // Apply item status filter
+    if (activeCollectionType !== 'all') {
+      filtered = filtered.filter(item => (item.collection_type || 'owned') === activeCollectionType);
+    }
 
-        {/* Movie Details */}
-        <div className="p-4">
-          {/* Title and Year */}
-          <div className="mb-2">
-            <h3 className="font-semibold text-slate-900 text-sm leading-tight mb-1 line-clamp-2">
-              {item.title}
-            </h3>
-            {item.release_year && (
-              <p className="text-xs text-slate-600">{item.release_year}</p>
-            )}
-          </div>
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.director && item.director.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.genre && item.genre.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    }
 
-          {/* Movie Rating */}
-          {item.rating && (
-            <div className="mb-2">
-              <StarRating 
-                rating={item.rating} 
-                size="sm" 
-                showRating={true}
-                variant="default"
-              />
-            </div>
-          )}
+    // Apply format filter
+    if (formatFilter !== 'all') {
+      filtered = filtered.filter(item => item.format === formatFilter);
+    }
 
-          {/* Item Status Specific Info */}
-          <div className="space-y-1 text-xs text-slate-600">
-            {collectionType === 'wishlist' && (
-              <div className="flex items-center space-x-1 text-red-600">
-                <Heart className="h-3 w-3" />
-                <span>On wishlist</span>
-                {item.purchase_price && <span>• Target: ${item.purchase_price.toFixed(2)}</span>}
-              </div>
-            )}
-            
-            {collectionType === 'for_sale' && (
-              <div className="flex items-center space-x-1 text-green-600">
-                <DollarSign className="h-3 w-3" />
-                <span>For sale</span>
-                {item.purchase_price && <span>• ${item.purchase_price.toFixed(2)}</span>}
-              </div>
-            )}
-            
-            {collectionType === 'loaned_out' && (
-              <div className="flex items-center space-x-1 text-orange-600">
-                <UserCheck className="h-3 w-3" />
-                <span>Loaned out</span>
-                {item.purchase_location && <span>• to {item.purchase_location}</span>}
-              </div>
-            )}
-            
-            {/* Regular purchase info for owned items */}
-            {collectionType === 'owned' && (
-              <div className="grid grid-cols-1 gap-1">
-                {item.purchase_date && (
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3 text-slate-400" />
-                    <span>{new Date(item.purchase_date).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {item.purchase_price && (
-                  <div className="flex items-center space-x-1">
-                    <DollarSign className="h-3 w-3 text-slate-400" />
-                    <span>${item.purchase_price.toFixed(2)}</span>
-                  </div>
-                )}
-                {item.purchase_location && (
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-3 w-3 text-slate-400" />
-                    <span className="truncate">{item.purchase_location}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+    // Apply sorting
+    const sorted = filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'year':
+          return (b.year || 0) - (a.year || 0);
+        case 'dateAdded':
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        case 'value':
+          return (b.purchase_price || 0) - (a.purchase_price || 0);
+        default:
+          return 0;
+      }
+    });
 
-          {/* Technical Specs Preview */}
-          {hasSpecs && specs && (
-            <div className="pt-2 border-t border-slate-100">
-              <div className="text-xs text-slate-600">
-                <div className="flex items-center space-x-2">
-                  <Disc className="h-3 w-3" />
-                  <span>Enhanced specs available</span>
-                </div>
-              </div>
-            </div>
-          )}
+    return sorted;
+  }, [libraryItems, activeCollectionType, searchQuery, formatFilter, sortBy]);
 
-          {/* Awards/Special Recognition */}
-          {item.awards && (
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center space-x-1 text-xs text-amber-600">
-                <Award className="h-3 w-3" />
-                <span className="truncate">{item.awards}</span>
-              </div>
-            </div>
-          )}
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading your library...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Detail Modal */}
-      <MediaLibraryItemDetailModal
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        item={item}
-        onUpdate={onUpdate}
-      />
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-2">Error loading library</p>
+          <p className="text-slate-500 text-sm">{error}</p>
+          <button 
+            onClick={() => refetch()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-      {/* Edit Modal */}
-      <EditLibraryItemModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        item={item}
-        onUpdate={() => {
-          onUpdate?.();
-          setShowEditModal(false);
-        }}
-      />
-    </>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Export Success Message */}
+        {exportSuccess && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                <p className="text-sm text-green-700 font-medium">{exportSuccess}</p>
+              </div>
+              <button
+                onClick={() => setExportSuccess(null)}
+                className="text-green-400 hover:text-green-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 flex items-center">
+                <Package className="h-8 w-8 text-blue-600 mr-3" />
+                My Media Library
+              </h1>
+              <p className="text-slate-600 mt-2">
+                Manage your physical media library
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {/* Export Library Button */}
+              <button
+                onClick={handleExportCSV}
+                disabled={isExporting || libraryItems.length === 0}
+                className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+                  isExporting 
+                    ? 'bg-blue-100 text-blue-600 cursor-not-allowed'
+                    : libraryItems.length === 0
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm'
+                }`}
+                title={
+                  isExporting 
+                    ? 'Exporting Library...' 
+                    : libraryItems.length === 0
+                    ? 'No items to export'
+                    : `Export ${activeCollectionType === 'all' ? 'all' : activeCollectionType} items`
+                }
+              >
+                {isExporting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    <span>Export Library</span>
+                    {libraryItems.length > 0 && (
+                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full ml-1">
+                        {filteredAndSortedLibraryItems.length}
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+
+              {/* Import Lists Button */}
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Import Lists</span>
+              </button>
+              
+              {/* Add Item Button */}
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Item</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Enhanced Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+            <CollectionStatsCard
+              label="Total Items"
+              value={libraryStats.total}
+              icon={Package}
+              color="blue"
+              onClick={() => handleCollectionTypeChange('all')}
+            />
+            <CollectionStatsCard
+              label="Library Value"
+              value={enhancedStats.totalValue > 0 ? `$${enhancedStats.totalValue.toFixed(0)}` : '$0'}
+              icon={DollarSign}
+              color="green"
+              subtitle="Owned items"
+            />
+            <CollectionStatsCard
+              label="Avg Rating"
+              value={enhancedStats.avgRating > 0 ? enhancedStats.avgRating.toFixed(1) : '0.0'}
+              icon={Award}
+              color="purple"
+              subtitle="Your ratings"
+            />
+            <CollectionStatsCard
+              label="Wishlist Value"
+              value={enhancedStats.wishlistValue > 0 ? `$${enhancedStats.wishlistValue.toFixed(0)}` : '$0'}
+              icon={Heart}
+              color="red"
+              onClick={() => handleCollectionTypeChange('wishlist')}
+            />
+            <CollectionStatsCard
+              label="4K Collection"
+              value={libraryItems.filter(item => item.format === '4K UHD').length}
+              icon={Monitor}
+              color="orange"
+              subtitle="Ultra HD titles"
+            />
+            <CollectionStatsCard
+              label="Most Expensive"
+              value={enhancedStats.mostExpensive.purchase_price ? `$${enhancedStats.mostExpensive.purchase_price}` : 'N/A'}
+              icon={Sparkles}
+              color="slate"
+              subtitle={enhancedStats.mostExpensive.title ? enhancedStats.mostExpensive.title.substring(0, 20) + '...' : 'None'}
+            />
+          </div>
+        </div>
+
+        {/* Item Status Filter Tabs */}
+        <CollectionTypeTabs
+          activeType={activeCollectionType}
+          onTypeChange={handleCollectionTypeChange}
+          stats={libraryStats}
+        />
+
+        {/* Search and Filter Controls */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search by title, director, or genre..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Format Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <select
+                value={formatFilter}
+                onChange={(e) => setFormatFilter(e.target.value as any)}
+                className="pl-10 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              >
+                <option value="all">All Formats</option>
+                <option value="DVD">DVD</option>
+                <option value="Blu-ray">Blu-ray</option>
+                <option value="4K UHD">4K UHD</option>
+                <option value="3D Blu-ray">3D Blu-ray</option>
+              </select>
+            </div>
+
+            {/* Sort */}
+            <div className="relative">
+              <SortAsc className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="pl-10 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              >
+                <option value="title">Sort by Title</option>
+                <option value="year">Sort by Year</option>
+                <option value="dateAdded">Sort by Date Added</option>
+                <option value="value">Sort by Value</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Library Items Grid */}
+        {filteredAndSortedLibraryItems.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-slate-600 mb-2">
+              {searchQuery || formatFilter !== 'all' ? 'No items match your filters' : 'Your library is empty'}
+            </h3>
+            <p className="text-slate-500 mb-6">
+              {searchQuery || formatFilter !== 'all' 
+                ? 'Try adjusting your search or filter criteria' 
+                : 'Start building your library by adding your first item'}
+            </p>
+            {!(searchQuery || formatFilter !== 'all') && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Add Your First Item</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {filteredAndSortedLibraryItems.map((item) => (
+              <MediaLibraryItemCard
+                key={item.id}
+                item={item}
+                onRemove={removeFromLibrary}
+                onUpdate={updateLibraryItem}
+                onMoveToType={handleMoveToType}
+                showCollectionType={activeCollectionType === 'all'}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Add Item Modal */}
+        <AddToLibraryModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onAdd={addToLibrary}
+          defaultCollectionType={activeCollectionType !== 'all' ? activeCollectionType : 'owned'}
+        />
+
+        {/* Import Lists Modal */}
+        <ImportListsModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          pageType="collections"
+          onImportSuccess={handleImportSuccess}
+        />
+      </div>
+    </div>
   );
 };
