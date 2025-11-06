@@ -88,7 +88,7 @@ export function ImportListsModal({
 
   const getPageTitle = () => {
     switch (pageType) {
-      case 'collections': return 'My Disc Collections';
+      case 'collections': return 'My Media Library';
       case 'movies': return 'Movie Watchlist';
       case 'tv-series': return 'TV Series Watchlist';
       default: return 'Lists';
@@ -437,7 +437,7 @@ export function ImportListsModal({
                 <p className="text-sm text-gray-600 mt-1">
                   {selectedImportType 
                     ? 'Upload your CSV or Excel file to import items'
-                    : `Choose your import source to add items to your ${pageType === 'collections' ? 'collection' : 'watchlist'}`
+                    : `Choose your import source to add items to your ${pageType === 'collections' ? 'library' : 'watchlist'}`
                   }
                 </p>
               </div>
