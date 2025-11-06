@@ -854,6 +854,7 @@ export function TVSeriesWatchlistPage() {
             isOpen={showSearchModal}
             onClose={() => setShowSearchModal(false)}
             onMovieAdded={handleSeriesAdded}
+            contentType="series"
           />
         )}
 
