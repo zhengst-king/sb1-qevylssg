@@ -35,7 +35,8 @@ export interface EpisodeDetails {
   season: number;
   episode: number;
   imdbID?: string;
-  title?: string;
+  title?: string;         // Series title (from movies table)
+  episode_title?: string; // Episode title
   plot?: string;
   released?: string;
   runtime?: string;
@@ -87,7 +88,8 @@ class ServerSideEpisodeService {
         episode: ep.episode_number,
         seriesID: ep.imdb_id,
         imdbID: ep.imdb_id + `_S${ep.season_number}E${ep.episode_number}`,
-        title: ep.title || undefined,
+        title: ep.title || undefined,              // Series title
+        episode_title: ep.episode_title || undefined, // Episode title
         plot: ep.plot || undefined,
         released: ep.air_date ? new Date(ep.air_date).toISOString() : undefined,
         runtime: ep.runtime_minutes ? `${ep.runtime_minutes} min` : undefined,
@@ -597,7 +599,7 @@ class ServerSideEpisodeService {
           imdb_id: seriesImdbId,
           season_number: seasonNumber,
           episode_number: episode.episode_number,
-          title: episode.name || null,
+          episode_title: episode.name || null,  // Episode title
           plot: episode.overview || null,
           rating: null, // TMDB doesn't provide content rating per episode
           air_date: episode.air_date || null,
