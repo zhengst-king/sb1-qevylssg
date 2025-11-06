@@ -196,14 +196,14 @@ export class TMDBAdapter {
   /**
    * Search both movies and TV series, return combined results in OMDB format
    */
-  static async searchAll(query: string): Promise<OMDBMovieDetails[]> {
+  static async searchAll(query: string, contentType: 'movie' | 'series' | 'all' = 'all'): Promise<OMDBMovieDetails[]> {
     try {
       console.log('[TMDBAdapter] Searching for:', query);
 
-      // Search both movies and TV in parallel
+      // Search based on content type
       const [movieResults, tvResults] = await Promise.all([
-        tmdbService.searchMovies(query),
-        tmdbService.searchTV(query)
+        contentType === 'series' ? null : tmdbService.searchMovies(query),
+        contentType === 'movie' ? null : tmdbService.searchTV(query)
       ]);
 
       console.log('[TMDBAdapter] Found', movieResults?.results?.length || 0, 'movies');
@@ -211,9 +211,10 @@ export class TMDBAdapter {
 
       const allResults: OMDBMovieDetails[] = [];
 
-      // Process movie results (limit to 5)
-      if (movieResults && movieResults.results) {
-        const moviePromises = movieResults.results.slice(0, 5).map(async (movie) => {
+      // Process movie results (limit based on contentType)
+      if (movieResults && movieResults.results && contentType !== 'series') {
+        const movieLimit = contentType === 'movie' ? 15 : 5; // More results when filtering
+        const moviePromises = movieResults.results.slice(0, movieLimit).map(async (movie) => {
           try {
             const fullDetails = await tmdbService.getMovieDetailsFull(movie.id);
             if (fullDetails) {
@@ -229,9 +230,10 @@ export class TMDBAdapter {
         allResults.push(...movieDetails.filter(d => d !== null) as OMDBMovieDetails[]);
       }
 
-      // Process TV results (limit to 5)
-      if (tvResults && tvResults.results) {
-        const tvPromises = tvResults.results.slice(0, 5).map(async (tv) => {
+      // Process TV results (limit based on contentType)
+      if (tvResults && tvResults.results && contentType !== 'movie') {
+        const tvLimit = contentType === 'series' ? 15 : 5; // More results when filtering
+        const tvPromises = tvResults.results.slice(0, tvLimit).map(async (tv) => {
           try {
             const fullDetails = await tmdbService.getTVDetailsFull(tv.id);
             if (fullDetails) {
