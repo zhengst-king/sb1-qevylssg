@@ -397,28 +397,12 @@ class ServerSideEpisodeService {
   }
 
   /**
-   * Update episode access time for cache lifecycle management
-   */
-  private async updateEpisodeAccessTime(seriesImdbId: string, seasonNumber: number): Promise<void> {
-    try {
-      // Use the database function to update access time
-      const { error } = await supabase
-        .rpc('extend_episode_cache_life', { 
-          p_imdb_id: seriesImdbId, 
-          p_season_number: seasonNumber 
-        });
-
-      if (error) {
-        console.warn('[ServerSideEpisodes] Could not update access time:', error);
-      }
-
-    } catch (error) {
-      console.warn('[ServerSideEpisodes] Error updating access time:', error);
-    }
-  }
-
-  /**
-   * Background discovery queue processor
+   * Background discovery queue processor - FIXED VERSION
+   * 
+   * CRITICAL FIXES:
+   * 1. Always reschedules itself, even when queue is empty
+   * 2. Recovers from errors automatically  
+   * 3. Continues polling for new jobs
    */
   private async processDiscoveryQueue(): Promise<void> {
     try {
@@ -431,21 +415,40 @@ class ServerSideEpisodeService {
         .order('scheduled_for', { ascending: true })
         .limit(1);
 
-      if (error || !nextJobs || nextJobs.length === 0) {
-        return; // No jobs to process
+      // ✅ FIX #1: Handle errors and reschedule
+      if (error) {
+        console.error('[ServerSideEpisodes] ❌ Error fetching queue:', error);
+        // Retry after longer delay on database errors
+        setTimeout(() => this.processDiscoveryQueue(), 5000);
+        return;
+      }
+
+      // ✅ FIX #2: Handle empty queue and reschedule
+      if (!nextJobs || nextJobs.length === 0) {
+        console.log('[ServerSideEpisodes] 📭 Queue empty, will check again in 10 seconds');
+        // Keep polling for new jobs
+        setTimeout(() => this.processDiscoveryQueue(), 10000);
+        return;
       }
 
       const job = nextJobs[0];
-      console.log(`[ServerSideEpisodes] Processing discovery job for ${job.series_title}`);
+      console.log(`[ServerSideEpisodes] ▶️  Processing discovery job for ${job.series_title}`);
 
       // Mark job as processing
-      await supabase
+      const { error: updateError } = await supabase
         .from('episode_discovery_queue')
         .update({ 
           status: 'processing', 
           started_at: new Date().toISOString() 
         })
         .eq('id', job.id);
+
+      if (updateError) {
+        console.error('[ServerSideEpisodes] ❌ Failed to mark job as processing:', updateError);
+        // Try again soon
+        setTimeout(() => this.processDiscoveryQueue(), 2000);
+        return;
+      }
 
       // Add to active processes
       this.activeDiscoveryProcesses.add(job.series_imdb_id);
@@ -463,10 +466,12 @@ class ServerSideEpisodeService {
           })
           .eq('id', job.id);
 
+        console.log(`[ServerSideEpisodes] ✅ Successfully completed discovery for ${job.series_title}`);
+
       } catch (discoveryError) {
-        console.error('[ServerSideEpisodes] Discovery error:', discoveryError);
+        console.error('[ServerSideEpisodes] ❌ Discovery error for', job.series_title, ':', discoveryError);
         
-        // Mark job as failed
+        // Mark job as failed with detailed error message
         await supabase
           .from('episode_discovery_queue')
           .update({ 
@@ -480,11 +485,14 @@ class ServerSideEpisodeService {
       // Remove from active processes
       this.activeDiscoveryProcesses.delete(job.series_imdb_id);
 
-      // Process next job after a brief delay
-      setTimeout(() => this.processDiscoveryQueue(), 1000);
+      // ✅ FIX #3: Process next job immediately (no delay)
+      // Use setTimeout with 0 to avoid call stack issues
+      setTimeout(() => this.processDiscoveryQueue(), 0);
 
     } catch (error) {
-      console.error('[ServerSideEpisodes] Error processing discovery queue:', error);
+      console.error('[ServerSideEpisodes] ❌ Critical error in queue processor:', error);
+      // ✅ FIX #4: Always reschedule, even on critical errors
+      setTimeout(() => this.processDiscoveryQueue(), 5000);
     }
   }
 
