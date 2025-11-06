@@ -1,3 +1,4 @@
+// src/hooks/useTechnicalSpecs.ts
 import { useState, useEffect } from 'react';
 import { technicalSpecsService } from '../lib/technicalSpecsService';
 import type { BlurayTechnicalSpecs, ScrapingJob } from '../lib/supabase';
