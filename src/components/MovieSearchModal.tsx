@@ -11,9 +11,10 @@ interface MovieSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMovieAdded?: () => void;
+  contentType?: 'movie' | 'series' | 'all';
 }
 
-export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchModalProps) {
+export function MovieSearchModal({ isOpen, onClose, onMovieAdded, contentType = 'all' }: MovieSearchModalProps) {
   const [query, setQuery] = useState('');
   const [movies, setMovies] = useState<OMDBMovieDetails[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,10 +33,10 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
       console.log('[MovieSearchModal] Searching TMDB for:', query);
       
       // Use TMDB adapter to search both movies and TV series
-      const results = await TMDBAdapter.searchAll(query);
+      const results = await TMDBAdapter.searchAll(query, contentType);
       
       if (results.length === 0) {
-        setError('No movies or TV series found for your search.');
+        setError(`No ${contentType === 'movie' ? 'movies' : contentType === 'series' ? 'TV series' : 'movies or TV series'} found for your search.`);
       } else {
         setMovies(results);
         console.log('[MovieSearchModal] Found', results.length, 'results from TMDB');
@@ -80,7 +81,9 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
         {/* Header with Search */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">Search Movies & TV Series</h2>
+            <h2 className="text-2xl font-bold text-white">
+              Search {contentType === 'movie' ? 'Movies' : contentType === 'series' ? 'TV Series' : 'Movies & TV Series'}
+            </h2>
             <button
               onClick={handleClose}
               className="text-white hover:text-gray-200 transition-colors p-2 rounded-lg hover:bg-white/10"
@@ -113,7 +116,7 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
                   : 'bg-white text-blue-600 hover:bg-gray-50 shadow-lg hover:shadow-xl'
               }`}
             >
-              {loading ? 'Searching...' : 'Search Movies & TV Series'}
+              {loading ? 'Searching...' : `Search ${contentType === 'movie' ? 'Movies' : contentType === 'series' ? 'TV Series' : 'Movies & TV Series'}`}
             </button>
           </form>
 
@@ -141,7 +144,9 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
           {loading && (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-slate-600">Searching TMDB for movies and TV series...</p>
+              <p className="text-slate-600">
+                Searching TMDB for {contentType === 'movie' ? 'movies' : contentType === 'series' ? 'TV series' : 'movies and TV series'}...
+              </p>
               <p className="text-slate-500 text-sm mt-2">Including upcoming releases</p>
             </div>
           )}
@@ -150,7 +155,9 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
           {!loading && hasSearched && movies.length === 0 && !error && (
             <div className="text-center py-12">
               <Film className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 text-lg">No movies or TV series found.</p>
+              <p className="text-slate-500 text-lg">
+                No {contentType === 'movie' ? 'movies' : contentType === 'series' ? 'TV series' : 'movies or TV series'} found.
+              </p>
               <p className="text-slate-400">Try a different search term.</p>
             </div>
           )}
@@ -181,12 +188,14 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded }: MovieSearchM
           {!hasSearched && !loading && (
             <div className="text-center py-12">
               <Search className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 text-lg">Search for movies and TV series</p>
+              <p className="text-slate-500 text-lg">
+                Search for {contentType === 'movie' ? 'movies' : contentType === 'series' ? 'TV series' : 'movies and TV series'}
+              </p>
               <p className="text-slate-400">Enter a title above to get started</p>
               <div className="mt-6 space-y-2 text-sm text-slate-500">
                 <p>✓ Search includes upcoming and unreleased titles</p>
-                <p>✓ Both movies and TV series</p>
-                <p>✓ Comprehensive movie database</p>
+                {contentType === 'all' && <p>✓ Both movies and TV series</p>}
+                <p>✓ Comprehensive {contentType === 'movie' ? 'movie' : contentType === 'series' ? 'TV' : 'movie'} database</p>
               </div>
             </div>
           )}
