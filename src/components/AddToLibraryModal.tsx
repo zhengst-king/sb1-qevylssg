@@ -1,432 +1,518 @@
-// src/components/MediaLibraryItemCard.tsx - RENAMED FROM CollectionItemCard
-import React, { useState, useEffect } from 'react';
-import {
-  Calendar,
-  DollarSign,
-  MapPin,
-  Edit,
-  Trash2,
-  Eye,
+// src/components/AddToLibraryModal.tsx - RENAMED FROM AddToCollectionModal
+import React, { useState } from 'react';
+import { 
+  X, 
+  Search, 
+  Calendar, 
+  DollarSign, 
+  MapPin, 
+  Star, 
   Package,
+  Disc,
+  Monitor,
+  FileVideo,
   Heart,
   UserCheck,
-  Disc,
-  Award,
-  Star,
-  Sparkles,
-  Volume2
+  AlertTriangle
 } from 'lucide-react';
-import { MediaLibraryItemDetailModal } from './MediaLibraryItemDetailModal';
-import { EditLibraryItemModal } from './EditLibraryItemModal';
-import { CollectionStatusBadge, CollectionTypeActions } from './CollectionStatusBadge';
-import type { 
-  PhysicalMediaCollection, 
-  BlurayTechnicalSpecs,
-  CollectionType 
-} from '../lib/supabase';
+import { omdbApi } from '../lib/omdb';
+import { CollectionStatusBadge } from './CollectionStatusBadge';
+import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
-interface MediaLibraryItemCardProps {
-  item: PhysicalMediaCollection & {
-    technical_specs?: BlurayTechnicalSpecs;
-  };
-  onUpdate?: () => void;
-  onDelete?: (id: string) => void;
-  isSelected?: boolean;
-  onSelect?: (selected: boolean) => void;
-  onEdit?: (item: PhysicalMediaCollection) => void;
-  onMoveToType?: (newType: CollectionType) => void;
+interface AddToLibraryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (item: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  defaultCollectionType?: CollectionType;
 }
 
-// Inline StarRating component
-interface StarRatingProps {
-  rating: number;
-  maxRating?: number;
-  size?: 'sm' | 'md' | 'lg';
-  showRating?: boolean;
-  variant?: 'default' | 'imdb' | 'personal';
-}
+export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionType = 'owned' }: AddToLibraryModalProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedMovie, setSelectedMovie] = useState<any>(null);
+  const [searching, setSearching] = useState(false);
+  const [adding, setAdding] = useState(false);
 
-const StarRating: React.FC<StarRatingProps> = ({ 
-  rating, 
-  maxRating = 10, 
-  size = 'sm', 
-  showRating = false,
-  variant = 'default'
-}) => {
-  const sizeClasses = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4', 
-    lg: 'h-5 w-5'
-  };
-  
-  const starSize = sizeClasses[size];
-  const normalizedRating = variant === 'imdb' ? (rating / 2) : (rating / 2);
-  
-  const bgColors = {
-    default: 'bg-black bg-opacity-75',
-    imdb: 'bg-yellow-600',
-    personal: 'bg-blue-600'
-  };
+  // Enhanced form state with collection type
+  const [format, setFormat] = useState<'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('Blu-ray');
+  const [condition, setCondition] = useState<'New' | 'Like New' | 'Good' | 'Fair' | 'Poor'>('New');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseLocation, setPurchaseLocation] = useState('');
+  const [personalRating, setPersonalRating] = useState('');
+  const [notes, setNotes] = useState('');
+  const [collectionType, setCollectionType] = useState<CollectionType>(defaultCollectionType);
 
-  return (
-    <div className={`${bgColors[variant]} text-white px-2 py-1 rounded-full flex items-center space-x-1`}>
-      <div className="flex items-center">
-        {[...Array(Math.floor(normalizedRating))].map((_, i) => (
-          <Star key={i} className={`${starSize} fill-current`} />
-        ))}
-        {normalizedRating % 1 !== 0 && (
-          <Star className={`${starSize} fill-current opacity-50`} />
-        )}
-      </div>
-      {showRating && (
-        <span className="text-xs font-medium">
-          {variant === 'imdb' ? `${rating}/10` : `${rating}/10`}
-        </span>
-      )}
-    </div>
-  );
-};
+  if (!isOpen) return null;
 
-// Inline FormatBadge component
-interface FormatBadgeProps {
-  format: string;
-  specs?: BlurayTechnicalSpecs;
-}
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
 
-const FormatBadge: React.FC<FormatBadgeProps> = ({ format, specs }) => {
-  const formatBadgeColor = {
-    'DVD': 'bg-red-100 text-red-800 border-red-200',
-    'Blu-ray': 'bg-blue-100 text-blue-800 border-blue-200',
-    '4K UHD': 'bg-purple-100 text-purple-800 border-purple-200',
-    '3D Blu-ray': 'bg-green-100 text-green-800 border-green-200'
+    try {
+      setSearching(true);
+      const results = await omdbApi.searchMovies(searchQuery);
+      setSearchResults(results.Search || []);
+    } catch (error) {
+      console.error('[AddToLibrary] Search error:', error);
+      alert('Search failed. Please try again.');
+    } finally {
+      setSearching(false);
+    }
   };
 
-  return (
-    <div className="flex flex-wrap gap-1">
-      {/* Main Format Badge - ALWAYS VISIBLE */}
-      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${formatBadgeColor[format as keyof typeof formatBadgeColor] || 'bg-slate-100 text-slate-800 border-slate-200'}`}>
-        {format}
-      </span>
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !searching) {
+      handleSearch();
+    }
+  };
+
+  const handleMovieSelect = async (movie: any) => {
+    try {
+      const details = await omdbApi.getMovieDetails(movie.imdbID);
+      setSelectedMovie(details);
+      setSearchResults([]);
+    } catch (error) {
+      console.error('[AddToLibrary] Error fetching movie details:', error);
+    }
+  };
+
+  const handleAddToLibrary = async () => {
+    if (!selectedMovie) return;
+
+    try {
+      setAdding(true);
       
-      {/* Video Quality Badges */}
-      {specs?.video_resolution && (
-        <span className="px-2 py-1 text-xs font-medium bg-slate-700 text-white rounded-full">
-          {specs.video_resolution}
-        </span>
-      )}
-      
-      {/* HDR Badges */}
-      {specs?.hdr_format && specs.hdr_format.length > 0 && (
-        <span className="px-2 py-1 text-xs font-medium bg-orange-500 text-white rounded-full flex items-center">
-          <Sparkles className="h-2 w-2 mr-1" />
-          {specs.hdr_format[0]}
-        </span>
-      )}
-    </div>
-  );
-};
+      const libraryItem: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
+        imdb_id: selectedMovie.imdbID,
+        title: selectedMovie.Title,
+        year: parseInt(selectedMovie.Year) || undefined,
+        genre: selectedMovie.Genre !== 'N/A' ? selectedMovie.Genre : undefined,
+        director: selectedMovie.Director !== 'N/A' ? selectedMovie.Director : undefined,
+        poster_url: selectedMovie.Poster !== 'N/A' ? selectedMovie.Poster : undefined,
+        format,
+        condition,
+        purchase_date: purchaseDate || undefined,
+        purchase_price: purchasePrice ? parseFloat(purchasePrice) : undefined,
+        purchase_location: purchaseLocation || undefined,
+        personal_rating: personalRating ? parseInt(personalRating) : undefined,
+        notes: notes || undefined,
+        collection_type: collectionType
+      };
 
-export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
-  item,
-  onUpdate,
-  onDelete,
-  onEdit,
-  isSelected = false,
-  onSelect,
-  onMoveToType
-}) => {
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showTypeActions, setShowTypeActions] = useState(false);
-
-  const collectionType = (item.collection_type || 'owned') as CollectionType;
-  const specs = item.technical_specs;
-  const hasSpecs = Boolean(specs);
-
-  const handleMoveToType = async (newType: CollectionType) => {
-    if (onMoveToType) {
-      await onMoveToType(newType);
-      setShowTypeActions(false);
+      await onAdd(libraryItem);
+      handleClose();
+    } catch (error) {
+      console.error('[AddToLibrary] Failed to add to library:', error);
+      alert('Failed to add item to library. Please try again.');
+    } finally {
+      setAdding(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!onDelete || isDeleting) return;
-    
-    const confirmed = window.confirm(`Are you sure you want to delete "${item.title}" from your library?`);
-    if (confirmed) {
-      setIsDeleting(true);
-      try {
-        await onDelete(item.id);
-      } catch (error) {
-        console.error('[MediaLibraryItemCard] Error deleting item:', error);
-        setIsDeleting(false);
-      }
+  const handleClose = () => {
+    onClose();
+    setSelectedMovie(null);
+    setSearchQuery('');
+    setSearchResults([]);
+    setFormat('Blu-ray');
+    setPurchaseDate('');
+    setPurchasePrice('');
+    setPurchaseLocation('');
+    setCondition('New');
+    setPersonalRating('');
+    setNotes('');
+    setCollectionType(defaultCollectionType);
+  };
+
+  const getFormatIcon = (format: string) => {
+    switch (format) {
+      case 'DVD': return FileVideo;
+      case 'Blu-ray': return Disc;
+      case '4K UHD': return Monitor;
+      case '3D Blu-ray': return Package;
+      default: return Disc;
     }
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showTypeActions) {
-        setShowTypeActions(false);
-      }
-    };
-
-    if (showTypeActions) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+  const collectionTypeOptions = [
+    { 
+      id: 'owned', 
+      label: 'Add to Library', 
+      description: 'I own this item',
+      icon: Package,
+      color: 'blue' as const
+    },
+    { 
+      id: 'wishlist', 
+      label: 'Add to Wishlist', 
+      description: 'I want to buy this',
+      icon: Heart,
+      color: 'red' as const
+    },
+    { 
+      id: 'for_sale', 
+      label: 'Mark for Sale', 
+      description: 'I\'m selling this item',
+      icon: DollarSign,
+      color: 'green' as const
+    },
+    { 
+      id: 'loaned_out', 
+      label: 'Loaned Out', 
+      description: 'Someone borrowed this',
+      icon: UserCheck,
+      color: 'orange' as const
     }
-  }, [showTypeActions]);
+  ];
 
   return (
-    <>
-      <div
-        className={`group relative bg-white rounded-lg shadow-sm border hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer ${
-          isSelected ? 'ring-2 ring-blue-500 border-blue-200' : 'border-slate-200'
-        }`}
-        onClick={() => setShowDetailModal(true)}
-      >
-        {/* Poster Image */}
-        <div className="aspect-[2/3] relative bg-slate-100">
-          {item.poster_url ? (
-            <img
-              src={item.poster_url}
-              alt={`${item.title} poster`}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-400">
-              <Package className="h-12 w-12" />
-            </div>
-          )}
-
-          {/* Item Status and Format Badges */}
-          <div className="absolute top-2 left-2 right-2 flex justify-between items-start">
-            <div className="flex flex-col space-y-1">
-              <FormatBadge format={item.format} specs={specs} />
-              {/* Item Status Badge - Only show for non-owned items */}
-              {collectionType !== 'owned' && (
-                <CollectionStatusBadge 
-                  type={collectionType}
-                  size="sm"
-                  showIcon={true}
-                  showLabel={true}
-                />
-              )}
-            </div>
-            
-            {/* IMDB Rating */}
-            {item.imdb_score && (
-              <StarRating 
-                rating={item.imdb_score} 
-                variant="imdb" 
-                size="sm"
-                showRating={false}
-              />
-            )}
-          </div>
-
-          {/* Selection Checkbox */}
-          {onSelect && (
-            <div className="absolute top-2 left-2">
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  onSelect(e.target.checked);
-                }}
-                className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-              />
-            </div>
-          )}
-
-          {/* Hover Overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
-            <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="absolute bottom-2 right-2 flex space-x-1 z-10">
-            {/* Item Status Actions Button */}
-            {onMoveToType && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  setShowTypeActions(!showTypeActions);
-                }}
-                className={`bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity ${
-                  showTypeActions ? 'bg-blue-600 bg-opacity-90' : ''
-                }`}
-                title="Change item status"
-              >
-                <Package className="h-3 w-3" />
-              </button>
-            )}
-
-            {/* Edit Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setShowEditModal(true);
-              }}
-              className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-            >
-              <Edit className="h-3 w-3" />
-            </button>
-
-            {/* Delete Button */}
-            {onDelete && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleDelete();
-                }}
-                className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
-                disabled={isDeleting}
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Item Status Actions Dropdown */}
-          {showTypeActions && onMoveToType && (
-            <div className="absolute bottom-12 right-2 bg-white border border-slate-200 rounded-lg shadow-lg p-2 z-20 min-w-48">
-              <div className="text-xs font-medium text-slate-600 mb-2 px-2">
-                Move to:
-              </div>
-              <CollectionTypeActions
-                currentType={collectionType}
-                onTypeChange={handleMoveToType}
-                itemTitle={item.title}
-              />
-            </div>
-          )}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+          <h2 className="text-2xl font-bold text-slate-900">Add to Library</h2>
+          <button
+            onClick={handleClose}
+            className="text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
         </div>
 
-        {/* Movie Details */}
-        <div className="p-4">
-          {/* Title and Year */}
-          <div className="mb-2">
-            <h3 className="font-semibold text-slate-900 text-sm leading-tight mb-1 line-clamp-2">
-              {item.title}
-            </h3>
-            {item.release_year && (
-              <p className="text-xs text-slate-600">{item.release_year}</p>
-            )}
-          </div>
-
-          {/* Movie Rating */}
-          {item.rating && (
-            <div className="mb-2">
-              <StarRating 
-                rating={item.rating} 
-                size="sm" 
-                showRating={true}
-                variant="default"
-              />
-            </div>
-          )}
-
-          {/* Item Status Specific Info */}
-          <div className="space-y-1 text-xs text-slate-600">
-            {collectionType === 'wishlist' && (
-              <div className="flex items-center space-x-1 text-red-600">
-                <Heart className="h-3 w-3" />
-                <span>On wishlist</span>
-                {item.purchase_price && <span>• Target: ${item.purchase_price.toFixed(2)}</span>}
-              </div>
-            )}
-            
-            {collectionType === 'for_sale' && (
-              <div className="flex items-center space-x-1 text-green-600">
-                <DollarSign className="h-3 w-3" />
-                <span>For sale</span>
-                {item.purchase_price && <span>• ${item.purchase_price.toFixed(2)}</span>}
-              </div>
-            )}
-            
-            {collectionType === 'loaned_out' && (
-              <div className="flex items-center space-x-1 text-orange-600">
-                <UserCheck className="h-3 w-3" />
-                <span>Loaned out</span>
-                {item.purchase_location && <span>• to {item.purchase_location}</span>}
-              </div>
-            )}
-            
-            {/* Regular purchase info for owned items */}
-            {collectionType === 'owned' && (
-              <div className="grid grid-cols-1 gap-1">
-                {item.purchase_date && (
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-3 w-3 text-slate-400" />
-                    <span>{new Date(item.purchase_date).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {item.purchase_price && (
-                  <div className="flex items-center space-x-1">
-                    <DollarSign className="h-3 w-3 text-slate-400" />
-                    <span>${item.purchase_price.toFixed(2)}</span>
-                  </div>
-                )}
-                {item.purchase_location && (
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-3 w-3 text-slate-400" />
-                    <span className="truncate">{item.purchase_location}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Technical Specs Preview */}
-          {hasSpecs && specs && (
-            <div className="pt-2 border-t border-slate-100">
-              <div className="text-xs text-slate-600">
-                <div className="flex items-center space-x-2">
-                  <Disc className="h-3 w-3" />
-                  <span>Enhanced specs available</span>
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+          {/* Movie Search Section */}
+          {!selectedMovie && (
+            <div className="p-6 border-b border-slate-200">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Search for Movie</h3>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Search by title (e.g., The Matrix)"
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    onClick={handleSearch}
+                    disabled={searching || !searchQuery.trim()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <Search className="h-4 w-4" />
+                    <span>{searching ? 'Searching...' : 'Search'}</span>
+                  </button>
                 </div>
               </div>
+
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                  {searchResults.map((movie) => (
+                    <div
+                      key={movie.imdbID}
+                      onClick={() => handleMovieSelect(movie)}
+                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
+                      {movie.Poster && movie.Poster !== 'N/A' ? (
+                        <img
+                          src={movie.Poster}
+                          alt={movie.Title}
+                          className="w-12 h-16 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center">
+                          <Package className="h-6 w-6 text-slate-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-slate-900 truncate">{movie.Title}</h4>
+                        <p className="text-sm text-slate-600">{movie.Year}</p>
+                        <p className="text-xs text-slate-500">{movie.Type}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Awards/Special Recognition */}
-          {item.awards && (
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center space-x-1 text-xs text-amber-600">
-                <Award className="h-3 w-3" />
-                <span className="truncate">{item.awards}</span>
+          {/* Selected Movie and Form */}
+          {selectedMovie && (
+            <div className="p-6 space-y-6">
+              {/* Selected Movie Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="flex items-start space-x-4">
+                  {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
+                    <img
+                      src={selectedMovie.Poster}
+                      alt={selectedMovie.Title}
+                      className="w-20 h-28 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-20 h-28 bg-slate-300 rounded-lg flex items-center justify-center">
+                      <Package className="h-8 w-8 text-slate-500" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-900">{selectedMovie.Title}</h3>
+                    <p className="text-slate-600">{selectedMovie.Year} • {selectedMovie.Genre}</p>
+                    {selectedMovie.Director && selectedMovie.Director !== 'N/A' && (
+                      <p className="text-sm text-slate-500">Directed by {selectedMovie.Director}</p>
+                    )}
+                    <button
+                      onClick={() => setSelectedMovie(null)}
+                      className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      ← Choose different movie
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Item Status Selection */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  <Package className="inline h-4 w-4 mr-2" />
+                  Item Status
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {collectionTypeOptions.map((type) => {
+                    const IconComponent = type.icon;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setCollectionType(type.id as CollectionType)}
+                        className={`
+                          p-4 rounded-lg border-2 text-left transition-all duration-200
+                          ${collectionType === type.id
+                            ? 'border-blue-500 bg-blue-50 text-blue-900'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <IconComponent className="h-4 w-4" />
+                            <span className="font-medium text-sm">{type.label}</span>
+                          </div>
+                          <CollectionStatusBadge 
+                            type={type.id as CollectionType} 
+                            size="sm" 
+                            showLabel={false} 
+                          />
+                        </div>
+                        <p className="text-xs text-slate-600">{type.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Item Status Specific Tips */}
+                {collectionType === 'wishlist' && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 flex items-center">
+                      <Heart className="h-4 w-4 mr-2" />
+                      <span><strong>Wishlist Tip:</strong> Items in your wishlist won't count toward library value calculations.</span>
+                    </p>
+                  </div>
+                )}
+                
+                {collectionType === 'for_sale' && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      <span><strong>Selling Tip:</strong> Consider setting your asking price in the purchase price field below.</span>
+                    </p>
+                  </div>
+                )}
+                
+                {collectionType === 'loaned_out' && (
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-700 flex items-center">
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      <span><strong>Loan Tip:</strong> Use the "Purchase Location" field to note who borrowed this item.</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Physical Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Format Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <Disc className="inline h-4 w-4 mr-1" />
+                    Format
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['DVD', 'Blu-ray', '4K UHD', '3D Blu-ray'] as const).map((formatOption) => {
+                      const IconComponent = getFormatIcon(formatOption);
+                      return (
+                        <button
+                          key={formatOption}
+                          type="button"
+                          onClick={() => setFormat(formatOption)}
+                          className={`
+                            flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors
+                            ${format === formatOption
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-slate-300 text-slate-600 hover:border-slate-400'
+                            }
+                          `}
+                        >
+                          <IconComponent className="h-4 w-4" />
+                          <span className="text-sm font-medium">{formatOption}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Condition */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
+                  <select
+                    value={condition}
+                    onChange={(e) => setCondition(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="New">New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Purchase Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <Calendar className="inline h-4 w-4 mr-1" />
+                    {collectionType === 'wishlist' ? 'Target Date' : 'Purchase Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={purchaseDate}
+                    onChange={(e) => setPurchaseDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <DollarSign className="inline h-4 w-4 mr-1" />
+                    {collectionType === 'for_sale' 
+                      ? 'Asking Price' 
+                      : collectionType === 'wishlist' 
+                      ? 'Target Price' 
+                      : 'Purchase Price'
+                    }
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={purchasePrice}
+                    onChange={(e) => setPurchasePrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <MapPin className="inline h-4 w-4 mr-1" />
+                    {collectionType === 'loaned_out' 
+                      ? 'Loaned To' 
+                      : collectionType === 'for_sale' 
+                      ? 'Selling Platform' 
+                      : 'Purchase Location'
+                    }
+                  </label>
+                  <input
+                    type="text"
+                    value={purchaseLocation}
+                    onChange={(e) => setPurchaseLocation(e.target.value)}
+                    placeholder={
+                      collectionType === 'loaned_out' 
+                        ? 'Friend\'s name' 
+                        : collectionType === 'for_sale' 
+                        ? 'eBay, Facebook, etc.' 
+                        : 'Best Buy, Amazon, etc.'
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <Star className="inline h-4 w-4 mr-1" />
+                    Personal Rating
+                  </label>
+                  <select
+                    value={personalRating}
+                    onChange={(e) => setPersonalRating(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">No rating</option>
+                    {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rating => (
+                      <option key={rating} value={rating}>{rating}/10</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Special edition details, condition notes, etc."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleClose}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddToLibrary}
+                  disabled={adding}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
+                >
+                  {adding ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Package className="h-4 w-4" />
+                      <span>
+                        {collectionType === 'owned' && 'Add to Library'}
+                        {collectionType === 'wishlist' && 'Add to Wishlist'}
+                        {collectionType === 'for_sale' && 'Mark for Sale'}
+                        {collectionType === 'loaned_out' && 'Mark as Loaned'}
+                      </span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Detail Modal */}
-      <MediaLibraryItemDetailModal
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        item={item}
-        onUpdate={onUpdate}
-      />
-
-      {/* Edit Modal */}
-      <EditLibraryItemModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        item={item}
-        onUpdate={() => {
-          onUpdate?.();
-          setShowEditModal(false);
-        }}
-      />
-    </>
+    </div>
   );
-};
+}
