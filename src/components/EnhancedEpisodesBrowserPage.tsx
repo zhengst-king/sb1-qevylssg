@@ -613,6 +613,7 @@ export function EnhancedEpisodesBrowserPage({
           imdb_id: seriesImdbId,
           season_number: seasonNumber,
           episode_number: episode.episode_number,
+          title: series.title,
           episode_title: episode.name || null,
           plot: episode.overview || null,
           rating: null,
