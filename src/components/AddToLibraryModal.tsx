@@ -16,7 +16,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
-import { CollectionStatusBadge } from './CollectionStatusBadge';
+import { ItemStatusBadge } from './ItemStatusBadge';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 
 interface AddToLibraryModalProps {
@@ -297,7 +297,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             <IconComponent className="h-4 w-4" />
                             <span className="font-medium text-sm">{type.label}</span>
                           </div>
-                          <CollectionStatusBadge 
+                          <ItemStatusBadge 
                             type={type.id as CollectionType} 
                             size="sm" 
                             showLabel={false} 
