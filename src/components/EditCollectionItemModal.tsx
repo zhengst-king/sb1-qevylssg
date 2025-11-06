@@ -1,4 +1,4 @@
-// src/EditCollectionItemModal.tsx
+// src/components/EditCollectionItemModal.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
