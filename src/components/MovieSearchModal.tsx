@@ -1,7 +1,7 @@
 // src/components/MovieSearchModal.tsx
 // UPDATED VERSION - Uses TMDB instead of OMDB for better upcoming movie coverage
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, X, Film, AlertCircle } from 'lucide-react';
 import { TMDBAdapter } from '../lib/tmdbAdapter';
 import { OMDBMovieDetails } from '../lib/omdb';
@@ -65,6 +65,25 @@ export function MovieSearchModal({ isOpen, onClose, onMovieAdded, contentType = 
     setHasSearched(false);
     onClose();
   };
+
+  // Handle Escape key to close modal
+   useEffect(() => {
+     const handleEscape = (e: KeyboardEvent) => {
+       if (e.key === 'Escape' && isOpen) {
+         setQuery('');
+         setMovies([]);
+         setError(null);
+         setHasSearched(false);
+         onClose();
+       }
+     };
+
+     document.addEventListener('keydown', handleEscape);
+
+     return () => {
+       document.removeEventListener('keydown', handleEscape);
+     };
+   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
