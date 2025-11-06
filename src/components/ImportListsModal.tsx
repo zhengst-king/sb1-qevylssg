@@ -210,7 +210,7 @@ export function ImportListsModal({
     const a = document.createElement('a');
     a.setAttribute('hidden', '');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'collection-template.csv');
+    a.setAttribute('download', 'media-library-template.csv');
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -671,7 +671,7 @@ export function ImportListsModal({
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <div>
                           <p className="text-sm text-green-700">
-                            <strong>Success!</strong> {importResult.success} items have been added to your {pageType === 'collections' ? 'collection' : 'watchlist'}.
+                            <strong>Success!</strong> {importResult.success} items have been added to your {pageType === 'collections' ? 'library' : 'watchlist'}.
                             {importResult.notEnriched.length > 0 && (
                               <span className="block mt-1">
                                 <strong>Note:</strong> {importResult.notEnriched.length} items couldn't be auto-enriched with movie details but were still added successfully.
@@ -708,7 +708,7 @@ export function ImportListsModal({
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-gray-500">
-                  Your data will be processed securely and added to your {pageType === 'collections' ? 'collection' : 'watchlist'}.
+                  Your data will be processed securely and added to your {pageType === 'collections' ? 'library' : 'watchlist'}.
                 </p>
                 <button
                   onClick={handleClose}
