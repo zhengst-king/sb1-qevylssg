@@ -217,3 +217,35 @@ export interface ImportHistory {
   total_imported: number;
   created_at: string;
 }
+
+export interface Shelf {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  cover_image?: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShelfItem {
+  shelf_id: string;
+  library_item_id: string;
+  sort_order: number;
+  added_at: string;
+}
+
+// Extended shelf type with item count
+export interface ShelfWithCount extends Shelf {
+  item_count: number;
+}
+
+// Extended library item type with shelf information
+export interface MediaLibraryItemWithShelves extends MediaLibraryItem {
+  shelves?: Array<{
+    shelf_id: string;
+    shelf_name: string;
+    added_at: string;
+  }>;
+}
