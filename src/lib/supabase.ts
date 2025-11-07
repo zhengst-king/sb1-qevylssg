@@ -173,6 +173,10 @@ export interface ScrapingJob {
   collection_item_id?: string;
 };
 
+// Collection type definition (represents item status in the physical media library)
+// Database field name: collection_type (unchanged for backward compatibility)
+export type CollectionType = 'owned' | 'wishlist' | 'for_sale' | 'loaned_out' | 'missing';
+
 export interface PhysicalMediaCollection {
   id: string;
   user_id: string;
@@ -190,10 +194,16 @@ export interface PhysicalMediaCollection {
   personal_rating?: number;
   notes?: string;
   technical_specs_id?: string;
-  collection_type?: 'owned' | 'wishlist' | 'for_sale' | 'loaned_out' | 'missing';
+  collection_type?: CollectionType;
   created_at: string;
   updated_at: string;
 };
+
+// Type aliases for semantic clarity in Media Library components
+// Database table: physical_media_collections (unchanged)
+// UI terminology: Media Library
+export type MediaLibraryItem = PhysicalMediaCollection;
+export type ItemStatus = CollectionType;
 
 export interface ImportHistory {
   id: string;
