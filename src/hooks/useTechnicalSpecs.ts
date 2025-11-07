@@ -7,7 +7,7 @@ export function useTechnicalSpecs(
   title: string, 
   year?: number, 
   discFormat?: string,
-  collectionItemId?: string
+  libraryItemId?: string
 ) {
   const [specs, setSpecs] = useState<BlurayTechnicalSpecs | null>(null);
   const [scrapingJob, setScrapingJob] = useState<ScrapingJob | null>(null);
@@ -33,8 +33,8 @@ export function useTechnicalSpecs(
       }
 
       // Check if there's a pending/processing job
-      if (collectionItemId) {
-        const job = await technicalSpecsService.getScrapingStatus(collectionItemId);
+      if (libraryItemId) {
+        const job = await technicalSpecsService.getScrapingStatus(libraryItemId);
         setScrapingJob(job);
       }
     } catch (error) {
@@ -54,7 +54,7 @@ export function useTechnicalSpecs(
         title,
         year,
         undefined, // imdbId - we can add this later
-        collectionItemId,
+        libraryItemId,
         priority
       );
 
