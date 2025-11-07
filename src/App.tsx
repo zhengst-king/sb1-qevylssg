@@ -6,7 +6,7 @@ import { AuthModal } from './components/AuthModal';
 import { SearchPage } from './components/SearchPage';
 import { MovieWatchlistPage } from './components/MovieWatchlistPage';
 import { TVSeriesWatchlistPage } from './components/TVSeriesWatchlistPage';
-import { MyCollectionsPage } from './components/MyCollectionsPage';
+import { MyMediaLibraryPage } from './components/MyMediaLibraryPage';
 import { SettingsPage } from './components/SettingsPage';
 import { SmartRecommendationsContainer } from './components/SmartRecommendationsContainer';
 import { MyStarsPage } from './components/MyStarsPage';
@@ -64,7 +64,10 @@ function AuthenticatedApp() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/movies" element={<MovieWatchlistPage />} />
           <Route path="/tv-series" element={<TVSeriesWatchlistPage />} />
-          <Route path="/collections" element={<MyCollectionsPage />} />
+          {/* Redirect old route for backward compatibility */}
+          <Route path="/collections" element={<Navigate to="/media-library" replace />} />
+          {/* New Media Library route */}
+          <Route path="/media-library" element={<MyMediaLibraryPage />} />
           <Route path="/new2me" element={<SmartRecommendationsContainer />} />
           <Route path="/franchises" element={<FranchisePage />} />
           <Route path="/my-stars" element={<MyStarsPage />} />
