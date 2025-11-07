@@ -22,8 +22,10 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { UserManualSection } from './UserManualSection';
+import { Book } from 'lucide-react';
 
-type SettingsTab = 'account' | 'collections' | 'notifications' | 'data' | 'display' | 'privacy';
+type SettingsTab = 'account' | 'collections' | 'notifications' | 'data' | 'display' | 'privacy' | 'manual';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -50,6 +52,7 @@ export function SettingsPage() {
     { id: 'data', label: 'Data Management', icon: Download },
     { id: 'display', label: 'Display', icon: Palette },
     { id: 'privacy', label: 'Privacy', icon: Shield },
+    { id: 'manual', label: 'User Manual', icon: Book },
   ];
 
   const handleImportMyLists = () => {
@@ -497,6 +500,10 @@ export function SettingsPage() {
               </div>
             </section>
           )}
+
+          {/* User Manual */}
+          {activeTab === 'manual' && <UserManualSection />}
+          
         </div>
       </div>
     </div>
