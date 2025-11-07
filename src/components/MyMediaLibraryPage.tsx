@@ -36,7 +36,6 @@ import { ShelvesManagementModal } from './ShelvesManagementModal';
 import { AddToShelfModal } from './AddToShelfModal';
 import { ShelfView } from './ShelfView';
 import { useMediaLibraryShelves } from '../hooks/useMediaLibraryShelves';
-import { Package } from 'lucide-react';
 
 // Enhanced Stats Card Component
 interface CollectionStatsCardProps {
