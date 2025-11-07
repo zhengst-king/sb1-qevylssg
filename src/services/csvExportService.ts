@@ -44,21 +44,21 @@ class CSVExportService {
     includeHeaders: true,
     includeTechnicalSpecs: true,
     dateFormat: 'iso',
-    filename: 'physical-media-collection'
+    filename: 'my-media-library'
   };
 
   /**
-   * Generate CSV content from collections array (used by MyCollectionsPage)
-   * This is the simple method that works directly with collections data
+   * Generate CSV content from library items array (used by MyMediaLibraryPage)
+   * This is the simple method that works directly with library items data
    */
-  generateCollectionCSV(
-    collections: PhysicalMediaCollection[],
+  generateMediaLibraryCSV(
+    libraryItems: PhysicalMediaCollection[],
     options: Partial<CSVExportOptions> = {}
   ): string {
     const config = { ...this.DEFAULT_OPTIONS, ...options };
     
-    if (!collections || collections.length === 0) {
-      throw new Error('No collection items to export');
+    if (!libraryItems || libraryItems.length === 0) {
+      throw new Error('No library items to export');
     }
 
     const csvLines: string[] = [];
@@ -69,7 +69,7 @@ class CSVExportService {
     }
     
     // Add data rows
-    collections.forEach(item => {
+    libraryItems.forEach(item => {
       csvLines.push(this.formatDataRow(item as CollectionWithTechnicalSpecs, config));
     });
     
@@ -77,7 +77,7 @@ class CSVExportService {
   }
 
   /**
-   * Download CSV content as file (used by MyCollectionsPage)
+   * Download CSV content as file (used by MyMediaLibraryPage)
    */
   downloadCSV(csvContent: string, filename: string): void {
     // Add BOM for Excel compatibility
@@ -103,24 +103,24 @@ class CSVExportService {
   }
 
   /**
-   * Export user's physical media collection to CSV with proper technical specs join
+   * Export user's physical media library to CSV with proper technical specs join
    */
-  async exportCollectionToCSV(
+  async exportMediaLibraryToCSV(
     userId: string,
     options: CSVExportOptions = {}
   ): Promise<ExportResult> {
     try {
       const config = { ...this.DEFAULT_OPTIONS, ...options };
       
-      // Fetch collection data with technical specs - FIXED QUERY
-      const collectionData = await this.fetchCollectionDataWithTechnicalSpecs(userId, config.includeTechnicalSpecs);
+      // Fetch library data with technical specs - FIXED QUERY
+      const libraryData = await this.fetchLibraryDataWithTechnicalSpecs(userId, config.includeTechnicalSpecs);
       
-      if (collectionData.length === 0) {
-        throw new Error('No collection items found to export');
+      if (libraryData.length === 0) {
+        throw new Error('No library items found to export');
       }
 
       // Generate CSV content
-      const csvContent = this.generateCSVContent(collectionData, config);
+      const csvContent = this.generateCSVContent(libraryData, config);
       
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().split('T')[0];
@@ -132,7 +132,7 @@ class CSVExportService {
       return {
         success: true,
         filename,
-        recordCount: collectionData.length
+        recordCount: libraryData.length
       };
 
     } catch (error) {
@@ -147,14 +147,14 @@ class CSVExportService {
   }
 
   /**
-   * FIXED: Fetch collection data with proper technical specs join
+   * FIXED: Fetch library data with proper technical specs join
    */
-  private async fetchCollectionDataWithTechnicalSpecs(
+  private async fetchLibraryDataWithTechnicalSpecs(
     userId: string, 
     includeTechnicalSpecs: boolean
   ): Promise<CollectionWithTechnicalSpecs[]> {
     try {
-      console.log('[CSV Export] Fetching collection data with technical specs...');
+      console.log('[CSV Export] Fetching library data with technical specs...');
 
       let query;
       
@@ -199,10 +199,10 @@ class CSVExportService {
 
       if (error) {
         console.error('[CSV Export] Fetch error:', error);
-        throw new Error(`Failed to fetch collection data: ${error.message}`);
+        throw new Error(`Failed to fetch library data: ${error.message}`);
       }
 
-      console.log(`[CSV Export] Fetched ${data?.length || 0} collection items`);
+      console.log(`[CSV Export] Fetched ${data?.length || 0} library items`);
       
       // Log technical specs data for debugging
       if (includeTechnicalSpecs && data && data.length > 0) {
@@ -218,7 +218,7 @@ class CSVExportService {
       return data || [];
 
     } catch (error) {
-      console.error('[CSV Export] Error in fetchCollectionDataWithTechnicalSpecs:', error);
+      console.error('[CSV Export] Error in fetchLibraryDataWithTechnicalSpecs:', error);
       throw error;
     }
   }
@@ -352,7 +352,7 @@ class CSVExportService {
    * Generate CSV content (used internally)
    */
   private generateCSVContent(
-    collections: CollectionWithTechnicalSpecs[],
+    libraryItems: CollectionWithTechnicalSpecs[],
     config: Required<CSVExportOptions>
   ): string {
     const csvLines: string[] = [];
@@ -363,7 +363,7 @@ class CSVExportService {
     }
 
     // Add data rows
-    collections.forEach(item => {
+    libraryItems.forEach(item => {
       csvLines.push(this.formatDataRow(item, config));
     });
 
