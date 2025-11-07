@@ -137,6 +137,15 @@ The AI review feature uses Google's Gemini Pro model to:
 - **AI Enhancement**: Google Gemini API (Gemini Pro model)
 - **Build Tool**: Vite
 
+Physical Media Library:
+
+Supabase for database and RLS
+TypeScript for type safety
+React hooks for state management
+CSV export/import service
+Blu-ray.com scraping integration
+Technical specs caching system
+
 ## Features Overview
 
 ### Movie Search
@@ -161,6 +170,113 @@ The AI review feature uses Google's Gemini Pro model to:
 - AI enhancement using state-of-the-art language models
 - Side-by-side comparison of original vs. enhanced reviews
 - Character count validation and helpful writing prompts
+
+Physical Media Library (My Discs)
+Manage your personal physical disc collection with comprehensive tracking and organization features.
+Features
+
+Multi-Format Support: Track DVD, Blu-ray, 4K UHD, and 3D Blu-ray discs
+Status Management: Organize items by status
+
+Owned: Discs in your collection
+Wishlist: Discs you want to purchase
+For Sale: Discs you're selling
+Loaned Out: Discs borrowed by others
+Missing: Discs you can't locate
+
+
+Purchase Tracking: Record purchase date, price, and location
+Condition Tracking: Track disc condition (New, Like New, Good, Fair, Poor)
+Technical Specifications: Link to detailed Blu-ray.com specs
+
+Video codec and resolution
+HDR format support
+Audio codecs and channels
+Special features and subtitles
+Region codes and disc count
+
+
+Personal Notes & Ratings: Add ratings (1-10) and personal notes for each item
+CSV Export/Import: Backup and migrate your library
+Search & Filter: Find discs by title, format, status, or condition
+Value Tracking: Monitor your collection's total value
+
+Getting Started
+
+Navigate to My Media Library from the main menu
+Click Add Item to start building your collection
+Search by title or manually enter disc details
+Track purchases, condition, and add personal ratings
+Request technical specifications from Blu-ray.com for supported titles
+Export your library to CSV for backup or analysis
+
+CSV Import/Export
+Export your library:
+bash# Exports all items with technical specs
+Click "Export Library" button in My Media Library page
+Import from CSV:
+bash# Supports both new and legacy CSV formats
+Click "Import Lists" → Choose CSV file → Import
+CSV includes:
+
+Basic information (title, year, format)
+Purchase details (date, price, location)
+Condition and personal rating
+Technical specifications (if available)
+IMDB linking
+
+Database Structure
+The Media Library uses the physical_media_collections table with the following key fields:
+typescript{
+  title: string           // Movie/show title
+  year?: number          // Release year
+  format: string         // DVD, Blu-ray, 4K UHD, 3D Blu-ray
+  collection_type: string // owned, wishlist, for_sale, loaned_out, missing
+  condition: string      // New, Like New, Good, Fair, Poor
+  purchase_price?: number
+  purchase_date?: string
+  personal_rating?: number // 1-10 scale
+  notes?: string
+  technical_specs_id?: string // Links to Blu-ray.com specs
+}
+Technical Specifications
+Technical specs are automatically cached from Blu-ray.com when available. If specs aren't found:
+
+Open the item detail view
+Click Request Technical Specs
+System will scrape Blu-ray.com in the background
+Specs appear automatically when ready
+
+Specifications include:
+
+Video: Codec, resolution, HDR format, aspect ratio, frame rate
+Audio: Codecs, channels, languages
+Disc: Format, region codes, disc count
+Content: Special features, subtitles, runtime
+Release: Studio, distributor, UPC code
+
+
+Architecture Notes
+Media Library vs. Collections
+To avoid confusion with TMDB franchise collections, we use clear terminology:
+
+Media Library: Your personal physical disc collection (this feature)
+Collections: TMDB movie franchises (e.g., "The Lord of the Rings Collection")
+
+Database Design
+The Media Library feature:
+
+Uses physical_media_collections table
+Enforces Row Level Security (users only see their own items)
+Supports technical specs via foreign key to bluray_technical_specs
+Maintains audit trail with created_at and updated_at timestamps
+
+Developer Resources
+
+Migration Guide: docs/TERMINOLOGY_MIGRATION.md
+Developer Guide: docs/MEDIA_LIBRARY_GUIDE.md
+Hook Documentation: See src/hooks/useMediaLibrary.ts
+Service Documentation: See src/services/csvExportService.ts
 
 ## License
 
