@@ -35,6 +35,7 @@ interface MediaLibraryItemCardProps {
   onSelect?: (selected: boolean) => void;
   onEdit?: (item: PhysicalMediaCollection) => void;
   onMoveToType?: (newType: CollectionType) => void;
+  onAddToShelf?: (item: PhysicalMediaCollection) => void;
 }
 
 // Inline StarRating component
@@ -133,7 +134,8 @@ export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
   onEdit,
   isSelected = false,
   onSelect,
-  onMoveToType
+  onMoveToType,
+  onAddToShelf
 }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -250,6 +252,21 @@ export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
 
           {/* Action Buttons */}
           <div className="absolute bottom-2 right-2 flex space-x-1 z-10">
+            {/* Add to Shelf Button - NEW */}
+            {onAddToShelf && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onAddToShelf(item);
+                }}
+                className="bg-black bg-opacity-75 text-white p-1.5 rounded-full hover:bg-opacity-90 transition-opacity"
+                title="Add to shelf"
+              >
+                <Package className="h-3 w-3" />
+              </button>
+            )}
+
             {/* Item Status Actions Button */}
             {onMoveToType && (
               <button
