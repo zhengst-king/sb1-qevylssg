@@ -1,41 +1,25 @@
-// src/hooks/useMediaLibrary.ts - NEW HOOK WITH MEDIA LIBRARY TERMINOLOGY
+// src/hooks/useMediaLibraryShelves.ts
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
-import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
+import type { Shelf, ShelfWithCount, ShelfItem } from '../lib/supabase';
 
-// Type alias for semantic clarity
-export type MediaLibraryItem = PhysicalMediaCollection;
-export type ItemStatus = CollectionType;
-
-// Enhanced interface for library filtering
-interface UseMediaLibraryOptions {
-  itemStatus?: ItemStatus | 'all';
-  includeAll?: boolean;
+interface UseMediaLibraryShelvesOptions {
+  autoFetch?: boolean;
 }
 
-// Library statistics interface
-interface MediaLibraryStats {
-  owned: number;
-  wishlist: number;
-  for_sale: number;
-  loaned_out: number;
-  missing: number;
-  total: number;
-}
-
-export function useMediaLibrary(options: UseMediaLibraryOptions = {}) {
+export function useMediaLibraryShelves(options: UseMediaLibraryShelvesOptions = {}) {
   const { user } = useAuth();
-  const [libraryItems, setLibraryItems] = useState<MediaLibraryItem[]>([]);
+  const { autoFetch = true } = options;
+  
+  const [shelves, setShelves] = useState<ShelfWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { itemStatus = 'all', includeAll = false } = options;
-
-  // Fetch library items from the database with optional filtering
-  const fetchLibraryItems = async () => {
+  // Fetch all shelves with item counts
+  const fetchShelves = async () => {
     if (!user) {
-      setLibraryItems([]);
+      setShelves([]);
       setLoading(false);
       return;
     }
@@ -44,88 +28,81 @@ export function useMediaLibrary(options: UseMediaLibraryOptions = {}) {
       setLoading(true);
       setError(null);
 
-      // Build query with optional collection_type filter (database field name unchanged)
-      let query = supabase
-        .from('physical_media_collections')
-        .select(`
-          *,
-          bluray_technical_specs:technical_specs_id(*)
-        `)
-        .eq('user_id', user.id);
+      // Fetch shelves
+      const { data: shelvesData, error: shelvesError } = await supabase
+        .from('shelves')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true });
 
-      // Add collection_type filter if specified
-      if (itemStatus !== 'all') {
-        query = query.eq('collection_type', itemStatus);
-      }
+      if (shelvesError) throw shelvesError;
 
-      const { data, error: fetchError } = await query
-        .order('created_at', { ascending: false });
+      // Fetch item counts for each shelf
+      const shelvesWithCounts: ShelfWithCount[] = await Promise.all(
+        (shelvesData || []).map(async (shelf) => {
+          const { count } = await supabase
+            .from('shelf_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('shelf_id', shelf.id);
 
-      if (fetchError) {
-        throw fetchError;
-      }
+          return {
+            ...shelf,
+            item_count: count || 0
+          };
+        })
+      );
 
-      // Ensure collection_type defaults to 'owned' for existing items
-      const processedData = (data || []).map(item => ({
-        ...item,
-        collection_type: item.collection_type || 'owned'
-      }));
-
-      setLibraryItems(processedData);
-      console.log('[useMediaLibrary] Loaded', processedData?.length || 0, 'items', 
-                  itemStatus !== 'all' ? `(status: ${itemStatus})` : '(all statuses)');
+      setShelves(shelvesWithCounts);
+      console.log('[useMediaLibraryShelves] Loaded', shelvesWithCounts.length, 'shelves');
     } catch (err) {
-      console.error('Error fetching library items:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch library items');
+      console.error('Error fetching shelves:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch shelves');
     } finally {
       setLoading(false);
     }
   };
 
-  // Add item to library
-  const addToLibrary = async (
-    itemData: Omit<MediaLibraryItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>
-  ) => {
+  // Create a new shelf
+  const createShelf = async (
+    shelfData: Omit<Shelf, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+  ): Promise<Shelf | null> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
       const { data, error } = await supabase
-        .from('physical_media_collections')
-        .insert([{ 
-          ...itemData, 
-          user_id: user.id,
-          collection_type: itemData.collection_type || 'owned' // Default to 'owned'
+        .from('shelves')
+        .insert([{
+          ...shelfData,
+          user_id: user.id
         }])
         .select()
         .single();
 
       if (error) throw error;
 
-      // Only add to local state if it matches the current filter
-      if (itemStatus === 'all' || data.collection_type === itemStatus) {
-        setLibraryItems(prev => [data, ...prev]);
-      }
-
-      console.log('[useMediaLibrary] Added item:', data.title, 'status:', data.collection_type);
+      // Add to local state with count 0
+      setShelves(prev => [...prev, { ...data, item_count: 0 }]);
+      console.log('[useMediaLibraryShelves] Created shelf:', data.name);
       return data;
     } catch (error) {
-      console.error('[useMediaLibrary] Add error:', error);
+      console.error('[useMediaLibraryShelves] Create error:', error);
       throw error;
     }
   };
 
-  // Update library item
-  const updateLibraryItem = async (
-    id: string, 
-    updates: Partial<MediaLibraryItem>
-  ) => {
+  // Update shelf
+  const updateShelf = async (
+    shelfId: string,
+    updates: Partial<Omit<Shelf, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
+  ): Promise<Shelf | null> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
       const { data, error } = await supabase
-        .from('physical_media_collections')
+        .from('shelves')
         .update(updates)
-        .eq('id', id)
+        .eq('id', shelfId)
         .eq('user_id', user.id)
         .select()
         .single();
@@ -133,226 +110,268 @@ export function useMediaLibrary(options: UseMediaLibraryOptions = {}) {
       if (error) throw error;
 
       // Update local state
-      setLibraryItems(prev => prev.map(item => 
-        item.id === id ? { ...item, ...data } : item
+      setShelves(prev => prev.map(shelf => 
+        shelf.id === shelfId 
+          ? { ...shelf, ...data }
+          : shelf
       ));
 
-      console.log('[useMediaLibrary] Updated item:', data.title, 'changes:', Object.keys(updates));
+      console.log('[useMediaLibraryShelves] Updated shelf:', data.name);
       return data;
     } catch (error) {
-      console.error('[useMediaLibrary] Update error:', error);
+      console.error('[useMediaLibraryShelves] Update error:', error);
       throw error;
     }
   };
 
-  // Remove from library
-  const removeFromLibrary = async (id: string) => {
+  // Delete shelf
+  const deleteShelf = async (shelfId: string): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
       const { error } = await supabase
-        .from('physical_media_collections')
+        .from('shelves')
         .delete()
-        .eq('id', id)
+        .eq('id', shelfId)
         .eq('user_id', user.id);
 
       if (error) throw error;
 
       // Remove from local state
-      setLibraryItems(prev => prev.filter(item => item.id !== id));
-      console.log('[useMediaLibrary] Removed item:', id);
+      setShelves(prev => prev.filter(shelf => shelf.id !== shelfId));
+      console.log('[useMediaLibraryShelves] Deleted shelf:', shelfId);
     } catch (error) {
-      console.error('[useMediaLibrary] Remove error:', error);
+      console.error('[useMediaLibraryShelves] Delete error:', error);
       throw error;
     }
   };
 
-  // Move item between statuses (e.g., wishlist to owned)
-  const moveItemStatus = async (id: string, newStatus: ItemStatus) => {
-    try {
-      const updatedItem = await updateLibraryItem(id, { collection_type: newStatus });
-      
-      // If we're filtering by status and the item no longer matches, remove it from local state
-      if (itemStatus !== 'all' && newStatus !== itemStatus) {
-        setLibraryItems(prev => prev.filter(item => item.id !== id));
-      }
-      
-      console.log('[useMediaLibrary] Moved item to status:', newStatus);
-      return updatedItem;
-    } catch (error) {
-      console.error('[useMediaLibrary] Move to status error:', error);
-      throw error;
-    }
-  };
-
-  // Bulk update multiple items
-  const bulkUpdateLibraryItems = async (
-    itemIds: string[],
-    updates: Partial<MediaLibraryItem>
-  ) => {
+  // Add item to shelf
+  const addItemToShelf = async (
+    shelfId: string,
+    libraryItemId: string,
+    sortOrder: number = 0
+  ): Promise<void> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const updatePromises = itemIds.map(id => updateLibraryItem(id, updates));
-      const results = await Promise.all(updatePromises);
-      
-      console.log('[useMediaLibrary] Bulk updated', results.length, 'items');
-      return results;
+      const { error } = await supabase
+        .from('shelf_items')
+        .insert([{
+          shelf_id: shelfId,
+          library_item_id: libraryItemId,
+          sort_order: sortOrder
+        }]);
+
+      if (error) {
+        // Check if it's a duplicate error
+        if (error.code === '23505') {
+          throw new Error('Item already exists in this shelf');
+        }
+        throw error;
+      }
+
+      // Update item count in local state
+      setShelves(prev => prev.map(shelf =>
+        shelf.id === shelfId
+          ? { ...shelf, item_count: shelf.item_count + 1 }
+          : shelf
+      ));
+
+      console.log('[useMediaLibraryShelves] Added item to shelf');
     } catch (error) {
-      console.error('[useMediaLibrary] Bulk update error:', error);
+      console.error('[useMediaLibraryShelves] Add item error:', error);
       throw error;
     }
   };
 
-  // Get all library items (ignoring current filter) for statistics
-  const getAllLibraryItems = async (): Promise<MediaLibraryItem[]> => {
+  // Remove item from shelf
+  const removeItemFromShelf = async (
+    shelfId: string,
+    libraryItemId: string
+  ): Promise<void> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { error } = await supabase
+        .from('shelf_items')
+        .delete()
+        .eq('shelf_id', shelfId)
+        .eq('library_item_id', libraryItemId);
+
+      if (error) throw error;
+
+      // Update item count in local state
+      setShelves(prev => prev.map(shelf =>
+        shelf.id === shelfId
+          ? { ...shelf, item_count: Math.max(0, shelf.item_count - 1) }
+          : shelf
+      ));
+
+      console.log('[useMediaLibraryShelves] Removed item from shelf');
+    } catch (error) {
+      console.error('[useMediaLibraryShelves] Remove item error:', error);
+      throw error;
+    }
+  };
+
+  // Add item to multiple shelves
+  const addItemToMultipleShelves = async (
+    shelfIds: string[],
+    libraryItemId: string
+  ): Promise<void> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const insertData = shelfIds.map(shelfId => ({
+        shelf_id: shelfId,
+        library_item_id: libraryItemId,
+        sort_order: 0
+      }));
+
+      const { error } = await supabase
+        .from('shelf_items')
+        .insert(insertData);
+
+      if (error) throw error;
+
+      // Update item counts in local state
+      setShelves(prev => prev.map(shelf =>
+        shelfIds.includes(shelf.id)
+          ? { ...shelf, item_count: shelf.item_count + 1 }
+          : shelf
+      ));
+
+      console.log('[useMediaLibraryShelves] Added item to', shelfIds.length, 'shelves');
+    } catch (error) {
+      console.error('[useMediaLibraryShelves] Add to multiple shelves error:', error);
+      throw error;
+    }
+  };
+
+  // Get items in a specific shelf
+  const getShelfItems = async (shelfId: string) => {
     if (!user) return [];
 
     try {
       const { data, error } = await supabase
-        .from('physical_media_collections')
+        .from('shelf_items')
         .select(`
-          *,
-          bluray_technical_specs:technical_specs_id(*)
+          sort_order,
+          added_at,
+          library_item:physical_media_collections(*)
         `)
-        .eq('user_id', user.id)
-        .order('title', { ascending: true }); // Sort by title for CSV exports
+        .eq('shelf_id', shelfId)
+        .order('sort_order', { ascending: true })
+        .order('added_at', { ascending: false });
 
       if (error) throw error;
 
-      // Ensure collection_type defaults to 'owned' for existing items
-      return (data || []).map(item => ({
-        ...item,
-        collection_type: item.collection_type || 'owned'
-      }));
+      // Extract library items from the join
+      return (data || []).map(item => item.library_item).filter(Boolean);
     } catch (error) {
-      console.error('[useMediaLibrary] Get all library items error:', error);
+      console.error('[useMediaLibraryShelves] Get shelf items error:', error);
       return [];
     }
   };
 
-  // Get library statistics by status
-  const getLibraryStats = (): MediaLibraryStats => {
-    // For accurate stats, we need to consider all items, not just filtered ones
-    // This is a limitation - in a real app, you'd want to fetch stats separately
-    // or maintain a separate state for all items
-    
-    const stats: MediaLibraryStats = {
-      owned: 0,
-      wishlist: 0,
-      for_sale: 0,
-      loaned_out: 0,
-      missing: 0,
-      total: 0
-    };
+  // Get shelves for a specific item
+  const getItemShelves = async (libraryItemId: string): Promise<Shelf[]> => {
+    if (!user) return [];
 
-    // If we're viewing all items, we can calculate accurate stats
-    if (itemStatus === 'all') {
-      libraryItems.forEach(item => {
-        const status = (item.collection_type || 'owned') as ItemStatus;
-        stats[status]++;
-        stats.total++;
-      });
-    } else {
-      // If we're viewing a filtered set, we can only provide partial stats
-      // In a production app, you'd want to fetch stats separately
-      stats.total = libraryItems.length;
-      libraryItems.forEach(item => {
-        const status = (item.collection_type || 'owned') as ItemStatus;
-        stats[status]++;
-      });
+    try {
+      const { data, error } = await supabase
+        .from('shelf_items')
+        .select(`
+          shelf:shelves(*)
+        `)
+        .eq('library_item_id', libraryItemId);
+
+      if (error) throw error;
+
+      // Extract shelves from the join
+      return (data || []).map(item => item.shelf).filter(Boolean);
+    } catch (error) {
+      console.error('[useMediaLibraryShelves] Get item shelves error:', error);
+      return [];
     }
-
-    return stats;
   };
 
-  // Get library value statistics
-  const getLibraryValueStats = () => {
-    const ownedItems = libraryItems.filter(item => 
-      (item.collection_type || 'owned') === 'owned'
-    );
-    const wishlistItems = libraryItems.filter(item => 
-      item.collection_type === 'wishlist'
-    );
-    
-    const ownedValue = ownedItems.reduce((sum, item) => 
-      sum + (item.purchase_price || 0), 0
-    );
-    const wishlistValue = wishlistItems.reduce((sum, item) => 
-      sum + (item.purchase_price || 0), 0
-    );
+  // Check if item exists in shelf
+  const isItemInShelf = async (shelfId: string, libraryItemId: string): Promise<boolean> => {
+    if (!user) return false;
 
-    return {
-      ownedValue,
-      wishlistValue,
-      totalItems: libraryItems.length,
-      ownedItems: ownedItems.length,
-      wishlistItems: wishlistItems.length
-    };
+    try {
+      const { count } = await supabase
+        .from('shelf_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('shelf_id', shelfId)
+        .eq('library_item_id', libraryItemId);
+
+      return (count || 0) > 0;
+    } catch (error) {
+      console.error('[useMediaLibraryShelves] Check item in shelf error:', error);
+      return false;
+    }
   };
 
-  // Get items by specific status
-  const getItemsByStatus = (status: ItemStatus): MediaLibraryItem[] => {
-    return libraryItems.filter(item => 
-      (item.collection_type || 'owned') === status
-    );
+  // Reorder shelves
+  const reorderShelves = async (reorderedShelves: Shelf[]): Promise<void> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // Update sort_order for each shelf
+      const updates = reorderedShelves.map((shelf, index) =>
+        supabase
+          .from('shelves')
+          .update({ sort_order: index })
+          .eq('id', shelf.id)
+          .eq('user_id', user.id)
+      );
+
+      await Promise.all(updates);
+
+      // Update local state
+      setShelves(reorderedShelves.map((shelf, index) => ({
+        ...shelf,
+        sort_order: index
+      })));
+
+      console.log('[useMediaLibraryShelves] Reordered shelves');
+    } catch (error) {
+      console.error('[useMediaLibraryShelves] Reorder error:', error);
+      throw error;
+    }
   };
 
-  // Check if item already exists in library
-  const itemExists = (imdbId: string, format?: string): boolean => {
-    return libraryItems.some(item => 
-      item.imdb_id === imdbId && 
-      (!format || item.format === format)
-    );
-  };
-
-  // Search library by title, director, genre, etc.
-  const searchLibrary = (query: string): MediaLibraryItem[] => {
-    const searchTerm = query.toLowerCase().trim();
-    if (!searchTerm) return libraryItems;
-
-    return libraryItems.filter(item =>
-      item.title.toLowerCase().includes(searchTerm) ||
-      item.director?.toLowerCase().includes(searchTerm) ||
-      item.genre?.toLowerCase().includes(searchTerm) ||
-      item.notes?.toLowerCase().includes(searchTerm)
-    );
-  };
-
-  // Refetch library items (useful for refreshing data)
-  const refetch = async () => {
-    await fetchLibraryItems();
-  };
-
-  // Initialize: Fetch library items when user or item status changes
+  // Initialize: Fetch shelves when user changes
   useEffect(() => {
-    fetchLibraryItems();
-  }, [user, itemStatus]); // Refetch when user or item status changes
+    if (autoFetch) {
+      fetchShelves();
+    }
+  }, [user, autoFetch]);
 
   return {
     // Data
-    libraryItems,
+    shelves,
     loading,
     error,
 
-    // CRUD Operations  
-    addToLibrary,
-    updateLibraryItem,
-    removeFromLibrary,
-    bulkUpdateLibraryItems,
+    // CRUD Operations
+    createShelf,
+    updateShelf,
+    deleteShelf,
 
-    // Status Operations
-    moveItemStatus,
-    getItemsByStatus,
+    // Shelf-Item Operations
+    addItemToShelf,
+    removeItemFromShelf,
+    addItemToMultipleShelves,
+    getShelfItems,
+    getItemShelves,
+    isItemInShelf,
 
-    // Statistics & Analytics
-    getLibraryStats,
-    getLibraryValueStats,
-
-    // Utility Functions
-    getAllLibraryItems,
-    itemExists,
-    searchLibrary,
-    refetch
+    // Utility
+    reorderShelves,
+    refetch: fetchShelves
   };
 }
