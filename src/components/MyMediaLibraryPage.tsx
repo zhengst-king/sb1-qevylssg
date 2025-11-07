@@ -32,6 +32,11 @@ import { AddToLibraryModal } from './AddToLibraryModal';
 import { ImportListsModal } from './ImportListsModal';
 import { csvExportService } from '../services/csvExportService';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
+import { ShelvesManagementModal } from './ShelvesManagementModal';
+import { AddToShelfModal } from './AddToShelfModal';
+import { ShelfView } from './ShelfView';
+import { useMediaLibraryShelves } from '../hooks/useMediaLibraryShelves';
+import { Package } from 'lucide-react';
 
 // Enhanced Stats Card Component
 interface CollectionStatsCardProps {
@@ -165,6 +170,12 @@ export const MyMediaLibraryPage: React.FC<MyMediaLibraryPageProps> = () => {
   // CSV Export state
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+
+  const [showShelvesModal, setShowShelvesModal] = useState(false);
+  const [showAddToShelfModal, setShowAddToShelfModal] = useState(false);
+  const [selectedItemForShelf, setSelectedItemForShelf] = useState<MediaLibraryItem | null>(null);
+  const [selectedShelf, setSelectedShelf] = useState<Shelf | null>(null);
+  const { shelves } = useMediaLibraryShelves();
 
   // Get library statistics
   const libraryStats = useMemo(() => {
@@ -425,6 +436,15 @@ export const MyMediaLibraryPage: React.FC<MyMediaLibraryPageProps> = () => {
                 <Plus className="h-4 w-4" />
                 <span>Add Item</span>
               </button>
+
+              {/* Manage Shelves Button */}
+              <button
+                onClick={() => setShowShelvesModal(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Package className="h-5 w-5" />
+                <span>Manage Shelves</span>
+              </button>
             </div>
           </div>
 
@@ -515,6 +535,26 @@ export const MyMediaLibraryPage: React.FC<MyMediaLibraryPageProps> = () => {
               </select>
             </div>
 
+            {/* Shelf Filter */}
+            <div className="relative">
+              <Package className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <select
+                value={selectedShelf?.id || ''}
+                onChange={(e) => {
+                  const shelf = shelves.find(s => s.id === e.target.value);
+                  setSelectedShelf(shelf || null);
+                }}
+                className="pl-10 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              >
+                <option value="">All Shelves</option>
+                {shelves.map(shelf => (
+                  <option key={shelf.id} value={shelf.id}>
+                    {shelf.name} ({shelf.item_count})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Sort */}
             <div className="relative">
               <SortAsc className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
@@ -584,6 +624,34 @@ export const MyMediaLibraryPage: React.FC<MyMediaLibraryPageProps> = () => {
           pageType="collections"
           onImportSuccess={handleImportSuccess}
         />
+
+        {/* Shelves Management Modal */}
+        <ShelvesManagementModal
+          isOpen={showShelvesModal}
+          onClose={() => setShowShelvesModal(false)}
+        />
+
+        {/* Add to Shelf Modal */}
+        {selectedItemForShelf && (
+          <AddToShelfModal
+            isOpen={showAddToShelfModal}
+            onClose={() => {
+              setShowAddToShelfModal(false);
+              setSelectedItemForShelf(null);
+            }}
+            item={selectedItemForShelf}
+            onSuccess={() => refetch()}
+          />
+        )}
+
+        {/* Shelf View - Full Page */}
+        {selectedShelf && (
+          <ShelfView
+            shelf={selectedShelf}
+            onBack={() => setSelectedShelf(null)}
+            onItemUpdate={() => refetch()}
+          />
+        )}
       </div>
     </div>
   );
