@@ -1,4 +1,4 @@
-// src/components/AddToLibraryModal.tsx - RENAMED FROM AddToCollectionModal
+// src/components/AddToLibraryModal.tsx - TWO-STEP SEARCH PROCESS
 import React, { useState } from 'react';
 import { 
   X, 
@@ -13,11 +13,33 @@ import {
   FileVideo,
   Heart,
   UserCheck,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Volume2,
+  Info,
+  ExternalLink,
+  ChevronRight,
+  Check
 } from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
+import { blurayApi } from '../lib/blurayApi';
 import { ItemStatusBadge } from './ItemStatusBadge';
-import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
+import type { PhysicalMediaCollection, CollectionType, BlurayTechnicalSpecs } from '../lib/supabase';
+
+interface BlurayEdition {
+  url: string;
+  title: string;
+  year: number;
+  format: string;
+  edition?: string;
+  studio?: string;
+  releaseDate?: string;
+  isDigital?: boolean;
+}
+
+interface SelectedEdition extends BlurayEdition {
+  specs?: BlurayTechnicalSpecs;
+}
 
 interface AddToLibraryModalProps {
   isOpen: boolean;
@@ -27,14 +49,23 @@ interface AddToLibraryModalProps {
 }
 
 export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionType = 'owned' }: AddToLibraryModalProps) {
+  // Step 1: Movie/TV Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedMovie, setSelectedMovie] = useState<any>(null);
+  const [movieSearchResults, setMovieSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  
+  // Step 2: Physical Media Editions
+  const [selectedMovie, setSelectedMovie] = useState<any>(null);
+  const [physicalEditions, setPhysicalEditions] = useState<BlurayEdition[]>([]);
+  const [selectedEditions, setSelectedEditions] = useState<Set<string>>(new Set());
+  const [loadingEditions, setLoadingEditions] = useState(false);
+  
+  // Step 3: Library Details
+  const [currentStep, setCurrentStep] = useState<'search' | 'editions' | 'details'>('search');
+  const [editionToAdd, setEditionToAdd] = useState<SelectedEdition | null>(null);
   const [adding, setAdding] = useState(false);
 
-  // Enhanced form state with collection type
-  const [format, setFormat] = useState<'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('Blu-ray');
+  // Form state
   const [condition, setCondition] = useState<'New' | 'Like New' | 'Good' | 'Fair' | 'Poor'>('New');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
@@ -45,15 +76,22 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
 
   if (!isOpen) return null;
 
-  const handleSearch = async () => {
+  // STEP 1: Search for Movie/TV Show
+  const handleMovieSearch = async () => {
     if (!searchQuery.trim()) return;
 
     try {
       setSearching(true);
+      console.log('[AddToLibrary] Searching for movie/TV:', searchQuery);
+      
       const results = await omdbApi.searchMovies(searchQuery);
-      setSearchResults(results.Search || []);
+      setMovieSearchResults(results.Search || []);
+      
+      if (!results.Search || results.Search.length === 0) {
+        alert('No movies or TV shows found. Try different search terms.');
+      }
     } catch (error) {
-      console.error('[AddToLibrary] Search error:', error);
+      console.error('[AddToLibrary] Movie search error:', error);
       alert('Search failed. Please try again.');
     } finally {
       setSearching(false);
@@ -61,26 +99,108 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !searching) {
-      handleSearch();
+    if (e.key === 'Enter' && !searching && currentStep === 'search') {
+      handleMovieSearch();
     }
   };
 
+  // STEP 2: Select Movie and Show Physical Editions
   const handleMovieSelect = async (movie: any) => {
     try {
+      setLoadingEditions(true);
+      console.log('[AddToLibrary] Selected movie:', movie.Title);
+      
+      // Get full movie details from OMDb
       const details = await omdbApi.getMovieDetails(movie.imdbID);
       setSelectedMovie(details);
-      setSearchResults([]);
+      
+      // Search blu-ray.com for all available physical editions
+      console.log('[AddToLibrary] Searching blu-ray.com for editions...');
+      const editions = await blurayApi.searchBlurayDotCom(movie.Title, parseInt(movie.Year));
+      
+      if (editions && editions.length > 0) {
+        setPhysicalEditions(editions);
+        setCurrentStep('editions');
+        setMovieSearchResults([]);
+      } else {
+        // No physical editions found, go directly to details with digital-only option
+        alert('No physical media editions found on blu-ray.com. You can still add this title manually.');
+        setPhysicalEditions([]);
+        setCurrentStep('details');
+      }
+      
     } catch (error) {
-      console.error('[AddToLibrary] Error fetching movie details:', error);
+      console.error('[AddToLibrary] Error fetching editions:', error);
+      alert('Failed to load physical media editions. Please try again.');
+    } finally {
+      setLoadingEditions(false);
     }
   };
 
+  // Toggle edition selection
+  const toggleEditionSelection = (editionUrl: string) => {
+    const newSelection = new Set(selectedEditions);
+    if (newSelection.has(editionUrl)) {
+      newSelection.delete(editionUrl);
+    } else {
+      newSelection.add(editionUrl);
+    }
+    setSelectedEditions(newSelection);
+  };
+
+  // Proceed to add selected editions
+  const handleProceedWithEditions = async () => {
+    if (selectedEditions.size === 0) {
+      alert('Please select at least one physical media edition to add.');
+      return;
+    }
+
+    // For now, we'll process the first selected edition
+    // In the future, we can batch-add multiple editions
+    const firstSelectedUrl = Array.from(selectedEditions)[0];
+    const edition = physicalEditions.find(e => e.url === firstSelectedUrl);
+    
+    if (!edition) return;
+
+    try {
+      setLoadingEditions(true);
+      console.log('[AddToLibrary] Loading specs for selected edition...');
+      
+      // Load technical specs for the edition
+      const specs = await blurayApi.scrapeDiscDetails(edition.url);
+      
+      setEditionToAdd({
+        ...edition,
+        specs: specs || undefined
+      });
+      
+      setCurrentStep('details');
+    } catch (error) {
+      console.error('[AddToLibrary] Error loading edition specs:', error);
+      alert('Failed to load edition details. Please try again.');
+    } finally {
+      setLoadingEditions(false);
+    }
+  };
+
+  // Add to library
   const handleAddToLibrary = async () => {
     if (!selectedMovie) return;
 
     try {
       setAdding(true);
+      
+      // Determine format from edition or default to Blu-ray
+      let format: 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray' = 'Blu-ray';
+      if (editionToAdd?.format) {
+        if (editionToAdd.format.includes('4K') || editionToAdd.format.includes('UHD')) {
+          format = '4K UHD';
+        } else if (editionToAdd.format.includes('DVD')) {
+          format = 'DVD';
+        } else if (editionToAdd.format.includes('3D')) {
+          format = '3D Blu-ray';
+        }
+      }
       
       const libraryItem: Omit<PhysicalMediaCollection, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
         imdb_id: selectedMovie.imdbID,
@@ -111,10 +231,13 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
 
   const handleClose = () => {
     onClose();
-    setSelectedMovie(null);
     setSearchQuery('');
-    setSearchResults([]);
-    setFormat('Blu-ray');
+    setMovieSearchResults([]);
+    setSelectedMovie(null);
+    setPhysicalEditions([]);
+    setSelectedEditions(new Set());
+    setEditionToAdd(null);
+    setCurrentStep('search');
     setPurchaseDate('');
     setPurchasePrice('');
     setPurchaseLocation('');
@@ -124,14 +247,31 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     setCollectionType(defaultCollectionType);
   };
 
-  const getFormatIcon = (format: string) => {
-    switch (format) {
-      case 'DVD': return FileVideo;
-      case 'Blu-ray': return Disc;
-      case '4K UHD': return Monitor;
-      case '3D Blu-ray': return Package;
-      default: return Disc;
+  const handleBack = () => {
+    if (currentStep === 'editions') {
+      setCurrentStep('search');
+      setSelectedMovie(null);
+      setPhysicalEditions([]);
+      setSelectedEditions(new Set());
+    } else if (currentStep === 'details') {
+      setCurrentStep('editions');
+      setEditionToAdd(null);
     }
+  };
+
+  const getFormatIcon = (format: string) => {
+    if (format.includes('4K') || format.includes('UHD')) return Monitor;
+    if (format.includes('DVD')) return FileVideo;
+    if (format.includes('3D')) return Package;
+    return Disc;
+  };
+
+  const getFormatBadgeColor = (format: string) => {
+    if (format.includes('4K') || format.includes('UHD')) return 'bg-purple-100 text-purple-800 border-purple-200';
+    if (format.includes('DVD')) return 'bg-red-100 text-red-800 border-red-200';
+    if (format.includes('3D')) return 'bg-green-100 text-green-800 border-green-200';
+    if (format.includes('Digital') || format.includes('Movies Anywhere')) return 'bg-blue-100 text-blue-800 border-blue-200';
+    return 'bg-blue-100 text-blue-800 border-blue-200';
   };
 
   const collectionTypeOptions = [
@@ -167,10 +307,21 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <h2 className="text-2xl font-bold text-slate-900">Add to Library</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">
+              {currentStep === 'search' && 'Add to Library - Search Movie/TV'}
+              {currentStep === 'editions' && 'Select Physical Media Editions'}
+              {currentStep === 'details' && 'Add to Library - Details'}
+            </h2>
+            <p className="text-sm text-slate-600 mt-1">
+              {currentStep === 'search' && 'Step 1: Search for the movie or TV show'}
+              {currentStep === 'editions' && 'Step 2: Choose which physical editions to add'}
+              {currentStep === 'details' && 'Step 3: Enter purchase details and notes'}
+            </p>
+          </div>
           <button
             onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -180,22 +331,25 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         </div>
 
         <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          {/* Movie Search Section */}
-          {!selectedMovie && (
-            <div className="p-6 border-b border-slate-200">
+          {/* STEP 1: Movie/TV Search */}
+          {currentStep === 'search' && (
+            <div className="p-6">
               <div className="mb-4">
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Search for Movie</h3>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2 flex items-center">
+                  <Search className="h-5 w-5 mr-2 text-blue-600" />
+                  Search for Movie or TV Show
+                </h3>
                 <div className="flex space-x-2">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Search by title (e.g., The Matrix)"
+                    placeholder="Search by title (e.g., 'The Equalizer', 'Inception')"
                     className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                   <button
-                    onClick={handleSearch}
+                    onClick={handleMovieSearch}
                     disabled={searching || !searchQuery.trim()}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
@@ -205,69 +359,271 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                 </div>
               </div>
 
-              {/* Search Results */}
-              {searchResults.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                  {searchResults.map((movie) => (
-                    <div
-                      key={movie.imdbID}
-                      onClick={() => handleMovieSelect(movie)}
-                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-                    >
-                      {movie.Poster && movie.Poster !== 'N/A' ? (
-                        <img
-                          src={movie.Poster}
-                          alt={movie.Title}
-                          className="w-12 h-16 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center">
-                          <Package className="h-6 w-6 text-slate-400" />
+              {/* Movie Search Results */}
+              {movieSearchResults.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-sm text-slate-600 mb-2">
+                    Found {movieSearchResults.length} results:
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto">
+                    {movieSearchResults.map((movie) => (
+                      <div
+                        key={movie.imdbID}
+                        onClick={() => handleMovieSelect(movie)}
+                        className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                      >
+                        {movie.Poster && movie.Poster !== 'N/A' ? (
+                          <img
+                            src={movie.Poster}
+                            alt={movie.Title}
+                            className="w-12 h-16 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center">
+                            <Package className="h-6 w-6 text-slate-400" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-slate-900 truncate">{movie.Title}</h4>
+                          <div className="flex items-center space-x-2 text-sm text-slate-600">
+                            <span>{movie.Year}</span>
+                            <span>•</span>
+                            <span className="capitalize">{movie.Type}</span>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-slate-900 truncate">{movie.Title}</h4>
-                        <p className="text-sm text-slate-600">{movie.Year}</p>
-                        <p className="text-xs text-slate-500">{movie.Type}</p>
+                        <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Selected Movie and Form */}
-          {selectedMovie && (
-            <div className="p-6 space-y-6">
-              {/* Selected Movie Info */}
-              <div className="bg-slate-50 rounded-lg p-4">
-                <div className="flex items-start space-x-4">
-                  {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
-                    <img
-                      src={selectedMovie.Poster}
-                      alt={selectedMovie.Title}
-                      className="w-20 h-28 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-20 h-28 bg-slate-300 rounded-lg flex items-center justify-center">
-                      <Package className="h-8 w-8 text-slate-500" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-slate-900">{selectedMovie.Title}</h3>
-                    <p className="text-slate-600">{selectedMovie.Year} • {selectedMovie.Genre}</p>
-                    {selectedMovie.Director && selectedMovie.Director !== 'N/A' && (
-                      <p className="text-sm text-slate-500">Directed by {selectedMovie.Director}</p>
-                    )}
-                    <button
-                      onClick={() => setSelectedMovie(null)}
-                      className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
-                    >
-                      ← Choose different movie
-                    </button>
+          {/* STEP 2: Physical Media Editions Selection */}
+          {currentStep === 'editions' && (
+            <div className="p-6">
+              {loadingEditions ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600">Loading physical media editions...</p>
                   </div>
                 </div>
+              ) : (
+                <>
+                  {/* Selected Movie Info */}
+                  {selectedMovie && (
+                    <div className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+                      <div className="flex items-start space-x-4">
+                        {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
+                          <img
+                            src={selectedMovie.Poster}
+                            alt={selectedMovie.Title}
+                            className="w-16 h-24 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-16 h-24 bg-slate-300 rounded-lg flex items-center justify-center">
+                            <Package className="h-8 w-8 text-slate-500" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-slate-900">{selectedMovie.Title}</h3>
+                          <p className="text-slate-600">{selectedMovie.Year} • {selectedMovie.Rated}</p>
+                          {selectedMovie.Genre && selectedMovie.Genre !== 'N/A' && (
+                            <p className="text-sm text-slate-500 mt-1">{selectedMovie.Genre}</p>
+                          )}
+                          <button
+                            onClick={handleBack}
+                            className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+                          >
+                            ← Choose different movie
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Physical Editions List */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center">
+                      <Disc className="h-5 w-5 mr-2 text-blue-600" />
+                      Available Physical Media Editions ({physicalEditions.length})
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Select one or more editions to add to your library. You can add multiple formats of the same title.
+                    </p>
+
+                    {physicalEditions.length === 0 ? (
+                      <div className="text-center py-8 bg-slate-50 rounded-lg border border-slate-200">
+                        <Info className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                        <p className="text-slate-600 mb-2">No physical editions found on blu-ray.com</p>
+                        <p className="text-sm text-slate-500">You can still add this title manually</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                        {physicalEditions.map((edition, index) => {
+                          const isSelected = selectedEditions.has(edition.url);
+                          const FormatIcon = getFormatIcon(edition.format);
+                          
+                          return (
+                            <div
+                              key={index}
+                              onClick={() => toggleEditionSelection(edition.url)}
+                              className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-3 flex-1">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                  isSelected ? 'bg-blue-600' : 'bg-slate-200'
+                                }`}>
+                                  {isSelected ? (
+                                    <Check className="h-5 w-5 text-white" />
+                                  ) : (
+                                    <FormatIcon className="h-5 w-5 text-slate-600" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-slate-900">{edition.title}</h4>
+                                  <div className="flex items-center flex-wrap gap-2 mt-1">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getFormatBadgeColor(edition.format)}`}>
+                                      {edition.format}
+                                    </span>
+                                    {edition.edition && (
+                                      <span className="text-xs text-slate-600 italic">{edition.edition}</span>
+                                    )}
+                                    {edition.studio && (
+                                      <span className="text-xs text-slate-500">• {edition.studio}</span>
+                                    )}
+                                    {edition.releaseDate && (
+                                      <span className="text-xs text-slate-500">• {edition.releaseDate}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <a
+                                href={edition.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-3 text-slate-400 hover:text-blue-600"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-between pt-4 border-t border-slate-200">
+                    <button
+                      onClick={handleBack}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
+                    >
+                      ← Back to Search
+                    </button>
+                    <button
+                      onClick={handleProceedWithEditions}
+                      disabled={selectedEditions.size === 0}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      <span>Continue with {selectedEditions.size} Edition{selectedEditions.size !== 1 ? 's' : ''}</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* STEP 3: Library Details Form */}
+          {currentStep === 'details' && selectedMovie && (
+            <div className="p-6 space-y-6">
+              {/* Movie and Edition Info */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Movie Info */}
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <div className="flex items-start space-x-4">
+                    {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
+                      <img
+                        src={selectedMovie.Poster}
+                        alt={selectedMovie.Title}
+                        className="w-20 h-28 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-20 h-28 bg-slate-300 rounded-lg flex items-center justify-center">
+                        <Package className="h-8 w-8 text-slate-500" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold text-slate-600 mb-1">Movie Information</h3>
+                      <h4 className="text-lg font-bold text-slate-900 mb-2">{selectedMovie.Title}</h4>
+                      <div className="space-y-1 text-sm text-slate-700">
+                        <div>{selectedMovie.Year} • {selectedMovie.Rated}</div>
+                        {selectedMovie.Genre && selectedMovie.Genre !== 'N/A' && (
+                          <div className="text-slate-600">{selectedMovie.Genre}</div>
+                        )}
+                        {selectedMovie.Director && selectedMovie.Director !== 'N/A' && (
+                          <div className="text-slate-600">
+                            <span className="font-medium">Director:</span> {selectedMovie.Director}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edition Info */}
+                {editionToAdd && (
+                  <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-lg p-4 border border-blue-200">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
+                          <Disc className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-blue-900 mb-1">Physical Edition</h3>
+                        <h4 className="font-bold text-slate-900 mb-2">{editionToAdd.title}</h4>
+                        <div className="space-y-1 text-sm">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getFormatBadgeColor(editionToAdd.format)}`}>
+                            {editionToAdd.format}
+                          </span>
+                          {editionToAdd.edition && (
+                            <div className="text-slate-700 mt-2">
+                              <span className="font-medium">Edition:</span> {editionToAdd.edition}
+                            </div>
+                          )}
+                          {editionToAdd.specs && (
+                            <div className="mt-2 pt-2 border-t border-blue-200">
+                              <div className="text-xs font-semibold text-blue-900 mb-1">Technical Specs</div>
+                              <div className="grid grid-cols-2 gap-1 text-xs">
+                                {editionToAdd.specs.video_resolution && (
+                                  <div>{editionToAdd.specs.video_resolution}</div>
+                                )}
+                                {editionToAdd.specs.hdr_format && (
+                                  <div>{editionToAdd.specs.hdr_format}</div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleBack}
+                      className="mt-3 text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      ← Choose different edition
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Item Status Selection */}
@@ -308,68 +664,10 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     );
                   })}
                 </div>
-                
-                {/* Item Status Specific Tips */}
-                {collectionType === 'wishlist' && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700 flex items-center">
-                      <Heart className="h-4 w-4 mr-2" />
-                      <span><strong>Wishlist Tip:</strong> Items in your wishlist won't count toward library value calculations.</span>
-                    </p>
-                  </div>
-                )}
-                
-                {collectionType === 'for_sale' && (
-                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-700 flex items-center">
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      <span><strong>Selling Tip:</strong> Consider setting your asking price in the purchase price field below.</span>
-                    </p>
-                  </div>
-                )}
-                
-                {collectionType === 'loaned_out' && (
-                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                    <p className="text-sm text-orange-700 flex items-center">
-                      <UserCheck className="h-4 w-4 mr-2" />
-                      <span><strong>Loan Tip:</strong> Use the "Purchase Location" field to note who borrowed this item.</span>
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Physical Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Format Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    <Disc className="inline h-4 w-4 mr-1" />
-                    Format
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['DVD', 'Blu-ray', '4K UHD', '3D Blu-ray'] as const).map((formatOption) => {
-                      const IconComponent = getFormatIcon(formatOption);
-                      return (
-                        <button
-                          key={formatOption}
-                          type="button"
-                          onClick={() => setFormat(formatOption)}
-                          className={`
-                            flex items-center justify-center space-x-2 p-3 rounded-lg border transition-colors
-                            ${format === formatOption
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-slate-300 text-slate-600 hover:border-slate-400'
-                            }
-                          `}
-                        >
-                          <IconComponent className="h-4 w-4" />
-                          <span className="text-sm font-medium">{formatOption}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 {/* Condition */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
@@ -479,12 +777,12 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+              <div className="flex justify-between pt-4 border-t border-slate-200">
                 <button
-                  onClick={handleClose}
+                  onClick={handleBack}
                   className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
                 >
-                  Cancel
+                  ← Back to Editions
                 </button>
                 <button
                   onClick={handleAddToLibrary}
@@ -499,12 +797,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                   ) : (
                     <>
                       <Package className="h-4 w-4" />
-                      <span>
-                        {collectionType === 'owned' && 'Add to Library'}
-                        {collectionType === 'wishlist' && 'Add to Wishlist'}
-                        {collectionType === 'for_sale' && 'Mark for Sale'}
-                        {collectionType === 'loaned_out' && 'Mark as Loaned'}
-                      </span>
+                      <span>Add to Library</span>
                     </>
                   )}
                 </button>
