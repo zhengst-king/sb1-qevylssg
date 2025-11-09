@@ -1,8 +1,8 @@
-// src/lib/blurayApi.ts
+// src/lib/blurayApi.ts - UPDATED WITH PUBLIC SEARCH METHODS
 import { spawn } from 'child_process';
 import { supabase } from './supabase';
 
-interface BlurayTechnicalSpecs {
+export interface BlurayTechnicalSpecs {
   id: string;
   title: string;
   year: number;
@@ -28,6 +28,18 @@ interface BlurayTechnicalSpecs {
   scraped_at: Date;
   bluray_com_url: string;
   data_quality: 'complete' | 'partial' | 'minimal';
+}
+
+// Search result interface for physical media editions
+export interface BluraySearchResult {
+  url: string;
+  title: string;
+  year: number;
+  format: string;
+  edition?: string;
+  studio?: string;
+  releaseDate?: string;
+  isDigital?: boolean;
 }
 
 class BlurayScrapingService {
@@ -67,17 +79,20 @@ class BlurayScrapingService {
     }
   }
 
-  // Search blu-ray.com using the scraper
-  private async searchBlurayDotCom(title: string, year?: number): Promise<Array<{url: string, title: string, year: number}>> {
+  /**
+   * PUBLIC: Search blu-ray.com for physical media titles
+   * Returns array of search results with URLs and enhanced metadata
+   */
+  async searchBlurayDotCom(query: string, year?: number): Promise<BluraySearchResult[]> {
     return new Promise((resolve, reject) => {
-      const searchQuery = year ? `${title} ${year}` : title;
+      const searchQuery = year ? `${query} ${year}` : query;
       
       // Use the scraper's search functionality
       const process = spawn('python3', [
         './scripts/blu-ray-scraper/blu-ray.py',
         '--search-only',
         '--query', searchQuery,
-        '--max-results', '5'
+        '--max-results', '10'
       ]);
 
       let output = '';
@@ -93,22 +108,67 @@ class BlurayScrapingService {
 
       process.on('close', (code) => {
         if (code !== 0) {
+          console.error('[BlurayAPI] Search error:', errorOutput);
           reject(new Error(`Scraper failed: ${errorOutput}`));
           return;
         }
 
         try {
           const results = JSON.parse(output);
-          resolve(results.search_results || []);
+          const searchResults = results.search_results || [];
+          
+          // Enhanced results with format detection and metadata
+          const enhancedResults: BluraySearchResult[] = searchResults.map((result: any) => {
+            // Detect format from title or explicit format field
+            let format = result.format || 'Blu-ray';
+            const titleLower = result.title.toLowerCase();
+            
+            if (titleLower.includes('4k') || titleLower.includes('ultra hd') || titleLower.includes('uhd')) {
+              format = '4K UHD';
+            } else if (titleLower.includes('dvd')) {
+              format = 'DVD';
+            } else if (titleLower.includes('3d')) {
+              format = '3D Blu-ray';
+            } else if (titleLower.includes('digital') || titleLower.includes('movies anywhere')) {
+              format = 'Digital';
+            }
+            
+            // Detect edition type
+            let edition = result.edition;
+            if (!edition) {
+              if (titleLower.includes('steelbook')) edition = 'Steelbook';
+              else if (titleLower.includes('collector')) edition = "Collector's Edition";
+              else if (titleLower.includes('limited')) edition = 'Limited Edition';
+              else if (titleLower.includes('special')) edition = 'Special Edition';
+              else if (titleLower.includes('criterion')) edition = 'Criterion Collection';
+            }
+            
+            return {
+              url: result.url,
+              title: result.title,
+              year: result.year,
+              format,
+              edition,
+              studio: result.studio,
+              releaseDate: result.release_date || result.releaseDate,
+              isDigital: format === 'Digital' || titleLower.includes('digital')
+            };
+          });
+          
+          resolve(enhancedResults);
         } catch (parseError) {
+          console.error('[BlurayAPI] Parse error:', parseError);
           reject(parseError);
         }
       });
     });
   }
 
-  // Scrape detailed specifications for a specific disc
-  private async scrapeDiscDetails(blurayUrl: string): Promise<BlurayTechnicalSpecs | null> {
+  /**
+   * PUBLIC: Scrape detailed specifications for a specific blu-ray.com URL
+   * Returns complete technical specs for the physical media
+   */
+  async scrapeDiscDetails(blurayUrl: string): Promise<BlurayTechnicalSpecs | null> {
     return new Promise((resolve, reject) => {
       const process = spawn('python3', [
         './scripts/blu-ray-scraper/blu-ray.py',
@@ -222,12 +282,26 @@ class BlurayScrapingService {
     return `${normalized}_${year || 'unknown'}`;
   }
 
-  private selectBestMatch(results: any[], targetTitle: string, targetYear?: number): any {
-    // Simple matching logic - can be enhanced
-    return results.find(r => 
-      r.title.toLowerCase().includes(targetTitle.toLowerCase()) &&
-      (!targetYear || Math.abs(r.year - targetYear) <= 1)
-    ) || results[0];
+  private selectBestMatch(results: BluraySearchResult[], targetTitle: string, targetYear?: number): BluraySearchResult {
+    // Find best match by title and year
+    const targetLower = targetTitle.toLowerCase();
+    
+    // First try exact year match
+    if (targetYear) {
+      const exactYearMatch = results.find(r => 
+        Math.abs(r.year - targetYear) <= 1 &&
+        r.title.toLowerCase().includes(targetLower)
+      );
+      if (exactYearMatch) return exactYearMatch;
+    }
+    
+    // Then try title match
+    const titleMatch = results.find(r =>
+      r.title.toLowerCase().includes(targetLower) ||
+      targetLower.includes(r.title.toLowerCase())
+    );
+    
+    return titleMatch || results[0];
   }
 
   private normalizeResolution(resolution?: string): string | undefined {
@@ -263,7 +337,7 @@ class BlurayScrapingService {
 // Export singleton instance
 export const blurayApi = new BlurayScrapingService();
 
-// Types for the Collections feature
+// Export types
 export interface PhysicalMediaCollection {
   id: string;
   user_id: string;
