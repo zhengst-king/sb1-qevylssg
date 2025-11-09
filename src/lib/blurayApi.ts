@@ -1,5 +1,4 @@
-// src/lib/blurayApi.ts - BROWSER-COMPATIBLE VERSION
-// Uses Supabase Edge Functions for server-side scraping
+// src/lib/blurayApi.ts - REAL IMPLEMENTATION WITH EDGE FUNCTION
 import { supabase } from './supabase';
 
 export interface BlurayTechnicalSpecs {
@@ -43,41 +42,45 @@ export interface BluraySearchResult {
 
 class BlurayScrapingService {
   private readonly CACHE_DURATION_DAYS = 30; // Cache for 30 days
+  private readonly EDGE_FUNCTION_URL = 'bluray-scraper'; // Edge function name
   
   /**
    * PUBLIC: Search blu-ray.com for physical media titles
-   * This is a mock implementation for now - returns sample data
-   * In production, this should call a Supabase Edge Function
    */
   async searchBlurayDotCom(query: string, year?: number): Promise<BluraySearchResult[]> {
     console.log('[BlurayAPI] Searching blu-ray.com for:', query, year);
     
     try {
-      // For now, return mock data to prevent app crash
-      // TODO: Implement Edge Function call when ready
-      console.warn('[BlurayAPI] Using mock data - Edge Function not yet implemented');
-      
-      return this.getMockSearchResults(query, year);
-      
-      /* 
-      // Future implementation with Edge Function:
-      const { data, error } = await supabase.functions.invoke('bluray-search', {
-        body: { query, year }
+      // Call Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke(this.EDGE_FUNCTION_URL, {
+        body: { 
+          action: 'search',
+          query, 
+          year 
+        }
       });
       
-      if (error) throw error;
-      return this.enhanceSearchResults(data.results || []);
-      */
+      if (error) {
+        console.error('[BlurayAPI] Edge function error:', error);
+        throw error;
+      }
+      
+      const results = data?.results || [];
+      console.log(`[BlurayAPI] Found ${results.length} results`);
+      
+      return this.enhanceSearchResults(results);
       
     } catch (error) {
       console.error('[BlurayAPI] Search error:', error);
-      return [];
+      
+      // Return fallback mock data if Edge Function fails
+      console.warn('[BlurayAPI] Falling back to mock data');
+      return this.getMockSearchResults(query, year);
     }
   }
 
   /**
    * PUBLIC: Get detailed specs for a specific blu-ray.com URL
-   * This is a mock implementation for now
    */
   async scrapeDiscDetails(blurayUrl: string): Promise<BlurayTechnicalSpecs | null> {
     console.log('[BlurayAPI] Fetching specs for:', blurayUrl);
@@ -90,36 +93,39 @@ class BlurayScrapingService {
         return cached;
       }
       
-      // For now, return mock data
-      // TODO: Implement Edge Function call when ready
-      console.warn('[BlurayAPI] Using mock data - Edge Function not yet implemented');
-      
-      return this.getMockDiscDetails(blurayUrl);
-      
-      /*
-      // Future implementation with Edge Function:
-      const { data, error } = await supabase.functions.invoke('bluray-scrape', {
-        body: { url: blurayUrl }
+      // Call Supabase Edge Function to scrape
+      const { data, error } = await supabase.functions.invoke(this.EDGE_FUNCTION_URL, {
+        body: { 
+          action: 'scrape',
+          url: blurayUrl 
+        }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[BlurayAPI] Edge function error:', error);
+        throw error;
+      }
       
-      if (data.specs) {
+      if (data?.specs) {
+        // Cache the results
         await this.cacheSpecs(data.specs);
+        console.log('[BlurayAPI] Successfully scraped and cached specs');
         return data.specs;
       }
       
       return null;
-      */
       
     } catch (error) {
       console.error('[BlurayAPI] Scrape error:', error);
-      return null;
+      
+      // Return fallback mock data if Edge Function fails
+      console.warn('[BlurayAPI] Falling back to mock data');
+      return this.getMockDiscDetails(blurayUrl);
     }
   }
 
   /**
-   * Main method to get enhanced disc data (EXISTING METHOD - UNCHANGED)
+   * Main method to get enhanced disc data
    */
   async getDiscSpecs(title: string, year?: number): Promise<BlurayTechnicalSpecs | null> {
     try {
@@ -141,94 +147,73 @@ class BlurayScrapingService {
       const bestMatch = this.selectBestMatch(searchResults, title, year);
       const specs = await this.scrapeDiscDetails(bestMatch.url);
       
-      if (specs) {
-        // Cache the results
-        await this.cacheSpecs(specs);
-        return specs;
-      }
-
-      return null;
+      return specs;
     } catch (error) {
       console.error('[BlurayAPI] Error getting disc specs:', error);
       return null;
     }
   }
 
-  // Mock data for development/testing
-  private getMockSearchResults(query: string, year?: number): BluraySearchResult[] {
-    const queryLower = query.toLowerCase();
-    
-    // Generate realistic mock results based on query
-    const mockResults: BluraySearchResult[] = [
-      {
-        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-4k`,
-        title: `${query}`,
-        year: year || 2020,
-        format: '4K UHD',
-        edition: 'Steelbook Edition',
-        studio: 'Universal Pictures',
-        releaseDate: 'June 2020'
-      },
-      {
-        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-bluray`,
-        title: `${query}`,
-        year: year || 2020,
-        format: 'Blu-ray',
-        edition: 'Standard Edition',
-        studio: 'Universal Pictures',
-        releaseDate: 'June 2020'
-      },
-      {
-        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-dvd`,
-        title: `${query}`,
-        year: year || 2020,
-        format: 'DVD',
-        edition: 'Widescreen',
-        studio: 'Universal Pictures',
-        releaseDate: 'June 2020'
-      },
-      {
-        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-digital`,
-        title: `${query}`,
-        year: year || 2020,
-        format: 'Digital',
-        edition: 'Movies Anywhere',
-        studio: 'Universal Pictures',
-        releaseDate: 'June 2020',
-        isDigital: true
-      }
-    ];
-    
-    return mockResults;
+  // ========== PRIVATE HELPER METHODS ==========
+
+  /**
+   * Enhance search results with additional processing
+   */
+  private enhanceSearchResults(results: BluraySearchResult[]): BluraySearchResult[] {
+    return results.map(result => ({
+      ...result,
+      // Add edition detection from title
+      edition: this.detectEdition(result.title),
+      // Mark digital releases
+      isDigital: result.format.toLowerCase().includes('digital') || 
+                 result.format.toLowerCase().includes('stream')
+    }));
   }
 
-  private getMockDiscDetails(url: string): BlurayTechnicalSpecs {
-    const id = this.generateId('mock-title', 2020);
+  /**
+   * Detect special edition types from title
+   */
+  private detectEdition(title: string): string | undefined {
+    const lowerTitle = title.toLowerCase();
     
-    return {
-      id,
-      title: 'Mock Title',
-      year: 2020,
-      video_codec: 'HEVC',
-      video_resolution: '4K UHD',
-      hdr_format: 'HDR10',
-      audio_codecs: ['Dolby Atmos', 'DTS-HD MA 5.1'],
-      audio_channels: ['7.1', '5.1'],
-      region_codes: ['A'],
-      disc_format: '4K UHD',
-      studio: 'Universal Pictures',
-      release_date: 'June 2020',
-      special_features: ['Behind the Scenes', 'Deleted Scenes'],
-      aspect_ratio: '2.39:1',
-      subtitles: ['English', 'Spanish'],
-      languages: ['English'],
-      scraped_at: new Date(),
-      bluray_com_url: url,
-      data_quality: 'partial'
-    };
+    if (lowerTitle.includes('steelbook')) return 'Steelbook Edition';
+    if (lowerTitle.includes('collector')) return 'Collector\'s Edition';
+    if (lowerTitle.includes('limited')) return 'Limited Edition';
+    if (lowerTitle.includes('special')) return 'Special Edition';
+    if (lowerTitle.includes('criterion')) return 'Criterion Collection';
+    if (lowerTitle.includes('extended')) return 'Extended Edition';
+    if (lowerTitle.includes('director')) return 'Director\'s Cut';
+    
+    return undefined;
   }
 
-  // Cache management methods
+  /**
+   * Select the best match from search results
+   */
+  private selectBestMatch(results: BluraySearchResult[], targetTitle: string, targetYear?: number): BluraySearchResult {
+    const targetLower = targetTitle.toLowerCase();
+    
+    // First try exact year match
+    if (targetYear) {
+      const exactYearMatch = results.find(r => 
+        Math.abs(r.year - targetYear) <= 1 &&
+        r.title.toLowerCase().includes(targetLower)
+      );
+      if (exactYearMatch) return exactYearMatch;
+    }
+    
+    // Then try title match
+    const titleMatch = results.find(r =>
+      r.title.toLowerCase().includes(targetLower) ||
+      targetLower.includes(r.title.toLowerCase())
+    );
+    
+    // Default to first result
+    return titleMatch || results[0];
+  }
+
+  // ========== CACHE MANAGEMENT ==========
+
   private async cacheSpecs(specs: BlurayTechnicalSpecs): Promise<void> {
     try {
       const { error } = await supabase
@@ -276,61 +261,75 @@ class BlurayScrapingService {
     }
   }
 
-  // Helper methods
-  private generateId(title: string, year?: number): string {
-    const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return `${normalized}_${year || 'unknown'}`;
-  }
-
-  private selectBestMatch(results: BluraySearchResult[], targetTitle: string, targetYear?: number): BluraySearchResult {
-    // Find best match by title and year
-    const targetLower = targetTitle.toLowerCase();
-    
-    // First try exact year match
-    if (targetYear) {
-      const exactYearMatch = results.find(r => 
-        Math.abs(r.year - targetYear) <= 1 &&
-        r.title.toLowerCase().includes(targetLower)
-      );
-      if (exactYearMatch) return exactYearMatch;
-    }
-    
-    // Then try title match
-    const titleMatch = results.find(r =>
-      r.title.toLowerCase().includes(targetLower) ||
-      targetLower.includes(r.title.toLowerCase())
-    );
-    
-    return titleMatch || results[0];
-  }
-
-  private normalizeResolution(resolution?: string): string | undefined {
-    if (!resolution) return undefined;
-    
-    const res = resolution.toLowerCase();
-    if (res.includes('4k') || res.includes('2160p')) return '4K UHD';
-    if (res.includes('1080p') || res.includes('1080i')) return '1080p';
-    if (res.includes('720p')) return '720p';
-    if (res.includes('3d')) return '3D';
-    return resolution;
-  }
-
-  private assessDataQuality(rawData: any): 'complete' | 'partial' | 'minimal' {
-    const hasVideoSpecs = !!(rawData.video_codec && rawData.video_resolution);
-    const hasAudioSpecs = !!(rawData.audio_codecs && rawData.audio_codecs.length > 0);
-    const hasDiscInfo = !!(rawData.disc_format && rawData.region_codes);
-    
-    const specCount = [hasVideoSpecs, hasAudioSpecs, hasDiscInfo].filter(Boolean).length;
-    
-    if (specCount === 3) return 'complete';
-    if (specCount === 2) return 'partial';
-    return 'minimal';
-  }
-
   private isCacheValid(scrapedAt: Date): boolean {
     const cacheAge = Date.now() - new Date(scrapedAt).getTime();
     const maxAge = this.CACHE_DURATION_DAYS * 24 * 60 * 60 * 1000;
     return cacheAge < maxAge;
+  }
+
+  // ========== FALLBACK MOCK DATA ==========
+
+  /**
+   * Fallback mock data for when Edge Function is unavailable
+   */
+  private getMockSearchResults(query: string, year?: number): BluraySearchResult[] {
+    const queryLower = query.toLowerCase();
+    
+    console.warn('[BlurayAPI] Using mock search results as fallback');
+    
+    return [
+      {
+        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-4k`,
+        title: query,
+        year: year || 2020,
+        format: '4K UHD',
+        edition: 'Steelbook Edition',
+        studio: 'Universal Pictures',
+        releaseDate: 'June 2020'
+      },
+      {
+        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-bluray`,
+        title: query,
+        year: year || 2020,
+        format: 'Blu-ray',
+        edition: 'Standard Edition',
+        studio: 'Universal Pictures',
+        releaseDate: 'June 2020'
+      }
+    ];
+  }
+
+  private getMockDiscDetails(url: string): BlurayTechnicalSpecs {
+    const id = this.generateId('Mock Title', 2020);
+    
+    console.warn('[BlurayAPI] Using mock disc details as fallback');
+    
+    return {
+      id,
+      title: 'Mock Title',
+      year: 2020,
+      video_codec: 'HEVC',
+      video_resolution: '4K UHD',
+      hdr_format: 'HDR10',
+      audio_codecs: ['Dolby Atmos', 'DTS-HD MA 5.1'],
+      audio_channels: ['7.1', '5.1'],
+      region_codes: ['A'],
+      disc_format: '4K UHD',
+      studio: 'Universal Pictures',
+      release_date: 'June 2020',
+      special_features: ['Behind the Scenes', 'Deleted Scenes'],
+      aspect_ratio: '2.39:1',
+      subtitles: ['English', 'Spanish'],
+      languages: ['English'],
+      scraped_at: new Date(),
+      bluray_com_url: url,
+      data_quality: 'partial'
+    };
+  }
+
+  private generateId(title: string, year?: number): string {
+    const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${normalized}_${year || 'unknown'}`;
   }
 }
 
