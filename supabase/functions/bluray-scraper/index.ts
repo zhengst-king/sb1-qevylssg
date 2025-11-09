@@ -1,5 +1,5 @@
 // supabase/functions/bluray-scraper/index.ts
-// RATE-LIMITED VERSION - Based on successful scrapers
+// ENHANCED VERSION - Better search URL and debugging
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
@@ -9,12 +9,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// CRITICAL: Rate limiting to avoid blocks
 const RATE_LIMIT = {
-  BASE_DELAY: 22000,        // 22 seconds (from successful scraper)
-  MAX_RANDOM_DELAY: 14000,  // Up to 14 seconds random (from successful scraper)
+  BASE_DELAY: 22000,
+  MAX_RANDOM_DELAY: 14000,
   RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 60000        // 1 minute between retries
+  RETRY_DELAY: 60000
 };
 
 serve(async (req) => {
@@ -28,10 +27,9 @@ serve(async (req) => {
     console.log('[BlurayEdge] Request:', { action, query, year, url });
 
     if (action === 'search') {
-      // WARN USER about delay
       console.warn(`[BlurayEdge] This will take ${RATE_LIMIT.BASE_DELAY/1000}-${(RATE_LIMIT.BASE_DELAY+RATE_LIMIT.MAX_RANDOM_DELAY)/1000}s due to rate limiting`);
       
-      const results = await searchBluray(query, year);
+      const results = await searchBlurayEnhanced(query, year);
       
       return new Response(
         JSON.stringify({ results }),
@@ -41,7 +39,6 @@ serve(async (req) => {
         }
       );
     } 
-    
     else if (action === 'scrape') {
       const specs = await scrapeDiscDetails(url);
       
@@ -53,7 +50,6 @@ serve(async (req) => {
         }
       );
     }
-    
     else {
       return new Response(
         JSON.stringify({ error: 'Invalid action' }),
@@ -75,7 +71,6 @@ serve(async (req) => {
   }
 });
 
-// Rate limiting utilities
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -115,9 +110,10 @@ function getBrowserHeaders(userAgent: string) {
   };
 }
 
-async function searchBluray(query: string, year?: number) {
+// ENHANCED: Try multiple search URL formats
+async function searchBlurayEnhanced(query: string, year?: number) {
   try {
-    // CRITICAL: Rate limiting delay
+    // Rate limiting
     const baseDelay = RATE_LIMIT.BASE_DELAY;
     const jitter = randomDelay(0, RATE_LIMIT.MAX_RANDOM_DELAY);
     const totalDelay = baseDelay + jitter;
@@ -128,18 +124,28 @@ async function searchBluray(query: string, year?: number) {
     const searchQuery = encodeURIComponent(query);
     const userAgent = getRandomUserAgent();
     
-    // Try multiple search URL formats
+    // ENHANCED: Try multiple URL formats in order
     const searchUrls = [
-      `https://www.blu-ray.com/search/?quicksearch=1&quicksearch_keyword=${searchQuery}&section=bluraymovies`,
+      // Format 1: Direct movie search
       `https://www.blu-ray.com/movies/movies.php?keyword=${searchQuery}`,
+      
+      // Format 2: Quick search (original)
+      `https://www.blu-ray.com/search/?quicksearch=1&quicksearch_keyword=${searchQuery}&section=bluraymovies`,
+      
+      // Format 3: Advanced search
+      `https://www.blu-ray.com/movies/search.php?action=search&keyword=${searchQuery}`,
+      
+      // Format 4: Simple search
       `https://www.blu-ray.com/search.php?action=search&keyword=${searchQuery}`
     ];
     
-    for (let attempt = 0; attempt < RATE_LIMIT.RETRY_ATTEMPTS; attempt++) {
-      const searchUrl = searchUrls[attempt % searchUrls.length];
+    console.log('[BluraySearch] Trying multiple search URL formats...');
+    
+    for (let attempt = 0; attempt < searchUrls.length && attempt < RATE_LIMIT.RETRY_ATTEMPTS; attempt++) {
+      const searchUrl = searchUrls[attempt];
       
       try {
-        console.log(`[BluraySearch] Attempt ${attempt + 1}/${RATE_LIMIT.RETRY_ATTEMPTS}`);
+        console.log(`[BluraySearch] Attempt ${attempt + 1}/${searchUrls.length}`);
         console.log(`[BluraySearch] URL: ${searchUrl}`);
         
         const response = await fetch(searchUrl, {
@@ -149,43 +155,45 @@ async function searchBluray(query: string, year?: number) {
         console.log(`[BluraySearch] Response: ${response.status} ${response.statusText}`);
         
         if (response.status === 403 || response.status === 429) {
-          console.warn(`[BluraySearch] Blocked (${response.status}). Waiting before retry...`);
-          await delay(RATE_LIMIT.RETRY_DELAY);
+          console.warn(`[BluraySearch] Blocked (${response.status}). Trying next URL format...`);
           continue;
         }
         
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          console.warn(`[BluraySearch] HTTP ${response.status}. Trying next URL format...`);
+          continue;
         }
         
         const html = await response.text();
         console.log(`[BluraySearch] HTML length: ${html.length}`);
         
+        // DEBUG: Save first 2000 chars for inspection
+        console.log(`[BluraySearch] HTML preview:\n${html.substring(0, 2000)}`);
+        
         if (html.length < 1000) {
           console.warn('[BluraySearch] HTML too short, might be blocked');
-          await delay(RATE_LIMIT.RETRY_DELAY);
           continue;
         }
         
-        // Parse results
-        const results = parseSearchResults(html, query, year);
+        // Parse results with enhanced detection
+        const results = parseSearchResultsEnhanced(html, query, year);
         
         if (results.length > 0) {
-          console.log(`[BluraySearch] Success! Found ${results.length} results`);
+          console.log(`[BluraySearch] ✅ Success! Found ${results.length} results with URL format ${attempt + 1}`);
           return results;
         }
         
-        console.log('[BluraySearch] No results in HTML, trying next format...');
+        console.log(`[BluraySearch] No results with URL format ${attempt + 1}, trying next...`);
         
       } catch (error) {
         console.error(`[BluraySearch] Attempt ${attempt + 1} failed:`, error);
-        if (attempt < RATE_LIMIT.RETRY_ATTEMPTS - 1) {
-          await delay(RATE_LIMIT.RETRY_DELAY);
+        if (attempt < searchUrls.length - 1) {
+          await delay(5000); // Short delay between URL attempts
         }
       }
     }
     
-    console.log('[BluraySearch] All attempts failed');
+    console.log('[BluraySearch] ❌ All search URL formats failed');
     return [];
     
   } catch (error) {
@@ -194,7 +202,8 @@ async function searchBluray(query: string, year?: number) {
   }
 }
 
-function parseSearchResults(html: string, query: string, year?: number): any[] {
+// ENHANCED: Better result detection
+function parseSearchResultsEnhanced(html: string, query: string, year?: number): any[] {
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     if (!doc) return [];
@@ -202,36 +211,54 @@ function parseSearchResults(html: string, query: string, year?: number): any[] {
     const results: any[] = [];
     const seenUrls = new Set<string>();
     
-    // Strategy 1: Look for movie links in tables
-    const tableLinks = doc.querySelectorAll('table a[href*="/movies/"], table.list a[href*="/movies/"]');
-    console.log(`[Parse] Strategy 1: Found ${tableLinks.length} table links`);
+    console.log('[Parse] Starting enhanced parsing...');
     
-    for (const link of tableLinks) {
-      const result = parseMovieLink(link, seenUrls, year);
-      if (result) results.push(result);
-    }
+    // Strategy 1: Look for movie result containers
+    const movieContainers = [
+      'div.movietable',
+      'table.list',
+      'div[class*="movie"]',
+      'tr[class*="movie"]',
+      'div.results'
+    ];
     
-    // Strategy 2: Look for any movie links
-    if (results.length === 0) {
-      const allLinks = doc.querySelectorAll('a[href*="/movies/"]');
-      console.log(`[Parse] Strategy 2: Found ${allLinks.length} all movie links`);
+    for (const selector of movieContainers) {
+      const containers = doc.querySelectorAll(selector);
+      console.log(`[Parse] Strategy: ${selector} - Found ${containers.length} containers`);
       
-      for (const link of allLinks) {
-        const result = parseMovieLink(link, seenUrls, year);
-        if (result) results.push(result);
+      if (containers.length > 0) {
+        for (const container of containers) {
+          const links = container.querySelectorAll('a[href*="/movies/"]');
+          console.log(`[Parse]   - Found ${links.length} movie links in container`);
+          
+          for (const link of links) {
+            const result = parseMovieLink(link, seenUrls, year);
+            if (result && result.title) { // Only add if has a title
+              results.push(result);
+            }
+          }
+        }
+        
+        if (results.length > 0) {
+          console.log(`[Parse] ✅ Found ${results.length} results using ${selector}`);
+          return results.slice(0, 20);
+        }
       }
     }
     
-    // Strategy 3: Look in specific containers
-    if (results.length === 0) {
-      const containers = doc.querySelectorAll('[class*="search"], [class*="result"], [id*="search"]');
-      console.log(`[Parse] Strategy 3: Found ${containers.length} containers`);
+    // Strategy 2: Look for any movie detail links (not navigation)
+    console.log('[Parse] Strategy: Looking for movie detail pages...');
+    const allLinks = doc.querySelectorAll('a[href*="/movies/"]');
+    console.log(`[Parse] Found ${allLinks.length} total movie links`);
+    
+    for (const link of allLinks) {
+      const href = link.getAttribute('href');
       
-      for (const container of containers) {
-        const links = container.querySelectorAll('a[href*="/movies/"]');
-        for (const link of links) {
-          const result = parseMovieLink(link, seenUrls, year);
-          if (result) results.push(result);
+      // ENHANCED: Filter out navigation/menu links
+      if (href && !isNavigationLink(href)) {
+        const result = parseMovieLink(link, seenUrls, year);
+        if (result && result.title && result.title.length > 2) { // Must have real title
+          results.push(result);
         }
       }
     }
@@ -245,15 +272,40 @@ function parseSearchResults(html: string, query: string, year?: number): any[] {
   }
 }
 
+// ENHANCED: Filter out navigation links
+function isNavigationLink(href: string): boolean {
+  const navPatterns = [
+    '/movies/movies.php',
+    '/movies/reviews.php',
+    '/movies/releasedates.php',
+    '/movies/search.php',
+    '/movies/top.php',
+    'show=',
+    'sortby=',
+    'genre=',
+    'quicksearch=',
+    '/link/link.php'
+  ];
+  
+  return navPatterns.some(pattern => href.includes(pattern));
+}
+
 function parseMovieLink(link: any, seenUrls: Set<string>, yearFilter?: number): any | null {
   try {
     const href = link.getAttribute('href');
     if (!href || seenUrls.has(href)) return null;
     
+    // Skip navigation links
+    if (isNavigationLink(href)) return null;
+    
     const url = href.startsWith('http') ? href : `https://www.blu-ray.com${href}`;
     const titleText = link.textContent?.trim() || '';
     
     if (!titleText || titleText.length < 2) return null;
+    
+    // Skip common navigation text
+    const skipTexts = ['new', 'browse', 'search', 'top', 'calendar', 'coming soon', 'recently', 'pre-order'];
+    if (skipTexts.some(text => titleText.toLowerCase() === text)) return null;
     
     seenUrls.add(href);
     
@@ -294,7 +346,6 @@ function parseMovieLink(link: any, seenUrls: Set<string>, yearFilter?: number): 
 
 async function scrapeDiscDetails(url: string) {
   try {
-    // Apply rate limiting
     const delay_ms = RATE_LIMIT.BASE_DELAY + randomDelay(0, RATE_LIMIT.MAX_RANDOM_DELAY);
     console.log(`[BlurayScrape] Applying rate limit: ${delay_ms}ms`);
     await delay(delay_ms);
