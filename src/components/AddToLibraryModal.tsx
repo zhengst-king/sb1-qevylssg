@@ -284,7 +284,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       />
       
       {/* Modal */}
-      <div className="relative bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden" flex flex-col">
+      <div className="relative bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden" f
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0">
           <div>
