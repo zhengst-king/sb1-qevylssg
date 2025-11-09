@@ -217,7 +217,7 @@ class BlurayScrapingService {
   private async cacheSpecs(specs: BlurayTechnicalSpecs): Promise<void> {
     try {
       const { error } = await supabase
-        .from('bluray_specs_cache')
+        .from('bluray_technical_specs')
         .upsert([specs], { onConflict: 'id' });
       
       if (error) {
@@ -232,7 +232,7 @@ class BlurayScrapingService {
     try {
       const id = this.generateId(title, year);
       const { data, error } = await supabase
-        .from('bluray_specs_cache')
+        .from('bluray_technical_specs')
         .select('*')
         .eq('id', id)
         .single();
@@ -248,7 +248,7 @@ class BlurayScrapingService {
   private async getCachedSpecsByUrl(url: string): Promise<BlurayTechnicalSpecs | null> {
     try {
       const { data, error } = await supabase
-        .from('bluray_specs_cache')
+        .from('bluray_technical_specs')
         .select('*')
         .eq('bluray_com_url', url)
         .single();
