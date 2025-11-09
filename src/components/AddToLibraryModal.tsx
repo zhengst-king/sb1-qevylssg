@@ -21,7 +21,9 @@ import {
   ChevronRight,
   Check,
   ChevronDown,
-  Edit2
+  Edit2,
+  Plus,
+  Tv
 } from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
 import { blurayApi } from '../lib/blurayApi';
@@ -137,51 +139,6 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       alert('Failed to load physical media editions. Please try again.');
     } finally {
       setLoadingEditions(false);
-    }
-  };
-
-  // Toggle edition selection
-  const toggleEditionSelection = (editionUrl: string) => {
-    const newSelection = new Set(selectedEditions);
-    if (newSelection.has(editionUrl)) {
-      newSelection.delete(editionUrl);
-    } else {
-      newSelection.add(editionUrl);
-    }
-    setSelectedEditions(newSelection);
-  };
-
-  // Load specs and show details form
-  const handleProceedWithEditions = async () => {
-    if (selectedEditions.size === 0) {
-      alert('Please select at least one physical media edition to add.');
-      return;
-    }
-
-    // For now, we'll process the first selected edition
-    const firstSelectedUrl = Array.from(selectedEditions)[0];
-    const edition = physicalEditions.find(e => e.url === firstSelectedUrl);
-    
-    if (!edition) return;
-
-    try {
-      setLoadingEditionSpecs(true);
-      console.log('[AddToLibrary] Loading specs for selected edition...');
-      
-      // Load technical specs for the edition
-      const specs = await blurayApi.scrapeDiscDetails(edition.url);
-      
-      setEditionToAdd({
-        ...edition,
-        specs: specs || undefined
-      });
-      
-      setShowDetailsForm(true);
-    } catch (error) {
-      console.error('[AddToLibrary] Error loading edition specs:', error);
-      alert('Failed to load edition details. Please try again.');
-    } finally {
-      setLoadingEditionSpecs(false);
     }
   };
 
@@ -358,45 +315,102 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
               {movieSearchResults.length > 0 && (
                 <div className="space-y-3">
                   <div className="text-sm text-slate-600 mb-2">
-                    Found {movieSearchResults.length} results - click to select:
+                    Found {movieSearchResults.length} results:
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[500px] overflow-y-auto">
                     {movieSearchResults.map((movie) => {
                       const isSelected = selectedMovie?.imdbID === movie.imdbID;
+                      // Note: We don't know if it's in watchlist yet without checking
+                      // For now, we'll show + icon and link to TMDB
+                      const tmdbUrl = `https://www.themoviedb.org/search?query=${encodeURIComponent(movie.Title)}`;
+                      
                       return (
                         <div
                           key={movie.imdbID}
-                          onClick={() => handleMovieSelect(movie)}
-                          className={`flex items-center space-x-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                            isSelected 
-                              ? 'border-blue-500 bg-blue-50' 
-                              : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50'
+                          className={`group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
+                            isSelected ? 'ring-2 ring-blue-500' : ''
                           }`}
                         >
-                          {movie.Poster && movie.Poster !== 'N/A' ? (
-                            <img
-                              src={movie.Poster}
-                              alt={movie.Title}
-                              className="w-12 h-16 object-cover rounded"
-                            />
-                          ) : (
-                            <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center">
-                              <Package className="h-6 w-6 text-slate-400" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-slate-900 truncate">{movie.Title}</h4>
-                            <div className="flex items-center space-x-2 text-sm text-slate-600">
-                              <span>{movie.Year}</span>
-                              <span>•</span>
-                              <span className="capitalize">{movie.Type}</span>
+                          {/* Poster - Clickable to view on TMDB */}
+                          <div 
+                            className="aspect-[2/3] bg-slate-200 relative overflow-hidden cursor-pointer"
+                            onClick={() => window.open(tmdbUrl, '_blank')}
+                          >
+                            {movie.Poster && movie.Poster !== 'N/A' ? (
+                              <img
+                                src={movie.Poster}
+                                alt={movie.Title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                {movie.Type === 'series' ? (
+                                  <Monitor className="h-12 w-12 text-slate-400" />
+                                ) : (
+                                  <FileVideo className="h-12 w-12 text-slate-400" />
+                                )}
+                              </div>
+                            )}
+
+                            {/* Upper Left: Rating Badge (if available) */}
+                            {movie.imdbRating && movie.imdbRating !== 'N/A' && (
+                              <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                                <div className="flex items-center space-x-1">
+                                  <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                  <span className="text-white text-xs font-semibold">
+                                    {parseFloat(movie.imdbRating).toFixed(1)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Upper Right: View on TMDB Button */}
+                            <a
+                              href={tmdbUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors z-10"
+                              title="View on TMDB"
+                            >
+                              <Plus className="h-4 w-4 text-slate-600 hover:text-purple-500" />
+                            </a>
+
+                            {/* Lower Right: Media Type Badge */}
+                            <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
+                              {movie.Type === 'series' ? 'TV' : 'Movie'}
                             </div>
                           </div>
-                          {isSelected ? (
-                            <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
-                          )}
+
+                          {/* Item Info */}
+                          <div className="p-3 bg-white">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 flex-1">
+                                {movie.Title}
+                              </h4>
+                              {/* Add Disc Icon */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMovieSelect(movie);
+                                }}
+                                className={`flex-shrink-0 p-1.5 rounded-full transition-colors ${
+                                  isSelected 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-600'
+                                }`}
+                                title="Add to library"
+                              >
+                                <Disc className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {movie.Year && (
+                              <div className="flex items-center text-xs text-slate-500 mt-1">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {movie.Year}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -408,35 +422,10 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
             {/* SECTION 2: Physical Media Editions - SHOWS WHEN MOVIE SELECTED */}
             {selectedMovie && (
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 animate-fadeIn">
-                <div className="mb-4">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2 flex items-center">
-                    <Disc className="h-5 w-5 mr-2 text-blue-600" />
-                    Step 2: Select Physical Editions
-                  </h3>
-                  
-                  {/* Selected Movie Info */}
-                  <div className="flex items-center space-x-3 bg-white rounded-lg p-3 border border-blue-300">
-                    {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
-                      <img
-                        src={selectedMovie.Poster}
-                        alt={selectedMovie.Title}
-                        className="w-12 h-16 object-cover rounded"
-                      />
-                    ) : (
-                      <div className="w-12 h-16 bg-slate-200 rounded flex items-center justify-center">
-                        <Package className="h-6 w-6 text-slate-400" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-slate-900">{selectedMovie.Title}</h4>
-                      <p className="text-sm text-slate-600">{selectedMovie.Year} • {selectedMovie.Rated}</p>
-                    </div>
-                    <Check className="h-5 w-5 text-green-600" />
-                  </div>
-                  <p className="text-xs text-slate-600 mt-2 italic">
-                    💡 Tip: Click a different movie above to see its editions
-                  </p>
-                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+                  <Disc className="h-5 w-5 mr-2 text-blue-600" />
+                  Step 2: Select Physical Edition
+                </h3>
 
                 {loadingEditions ? (
                   <div className="flex items-center justify-center py-8">
@@ -468,83 +457,92 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                 ) : (
                   <>
                     <p className="text-sm text-slate-600 mb-4">
-                      Found {physicalEditions.length} edition{physicalEditions.length !== 1 ? 's' : ''} - select one to continue
+                      Found {physicalEditions.length} edition{physicalEditions.length !== 1 ? 's' : ''} - click to continue
                     </p>
                     
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto mb-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[400px] overflow-y-auto">
                       {physicalEditions.map((edition, index) => {
-                        const isSelected = selectedEditions.has(edition.url);
+                        const isSelected = editionToAdd?.url === edition.url;
                         const FormatIcon = getFormatIcon(edition.format);
                         
                         return (
                           <div
                             key={index}
-                            onClick={() => toggleEditionSelection(edition.url)}
-                            className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                              isSelected
-                                ? 'border-green-500 bg-green-50'
-                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                            onClick={async () => {
+                              // Single-select: immediately load specs and show details form
+                              try {
+                                setLoadingEditionSpecs(true);
+                                console.log('[AddToLibrary] Loading specs for edition...');
+                                
+                                const specs = await blurayApi.scrapeDiscDetails(edition.url);
+                                
+                                setEditionToAdd({
+                                  ...edition,
+                                  specs: specs || undefined
+                                });
+                                
+                                setShowDetailsForm(true);
+                              } catch (error) {
+                                console.error('[AddToLibrary] Error loading edition specs:', error);
+                                alert('Failed to load edition details. Please try again.');
+                              } finally {
+                                setLoadingEditionSpecs(false);
+                              }
+                            }}
+                            className={`group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                              isSelected ? 'ring-2 ring-green-500' : ''
                             }`}
                           >
-                            <div className="flex items-center space-x-3 flex-1">
-                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                isSelected ? 'bg-green-600' : 'bg-slate-200'
-                              }`}>
-                                {isSelected ? (
-                                  <Check className="h-5 w-5 text-white" />
-                                ) : (
-                                  <FormatIcon className="h-5 w-5 text-slate-600" />
-                                )}
+                            {/* Poster */}
+                            <div className="aspect-[2/3] bg-slate-200 relative overflow-hidden">
+                              {/* Use a placeholder since we don't have blu-ray.com poster URLs yet */}
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+                                <FormatIcon className="h-16 w-16 text-slate-400" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-slate-900">{edition.title}</h4>
-                                <div className="flex items-center flex-wrap gap-2 mt-1">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getFormatBadgeColor(edition.format)}`}>
-                                    {edition.format}
-                                  </span>
-                                  {edition.edition && (
-                                    <span className="text-xs text-slate-600 italic">{edition.edition}</span>
-                                  )}
-                                  {edition.studio && (
-                                    <span className="text-xs text-slate-500">• {edition.studio}</span>
-                                  )}
-                                  {edition.releaseDate && (
-                                    <span className="text-xs text-slate-500">• {edition.releaseDate}</span>
-                                  )}
-                                </div>
+
+                              {/* Upper Left: Format Badge */}
+                              <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border ${getFormatBadgeColor(edition.format)}`}>
+                                {edition.format}
                               </div>
+
+                              {/* Lower Right: External Link */}
+                              <a
+                                href={edition.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute bottom-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors z-10"
+                                title="View on blu-ray.com"
+                              >
+                                <ExternalLink className="h-3 w-3 text-slate-600" />
+                              </a>
                             </div>
-                            <a
-                              href={edition.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="ml-3 text-slate-400 hover:text-blue-600"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
+
+                            {/* Item Info */}
+                            <div className="p-3 bg-white">
+                              <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 mb-1">
+                                {edition.edition || edition.format}
+                              </h4>
+                              {edition.releaseDate && (
+                                <div className="flex items-center text-xs text-slate-500">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {edition.releaseDate}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
 
-                    <button
-                      onClick={handleProceedWithEditions}
-                      disabled={selectedEditions.size === 0 || loadingEditionSpecs}
-                      className="w-full px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                    >
-                      {loadingEditionSpecs ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Loading specs...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Continue with Selected Edition</span>
-                          <ChevronDown className="h-4 w-4" />
-                        </>
-                      )}
-                    </button>
+                    {loadingEditionSpecs && (
+                      <div className="flex items-center justify-center py-4 mt-4">
+                        <div className="flex items-center space-x-2 text-blue-600">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                          <span className="text-sm">Loading edition details...</span>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -558,48 +556,13 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                   Step 3: Enter Library Details
                 </h3>
 
-                {/* Selected Movie & Edition Summary */}
-                <div className="bg-white rounded-lg p-3 border border-green-300 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' ? (
-                        <img
-                          src={selectedMovie.Poster}
-                          alt={selectedMovie.Title}
-                          className="w-10 h-14 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="w-10 h-14 bg-slate-200 rounded flex items-center justify-center">
-                          <Package className="h-5 w-5 text-slate-400" />
-                        </div>
-                      )}
-                      <div>
-                        <h4 className="font-semibold text-slate-900">{selectedMovie.Title}</h4>
-                        <p className="text-xs text-slate-600">{selectedMovie.Year}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getFormatBadgeColor(editionToAdd.format)}`}>
-                        {editionToAdd.format}
-                      </span>
-                      {editionToAdd.edition && (
-                        <p className="text-xs text-slate-600 mt-1">{editionToAdd.edition}</p>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-slate-600 italic">
-                    💡 Tip: Click a different edition above to change your selection
-                  </p>
-                </div>
-
                 <div className="space-y-6">
-                  {/* Item Status Selection */}
+                  {/* Item Status Selection - Compact single row */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-3">
-                      <Package className="inline h-4 w-4 mr-2" />
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Item Status
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {collectionTypeOptions.map((type) => {
                         const IconComponent = type.icon;
                         return (
@@ -608,25 +571,15 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             type="button"
                             onClick={() => setCollectionType(type.id as CollectionType)}
                             className={`
-                              p-4 rounded-lg border-2 text-left transition-all duration-200
+                              flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200
                               ${collectionType === type.id
                                 ? 'border-blue-500 bg-blue-50 text-blue-900'
                                 : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                               }
                             `}
                           >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <IconComponent className="h-4 w-4" />
-                                <span className="font-medium text-sm">{type.label}</span>
-                              </div>
-                              <ItemStatusBadge 
-                                type={type.id as CollectionType} 
-                                size="sm" 
-                                showLabel={false} 
-                              />
-                            </div>
-                            <p className="text-xs text-slate-600">{type.description}</p>
+                            <IconComponent className="h-4 w-4" />
+                            <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
                           </button>
                         );
                       })}
