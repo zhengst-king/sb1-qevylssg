@@ -1,5 +1,5 @@
-// src/lib/blurayApi.ts - UPDATED WITH PUBLIC SEARCH METHODS
-import { spawn } from 'child_process';
+// src/lib/blurayApi.ts - BROWSER-COMPATIBLE VERSION
+// Uses Supabase Edge Functions for server-side scraping
 import { supabase } from './supabase';
 
 export interface BlurayTechnicalSpecs {
@@ -30,7 +30,6 @@ export interface BlurayTechnicalSpecs {
   data_quality: 'complete' | 'partial' | 'minimal';
 }
 
-// Search result interface for physical media editions
 export interface BluraySearchResult {
   url: string;
   title: string;
@@ -45,7 +44,83 @@ export interface BluraySearchResult {
 class BlurayScrapingService {
   private readonly CACHE_DURATION_DAYS = 30; // Cache for 30 days
   
-  // Main method to get enhanced disc data
+  /**
+   * PUBLIC: Search blu-ray.com for physical media titles
+   * This is a mock implementation for now - returns sample data
+   * In production, this should call a Supabase Edge Function
+   */
+  async searchBlurayDotCom(query: string, year?: number): Promise<BluraySearchResult[]> {
+    console.log('[BlurayAPI] Searching blu-ray.com for:', query, year);
+    
+    try {
+      // For now, return mock data to prevent app crash
+      // TODO: Implement Edge Function call when ready
+      console.warn('[BlurayAPI] Using mock data - Edge Function not yet implemented');
+      
+      return this.getMockSearchResults(query, year);
+      
+      /* 
+      // Future implementation with Edge Function:
+      const { data, error } = await supabase.functions.invoke('bluray-search', {
+        body: { query, year }
+      });
+      
+      if (error) throw error;
+      return this.enhanceSearchResults(data.results || []);
+      */
+      
+    } catch (error) {
+      console.error('[BlurayAPI] Search error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * PUBLIC: Get detailed specs for a specific blu-ray.com URL
+   * This is a mock implementation for now
+   */
+  async scrapeDiscDetails(blurayUrl: string): Promise<BlurayTechnicalSpecs | null> {
+    console.log('[BlurayAPI] Fetching specs for:', blurayUrl);
+    
+    try {
+      // Check cache first
+      const cached = await this.getCachedSpecsByUrl(blurayUrl);
+      if (cached && this.isCacheValid(cached.scraped_at)) {
+        console.log('[BlurayAPI] Using cached specs');
+        return cached;
+      }
+      
+      // For now, return mock data
+      // TODO: Implement Edge Function call when ready
+      console.warn('[BlurayAPI] Using mock data - Edge Function not yet implemented');
+      
+      return this.getMockDiscDetails(blurayUrl);
+      
+      /*
+      // Future implementation with Edge Function:
+      const { data, error } = await supabase.functions.invoke('bluray-scrape', {
+        body: { url: blurayUrl }
+      });
+      
+      if (error) throw error;
+      
+      if (data.specs) {
+        await this.cacheSpecs(data.specs);
+        return data.specs;
+      }
+      
+      return null;
+      */
+      
+    } catch (error) {
+      console.error('[BlurayAPI] Scrape error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Main method to get enhanced disc data (EXISTING METHOD - UNCHANGED)
+   */
   async getDiscSpecs(title: string, year?: number): Promise<BlurayTechnicalSpecs | null> {
     try {
       // First check cache
@@ -79,171 +154,81 @@ class BlurayScrapingService {
     }
   }
 
-  /**
-   * PUBLIC: Search blu-ray.com for physical media titles
-   * Returns array of search results with URLs and enhanced metadata
-   */
-  async searchBlurayDotCom(query: string, year?: number): Promise<BluraySearchResult[]> {
-    return new Promise((resolve, reject) => {
-      const searchQuery = year ? `${query} ${year}` : query;
-      
-      // Use the scraper's search functionality
-      const process = spawn('python3', [
-        './scripts/blu-ray-scraper/blu-ray.py',
-        '--search-only',
-        '--query', searchQuery,
-        '--max-results', '10'
-      ]);
-
-      let output = '';
-      let errorOutput = '';
-
-      process.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      process.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          console.error('[BlurayAPI] Search error:', errorOutput);
-          reject(new Error(`Scraper failed: ${errorOutput}`));
-          return;
-        }
-
-        try {
-          const results = JSON.parse(output);
-          const searchResults = results.search_results || [];
-          
-          // Enhanced results with format detection and metadata
-          const enhancedResults: BluraySearchResult[] = searchResults.map((result: any) => {
-            // Detect format from title or explicit format field
-            let format = result.format || 'Blu-ray';
-            const titleLower = result.title.toLowerCase();
-            
-            if (titleLower.includes('4k') || titleLower.includes('ultra hd') || titleLower.includes('uhd')) {
-              format = '4K UHD';
-            } else if (titleLower.includes('dvd')) {
-              format = 'DVD';
-            } else if (titleLower.includes('3d')) {
-              format = '3D Blu-ray';
-            } else if (titleLower.includes('digital') || titleLower.includes('movies anywhere')) {
-              format = 'Digital';
-            }
-            
-            // Detect edition type
-            let edition = result.edition;
-            if (!edition) {
-              if (titleLower.includes('steelbook')) edition = 'Steelbook';
-              else if (titleLower.includes('collector')) edition = "Collector's Edition";
-              else if (titleLower.includes('limited')) edition = 'Limited Edition';
-              else if (titleLower.includes('special')) edition = 'Special Edition';
-              else if (titleLower.includes('criterion')) edition = 'Criterion Collection';
-            }
-            
-            return {
-              url: result.url,
-              title: result.title,
-              year: result.year,
-              format,
-              edition,
-              studio: result.studio,
-              releaseDate: result.release_date || result.releaseDate,
-              isDigital: format === 'Digital' || titleLower.includes('digital')
-            };
-          });
-          
-          resolve(enhancedResults);
-        } catch (parseError) {
-          console.error('[BlurayAPI] Parse error:', parseError);
-          reject(parseError);
-        }
-      });
-    });
+  // Mock data for development/testing
+  private getMockSearchResults(query: string, year?: number): BluraySearchResult[] {
+    const queryLower = query.toLowerCase();
+    
+    // Generate realistic mock results based on query
+    const mockResults: BluraySearchResult[] = [
+      {
+        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-4k`,
+        title: `${query}`,
+        year: year || 2020,
+        format: '4K UHD',
+        edition: 'Steelbook Edition',
+        studio: 'Universal Pictures',
+        releaseDate: 'June 2020'
+      },
+      {
+        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-bluray`,
+        title: `${query}`,
+        year: year || 2020,
+        format: 'Blu-ray',
+        edition: 'Standard Edition',
+        studio: 'Universal Pictures',
+        releaseDate: 'June 2020'
+      },
+      {
+        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-dvd`,
+        title: `${query}`,
+        year: year || 2020,
+        format: 'DVD',
+        edition: 'Widescreen',
+        studio: 'Universal Pictures',
+        releaseDate: 'June 2020'
+      },
+      {
+        url: `https://www.blu-ray.com/movies/${queryLower.replace(/\s+/g, '-')}-digital`,
+        title: `${query}`,
+        year: year || 2020,
+        format: 'Digital',
+        edition: 'Movies Anywhere',
+        studio: 'Universal Pictures',
+        releaseDate: 'June 2020',
+        isDigital: true
+      }
+    ];
+    
+    return mockResults;
   }
 
-  /**
-   * PUBLIC: Scrape detailed specifications for a specific blu-ray.com URL
-   * Returns complete technical specs for the physical media
-   */
-  async scrapeDiscDetails(blurayUrl: string): Promise<BlurayTechnicalSpecs | null> {
-    return new Promise((resolve, reject) => {
-      const process = spawn('python3', [
-        './scripts/blu-ray-scraper/blu-ray.py',
-        '--single-page',
-        blurayUrl,
-        '--output-format', 'json'
-      ]);
-
-      let output = '';
-      let errorOutput = '';
-
-      process.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      process.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      process.on('close', (code) => {
-        if (code !== 0) {
-          console.warn(`[BlurayAPI] Scraper warning for ${blurayUrl}: ${errorOutput}`);
-        }
-
-        try {
-          const rawData = JSON.parse(output);
-          const specs = this.parseScrapedData(rawData, blurayUrl);
-          resolve(specs);
-        } catch (parseError) {
-          console.error('[BlurayAPI] Parse error:', parseError);
-          resolve(null);
-        }
-      });
-    });
-  }
-
-  // Parse the raw scraped data into our format
-  private parseScrapedData(rawData: any, sourceUrl: string): BlurayTechnicalSpecs {
+  private getMockDiscDetails(url: string): BlurayTechnicalSpecs {
+    const id = this.generateId('mock-title', 2020);
+    
     return {
-      id: this.generateId(rawData.title, rawData.year),
-      title: rawData.title || 'Unknown',
-      year: parseInt(rawData.year) || new Date().getFullYear(),
-      
-      // Video specifications
-      video_codec: rawData.video_codec,
-      video_resolution: this.normalizeResolution(rawData.video_resolution),
-      hdr_format: rawData.hdr_format,
-      
-      // Audio specifications  
-      audio_codecs: Array.isArray(rawData.audio_codecs) ? rawData.audio_codecs : [],
-      audio_channels: Array.isArray(rawData.audio_channels) ? rawData.audio_channels : [],
-      
-      // Disc information
-      region_codes: Array.isArray(rawData.region_codes) ? rawData.region_codes : [],
-      disc_format: rawData.disc_format || 'Blu-ray',
-      studio: rawData.studio,
-      distributor: rawData.distributor,
-      release_date: rawData.release_date,
-      
-      // Additional data
-      special_features: Array.isArray(rawData.special_features) ? rawData.special_features : [],
-      upc_code: rawData.upc,
-      runtime_minutes: parseInt(rawData.runtime) || undefined,
-      aspect_ratio: rawData.aspect_ratio,
-      subtitles: Array.isArray(rawData.subtitles) ? rawData.subtitles : [],
-      languages: Array.isArray(rawData.languages) ? rawData.languages : [],
-      
-      // Metadata
+      id,
+      title: 'Mock Title',
+      year: 2020,
+      video_codec: 'HEVC',
+      video_resolution: '4K UHD',
+      hdr_format: 'HDR10',
+      audio_codecs: ['Dolby Atmos', 'DTS-HD MA 5.1'],
+      audio_channels: ['7.1', '5.1'],
+      region_codes: ['A'],
+      disc_format: '4K UHD',
+      studio: 'Universal Pictures',
+      release_date: 'June 2020',
+      special_features: ['Behind the Scenes', 'Deleted Scenes'],
+      aspect_ratio: '2.39:1',
+      subtitles: ['English', 'Spanish'],
+      languages: ['English'],
       scraped_at: new Date(),
-      bluray_com_url: sourceUrl,
-      data_quality: this.assessDataQuality(rawData)
+      bluray_com_url: url,
+      data_quality: 'partial'
     };
   }
 
-  // Cache specs in Supabase
+  // Cache management methods
   private async cacheSpecs(specs: BlurayTechnicalSpecs): Promise<void> {
     try {
       const { error } = await supabase
@@ -258,7 +243,6 @@ class BlurayScrapingService {
     }
   }
 
-  // Get cached specs
   private async getCachedSpecs(title: string, year?: number): Promise<BlurayTechnicalSpecs | null> {
     try {
       const id = this.generateId(title, year);
@@ -266,6 +250,22 @@ class BlurayScrapingService {
         .from('bluray_specs_cache')
         .select('*')
         .eq('id', id)
+        .single();
+      
+      if (error || !data) return null;
+      return data as BlurayTechnicalSpecs;
+    } catch (error) {
+      console.error('[BlurayAPI] Cache retrieval failed:', error);
+      return null;
+    }
+  }
+
+  private async getCachedSpecsByUrl(url: string): Promise<BlurayTechnicalSpecs | null> {
+    try {
+      const { data, error } = await supabase
+        .from('bluray_specs_cache')
+        .select('*')
+        .eq('bluray_com_url', url)
         .single();
       
       if (error || !data) return null;
@@ -337,7 +337,7 @@ class BlurayScrapingService {
 // Export singleton instance
 export const blurayApi = new BlurayScrapingService();
 
-// Export types
+// Export types for the Collections feature
 export interface PhysicalMediaCollection {
   id: string;
   user_id: string;
