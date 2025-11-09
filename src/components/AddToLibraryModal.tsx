@@ -1,5 +1,5 @@
 // src/components/AddToLibraryModal.tsx - SINGLE PAGE WITH EXPANDING SECTIONS
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Search, 
@@ -82,6 +82,22 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   const [personalRating, setPersonalRating] = useState('');
   const [notes, setNotes] = useState('');
   const [collectionType, setCollectionType] = useState<CollectionType>(defaultCollectionType);
+
+  // Handle Esc key to close modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscKey);
+      return () => {
+        document.removeEventListener('keydown', handleEscKey);
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -261,7 +277,14 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      {/* Backdrop - Click to close */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50"
+        onClick={handleClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden" flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0">
           <div>
