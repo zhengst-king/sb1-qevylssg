@@ -1,4 +1,4 @@
-// src/components/AddToLibraryModal.tsx - WITH AUTOMATIC TECHNICAL SPECS FETCHING
+// src/components/AddToLibraryModal.tsx - FIXED VERSION WITH ALWAYS-VISIBLE STEP 2 AND PROMINENT SPECS
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -82,6 +82,9 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   const [specsError, setSpecsError] = useState<string | null>(null);
   const [showSpecs, setShowSpecs] = useState(true);
   
+  // NEW: Step 2 collapsed state
+  const [step2Collapsed, setStep2Collapsed] = useState(false);
+  
   // Selected edition for adding
   const [editionToAdd, setEditionToAdd] = useState<SelectedEdition | null>(null);
   const [loadingEditionSpecs, setLoadingEditionSpecs] = useState(false);
@@ -134,8 +137,11 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         // Automatically fetch technical specs
         fetchTechnicalSpecs(blurayUrl);
         
-        // Auto-advance to details form after a brief delay
-        setTimeout(() => setShowDetailsForm(true), 800);
+        // Auto-advance to details form and collapse Step 2
+        setTimeout(() => {
+          setShowDetailsForm(true);
+          setStep2Collapsed(true);
+        }, 800);
       }
     }
   }, [blurayUrl]);
@@ -208,6 +214,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       setTechnicalSpecs(null);
       setSpecsError(null);
       setShowDetailsForm(false);
+      setStep2Collapsed(false);
       
     } catch (error) {
       console.error('[AddToLibrary] Error fetching movie details:', error);
@@ -251,6 +258,12 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     if (blurayUrl) {
       fetchTechnicalSpecs(blurayUrl);
     }
+  };
+
+  // NEW: Edit Step 2 (expand and go back)
+  const handleEditStep2 = () => {
+    setStep2Collapsed(false);
+    setShowDetailsForm(false);
   };
 
   // Add to library
@@ -314,6 +327,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     setEditionName('');
     setTechnicalSpecs(null);
     setSpecsError(null);
+    setStep2Collapsed(false);
   };
 
   const getFormatIcon = (format: string) => {
@@ -527,144 +541,160 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
               )}
             </div>
 
-            {/* SECTION 2: Find Edition on blu-ray.com - SHOWS AFTER MOVIE SELECTED */}
-            {selectedMovie && !showDetailsForm && (
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 animate-fadeIn">
-                <div className="flex items-start gap-4 mb-4">
-                  {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' && (
-                    <img 
-                      src={selectedMovie.Poster} 
-                      alt={selectedMovie.Title}
-                      className="w-16 h-24 object-cover rounded"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
-                      Step 2: Find Your Edition
-                    </h3>
-                    <p className="text-sm text-slate-600">
-                      {selectedMovie.Title} ({selectedMovie.Year})
-                    </p>
+            {/* SECTION 2: Find Edition on blu-ray.com - ALWAYS VISIBLE WHEN MOVIE SELECTED */}
+            {selectedMovie && (
+              <div className={`bg-purple-50 rounded-lg border border-purple-200 overflow-hidden animate-fadeIn ${
+                step2Collapsed ? 'cursor-pointer hover:bg-purple-100' : ''
+              }`}>
+                {/* Header - Always visible, collapsible when in Step 3 */}
+                <div 
+                  className={`flex items-center justify-between p-4 ${step2Collapsed ? '' : 'border-b border-purple-200'}`}
+                  onClick={step2Collapsed ? () => setStep2Collapsed(false) : undefined}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      {parsedEdition ? (
+                        <Check className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <Disc className="w-5 h-5 text-purple-600" />
+                      )}
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        Step 2: Find Your Edition
+                      </h3>
+                    </div>
+                    {parsedEdition && (
+                      <span className="text-sm text-green-600 font-medium">
+                        {parsedEdition.format} - {parsedEdition.editionName}
+                      </span>
+                    )}
                   </div>
+                  {step2Collapsed && (
+                    <button className="text-purple-600 hover:text-purple-800">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
-                <div className="bg-blue-900/10 border border-blue-500/30 rounded-lg p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-blue-900 mb-1">
-                        Why find your edition on blu-ray.com?
-                      </h4>
-                      <p className="text-sm text-slate-700">
-                        blu-ray.com has detailed specs for every edition (Steelbooks, 4K, Collector's Editions, etc.). 
-                        Find your exact disc and paste the URL below to auto-fill the format, edition name, and technical specifications.
+                {/* Content - Hidden when collapsed */}
+                {!step2Collapsed && (
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-start gap-4">
+                      {selectedMovie.Poster && selectedMovie.Poster !== 'N/A' && (
+                        <img 
+                          src={selectedMovie.Poster} 
+                          alt={selectedMovie.Title}
+                          className="w-16 h-24 object-cover rounded"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-sm text-slate-600 mb-2">
+                          {selectedMovie.Title} ({selectedMovie.Year})
+                        </p>
+                        <div className="bg-blue-900/10 border border-blue-500/30 rounded-lg p-3">
+                          <div className="flex items-start gap-2">
+                            <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs text-slate-700">
+                                Find your exact disc on blu-ray.com to auto-fill format, edition name, and technical specifications.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Search Options */}
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => handleOpenSearch('google')}
+                          className="flex items-center gap-2 p-2 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 hover:border-blue-500"
+                        >
+                          <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          <div className="text-left">
+                            <div className="font-medium text-slate-900 text-xs">Search Google</div>
+                          </div>
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenSearch('bluray')}
+                          className="flex items-center gap-2 p-2 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 hover:border-blue-500"
+                        >
+                          <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          <div className="text-left">
+                            <div className="font-medium text-slate-900 text-xs">Search blu-ray.com</div>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Copy Search Text */}
+                      <div className="bg-slate-100 rounded-lg p-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-slate-600 font-medium">Search text:</span>
+                          <button
+                            onClick={handleCopySearchText}
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="w-3 h-3" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <code className="text-slate-900 font-mono text-xs">
+                          {selectedMovie.Title} {selectedMovie.Year}
+                        </code>
+                      </div>
+                    </div>
+
+                    {/* Paste URL Field */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-slate-700">
+                        Paste edition URL from blu-ray.com:
+                      </label>
+                      <input
+                        type="text"
+                        value={blurayUrl}
+                        onChange={(e) => setBlurayUrl(e.target.value)}
+                        placeholder="https://www.blu-ray.com/movies/Iron-Man-4K-Blu-ray/225134/"
+                        className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
+                      />
+                      
+                      {parsedEdition && (
+                        <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+                          <Check className="w-4 h-4" />
+                          Edition detected: {parsedEdition.format} - {parsedEdition.editionName}
+                        </div>
+                      )}
+                      
+                      <p className="text-xs text-slate-500">
+                        After finding your edition, copy the URL from your browser address bar and paste it here.
                       </p>
                     </div>
-                  </div>
-                </div>
 
-                {/* Search Options */}
-                <div className="space-y-4 mb-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => handleOpenSearch('google')}
-                      className="flex items-center gap-3 p-3 bg-white hover:bg-slate-50 rounded-lg transition border-2 border-slate-200 hover:border-blue-500"
-                    >
-                      <ExternalLink className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                      <div className="text-left">
-                        <div className="font-medium text-slate-900 text-sm">Search Google</div>
-                        <div className="text-xs text-slate-500">Most reliable</div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => handleOpenSearch('bluray')}
-                      className="flex items-center gap-3 p-3 bg-white hover:bg-slate-50 rounded-lg transition border-2 border-slate-200 hover:border-blue-500"
-                    >
-                      <ExternalLink className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                      <div className="text-left">
-                        <div className="font-medium text-slate-900 text-sm">Search blu-ray.com</div>
-                        <div className="text-xs text-slate-500">Direct search</div>
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Copy Search Text */}
-                  <div className="bg-slate-100 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-slate-600 font-medium">Search text:</span>
-                      <button
-                        onClick={handleCopySearchText}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            Copy
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <code className="text-slate-900 font-mono text-sm">
-                      {selectedMovie.Title} {selectedMovie.Year}
-                    </code>
-                  </div>
-                </div>
-
-                {/* Paste URL Field */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Paste edition URL from blu-ray.com:
-                  </label>
-                  <input
-                    type="text"
-                    value={blurayUrl}
-                    onChange={(e) => setBlurayUrl(e.target.value)}
-                    placeholder="https://www.blu-ray.com/movies/Iron-Man-4K-Blu-ray/225134/"
-                    className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                  
-                  {parsedEdition && (
-                    <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-                      <Check className="w-4 h-4" />
-                      Edition detected: {parsedEdition.format} - {parsedEdition.editionName}
-                    </div>
-                  )}
-                  
-                  <p className="text-xs text-slate-500">
-                    After finding your edition, copy the URL from your browser address bar and paste it here.
-                  </p>
-                </div>
-
-                {/* NEW: Technical Specs Section */}
-                {parsedEdition && (
-                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    {/* Technical Specs Loading/Display */}
                     {loadingSpecs && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                          <div>
-                            <p className="text-sm font-medium text-blue-900">Loading technical specifications...</p>
-                            <p className="text-xs text-blue-700">This may take 3-5 seconds</p>
-                          </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <p className="text-xs text-blue-900">Loading technical specifications...</p>
                         </div>
                       </div>
                     )}
 
                     {specsError && !loadingSpecs && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm font-medium text-yellow-900">Could not load technical specs</p>
-                              <p className="text-xs text-yellow-700 mt-1">{specsError}</p>
-                            </div>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-yellow-900">{specsError}</p>
                           </div>
                           <button
                             onClick={handleRetrySpecs}
@@ -677,129 +707,23 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       </div>
                     )}
 
-                    {technicalSpecs && !loadingSpecs && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg overflow-hidden">
+                    {/* Skip Option */}
+                    {!parsedEdition && (
+                      <div className="border-t border-slate-200 pt-3">
                         <button
-                          onClick={() => setShowSpecs(!showSpecs)}
-                          className="w-full flex items-center justify-between p-4 hover:bg-green-100 transition"
+                          onClick={() => {
+                            setShowDetailsForm(true);
+                            setStep2Collapsed(true);
+                          }}
+                          className="text-slate-600 hover:text-slate-900 text-sm flex items-center gap-1"
                         >
-                          <div className="flex items-center gap-2">
-                            <Check className="w-5 h-5 text-green-600" />
-                            <span className="text-sm font-semibold text-green-900">
-                              Technical Specifications Loaded
-                            </span>
-                          </div>
-                          {showSpecs ? (
-                            <ChevronUp className="w-4 h-4 text-green-700" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-green-700" />
-                          )}
+                          Skip and enter details manually
+                          <ChevronRight className="w-4 h-4" />
                         </button>
-                        
-                        {showSpecs && (
-                          <div className="p-4 bg-white border-t border-green-200 space-y-4 text-sm">
-                            {/* Video Specs */}
-                            {(technicalSpecs.video_codec || technicalSpecs.video_resolution || technicalSpecs.aspect_ratio) && (
-                              <div>
-                                <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                                  <Monitor className="w-4 h-4 text-blue-600" />
-                                  Video
-                                </h5>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                  {technicalSpecs.video_codec && (
-                                    <div>
-                                      <span className="text-slate-600">Codec:</span>{' '}
-                                      <span className="font-medium text-slate-900">{technicalSpecs.video_codec}</span>
-                                    </div>
-                                  )}
-                                  {technicalSpecs.video_resolution && (
-                                    <div>
-                                      <span className="text-slate-600">Resolution:</span>{' '}
-                                      <span className="font-medium text-slate-900">{technicalSpecs.video_resolution}</span>
-                                    </div>
-                                  )}
-                                  {technicalSpecs.aspect_ratio && (
-                                    <div>
-                                      <span className="text-slate-600">Aspect ratio:</span>{' '}
-                                      <span className="font-medium text-slate-900">{technicalSpecs.aspect_ratio}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Audio Specs */}
-                            {technicalSpecs.audio_tracks && technicalSpecs.audio_tracks.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                                  <Volume2 className="w-4 h-4 text-green-600" />
-                                  Audio ({technicalSpecs.audio_tracks.length} track{technicalSpecs.audio_tracks.length !== 1 ? 's' : ''})
-                                </h5>
-                                <div className="space-y-1 text-xs">
-                                  {technicalSpecs.audio_tracks.slice(0, 3).map((track, index) => (
-                                    <div key={index} className="text-slate-700">
-                                      • {track}
-                                    </div>
-                                  ))}
-                                  {technicalSpecs.audio_tracks.length > 3 && (
-                                    <div className="text-slate-500 italic">
-                                      + {technicalSpecs.audio_tracks.length - 3} more
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Subtitles */}
-                            {technicalSpecs.subtitles && technicalSpecs.subtitles.length > 0 && (
-                              <div>
-                                <h5 className="font-semibold text-slate-900 mb-2">Subtitles</h5>
-                                <div className="text-xs text-slate-700">
-                                  {technicalSpecs.subtitles.join(', ')}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Disc Info */}
-                            {(technicalSpecs.disc_type || technicalSpecs.region) && (
-                              <div>
-                                <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
-                                  <Disc className="w-4 h-4 text-purple-600" />
-                                  Disc
-                                </h5>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                  {technicalSpecs.disc_type && (
-                                    <div>
-                                      <span className="text-slate-600">Type:</span>{' '}
-                                      <span className="font-medium text-slate-900">{technicalSpecs.disc_type}</span>
-                                    </div>
-                                  )}
-                                  {technicalSpecs.region && (
-                                    <div>
-                                      <span className="text-slate-600">Region:</span>{' '}
-                                      <span className="font-medium text-slate-900">{technicalSpecs.region}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
                 )}
-
-                {/* Skip Option */}
-                <div className="border-t border-slate-200 pt-4 mt-4">
-                  <button
-                    onClick={() => setShowDetailsForm(true)}
-                    className="text-slate-600 hover:text-slate-900 text-sm flex items-center gap-1"
-                  >
-                    Skip and enter details manually
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
             )}
 
@@ -812,7 +736,119 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                 </h3>
 
                 <div className="space-y-6">
-                  {/* Item Status Selection - Compact single row */}
+                  {/* Technical Specs Display - Prominent at top of form */}
+                  {technicalSpecs && (
+                    <div className="bg-white border-2 border-green-500 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => setShowSpecs(!showSpecs)}
+                        className="w-full flex items-center justify-between p-4 hover:bg-green-50 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Check className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-semibold text-green-900">
+                            Technical Specifications Loaded
+                          </span>
+                        </div>
+                        {showSpecs ? (
+                          <ChevronUp className="w-4 h-4 text-green-700" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-green-700" />
+                        )}
+                      </button>
+                      
+                      {showSpecs && (
+                        <div className="p-4 bg-white border-t border-green-200 space-y-4 text-sm">
+                          {/* Video Specs */}
+                          {(technicalSpecs.video_codec || technicalSpecs.video_resolution || technicalSpecs.aspect_ratio) && (
+                            <div>
+                              <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                <Monitor className="w-4 h-4 text-blue-600" />
+                                Video
+                              </h5>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {technicalSpecs.video_codec && (
+                                  <div>
+                                    <span className="text-slate-600">Codec:</span>{' '}
+                                    <span className="font-medium text-slate-900">{technicalSpecs.video_codec}</span>
+                                  </div>
+                                )}
+                                {technicalSpecs.video_resolution && (
+                                  <div>
+                                    <span className="text-slate-600">Resolution:</span>{' '}
+                                    <span className="font-medium text-slate-900">{technicalSpecs.video_resolution}</span>
+                                  </div>
+                                )}
+                                {technicalSpecs.aspect_ratio && (
+                                  <div>
+                                    <span className="text-slate-600">Aspect ratio:</span>{' '}
+                                    <span className="font-medium text-slate-900">{technicalSpecs.aspect_ratio}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Audio Specs */}
+                          {technicalSpecs.audio_tracks && technicalSpecs.audio_tracks.length > 0 && (
+                            <div>
+                              <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                <Volume2 className="w-4 h-4 text-green-600" />
+                                Audio ({technicalSpecs.audio_tracks.length} track{technicalSpecs.audio_tracks.length !== 1 ? 's' : ''})
+                              </h5>
+                              <div className="space-y-1 text-xs">
+                                {technicalSpecs.audio_tracks.slice(0, 3).map((track, index) => (
+                                  <div key={index} className="text-slate-700">
+                                    • {track}
+                                  </div>
+                                ))}
+                                {technicalSpecs.audio_tracks.length > 3 && (
+                                  <div className="text-slate-500 italic">
+                                    + {technicalSpecs.audio_tracks.length - 3} more
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Subtitles */}
+                          {technicalSpecs.subtitles && technicalSpecs.subtitles.length > 0 && (
+                            <div>
+                              <h5 className="font-semibold text-slate-900 mb-2">Subtitles</h5>
+                              <div className="text-xs text-slate-700">
+                                {technicalSpecs.subtitles.join(', ')}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Disc Info */}
+                          {(technicalSpecs.disc_type || technicalSpecs.region) && (
+                            <div>
+                              <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                <Disc className="w-4 h-4 text-purple-600" />
+                                Disc
+                              </h5>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {technicalSpecs.disc_type && (
+                                  <div>
+                                    <span className="text-slate-600">Type:</span>{' '}
+                                    <span className="font-medium text-slate-900">{technicalSpecs.disc_type}</span>
+                                  </div>
+                                )}
+                                {technicalSpecs.region && (
+                                  <div>
+                                    <span className="text-slate-600">Region:</span>{' '}
+                                    <span className="font-medium text-slate-900">{technicalSpecs.region}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Item Status Selection */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Item Status
@@ -874,7 +910,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     </div>
                   </div>
 
-                  {/* Physical Details */}
+                  {/* Condition */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
