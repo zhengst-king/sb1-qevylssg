@@ -197,6 +197,8 @@ export interface PhysicalMediaCollection {
   collection_type?: CollectionType;
   created_at: string;
   updated_at: string;
+  edition_name?: string;
+  bluray_com_url?: string;
 };
 
 // Type aliases for semantic clarity in Media Library components
