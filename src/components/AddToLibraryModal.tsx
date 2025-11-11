@@ -1,4 +1,4 @@
-// src/components/AddToLibraryModal.tsx - SINGLE PAGE WITH EXPANDING SECTIONS
+// src/components/AddToLibraryModal.tsx - WITH AUTOMATIC TECHNICAL SPECS FETCHING
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -24,7 +24,9 @@ import {
   Edit2,
   Plus,
   Tv,
-  Copy
+  Copy,
+  RefreshCw,
+  ChevronUp
 } from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
 import { blurayApi } from '../lib/blurayApi';
@@ -74,6 +76,12 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   const [parsedEdition, setParsedEdition] = useState<BlurayEditionInfo | null>(null);
   const [copied, setCopied] = useState(false);
   
+  // NEW: Technical specs state
+  const [technicalSpecs, setTechnicalSpecs] = useState<BlurayTechnicalSpecs | null>(null);
+  const [loadingSpecs, setLoadingSpecs] = useState(false);
+  const [specsError, setSpecsError] = useState<string | null>(null);
+  const [showSpecs, setShowSpecs] = useState(true);
+  
   // Selected edition for adding
   const [editionToAdd, setEditionToAdd] = useState<SelectedEdition | null>(null);
   const [loadingEditionSpecs, setLoadingEditionSpecs] = useState(false);
@@ -111,7 +119,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     }
   }, [isOpen]);
 
-  // NEW: Parse blu-ray.com URL when user pastes it
+  // NEW: Parse blu-ray.com URL and fetch technical specs
   useEffect(() => {
     if (blurayUrl) {
       const parsed = blurayLinkService.parseBlurayUrl(blurayUrl);
@@ -123,11 +131,37 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         if (parsed.format) setFormat(parsed.format);
         if (parsed.editionName) setEditionName(parsed.editionName);
         
+        // Automatically fetch technical specs
+        fetchTechnicalSpecs(blurayUrl);
+        
         // Auto-advance to details form after a brief delay
-        setTimeout(() => setShowDetailsForm(true), 500);
+        setTimeout(() => setShowDetailsForm(true), 800);
       }
     }
   }, [blurayUrl]);
+
+  // NEW: Fetch technical specs from blu-ray.com
+  const fetchTechnicalSpecs = async (url: string) => {
+    try {
+      setLoadingSpecs(true);
+      setSpecsError(null);
+      console.log('[AddToLibrary] Fetching technical specs from:', url);
+      
+      const specs = await blurayApi.scrapeDiscDetails(url);
+      
+      if (specs) {
+        setTechnicalSpecs(specs);
+        console.log('[AddToLibrary] Technical specs loaded:', specs);
+      } else {
+        setSpecsError('No technical specifications found on this page.');
+      }
+    } catch (error) {
+      console.error('[AddToLibrary] Error fetching technical specs:', error);
+      setSpecsError('Failed to load technical specifications. You can still add the item.');
+    } finally {
+      setLoadingSpecs(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -171,6 +205,8 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       // Clear previous blu-ray URL and form
       setBlurayUrl('');
       setParsedEdition(null);
+      setTechnicalSpecs(null);
+      setSpecsError(null);
       setShowDetailsForm(false);
       
     } catch (error) {
@@ -210,6 +246,13 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // NEW: Retry fetching specs
+  const handleRetrySpecs = () => {
+    if (blurayUrl) {
+      fetchTechnicalSpecs(blurayUrl);
+    }
+  };
+
   // Add to library
   const handleAddToLibrary = async () => {
     if (!selectedMovie) return;
@@ -232,9 +275,10 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         personal_rating: personalRating ? parseInt(personalRating) : undefined,
         notes: notes || undefined,
         collection_type: collectionType,
-        // NEW: Store blu-ray.com URL and edition name if provided
+        // NEW: Store blu-ray.com URL, edition name, and technical specs
         edition_name: editionName || undefined,
-        bluray_com_url: parsedEdition?.url || undefined
+        bluray_com_url: parsedEdition?.url || undefined,
+        technical_specs: technicalSpecs || undefined
       };
 
       await onAdd(libraryItem);
@@ -268,6 +312,8 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     setParsedEdition(null);
     setFormat('Blu-ray');
     setEditionName('');
+    setTechnicalSpecs(null);
+    setSpecsError(null);
   };
 
   const getFormatIcon = (format: string) => {
@@ -384,8 +430,6 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[500px] overflow-y-auto">
                     {movieSearchResults.map((movie) => {
                       const isSelected = selectedMovie?.imdbID === movie.imdbID;
-                      // Note: We don't know if it's in watchlist yet without checking
-                      // For now, we'll show + icon and link to TMDB
                       const tmdbUrl = `https://www.themoviedb.org/search?query=${encodeURIComponent(movie.Title)}`;
                       
                       return (
@@ -513,7 +557,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       </h4>
                       <p className="text-sm text-slate-700">
                         blu-ray.com has detailed specs for every edition (Steelbooks, 4K, Collector's Editions, etc.). 
-                        Find your exact disc and paste the URL below to auto-fill the format and edition name.
+                        Find your exact disc and paste the URL below to auto-fill the format, edition name, and technical specifications.
                       </p>
                     </div>
                   </div>
@@ -597,6 +641,155 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                   </p>
                 </div>
 
+                {/* NEW: Technical Specs Section */}
+                {parsedEdition && (
+                  <div className="mt-4 border-t border-slate-200 pt-4">
+                    {loadingSpecs && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                          <div>
+                            <p className="text-sm font-medium text-blue-900">Loading technical specifications...</p>
+                            <p className="text-xs text-blue-700">This may take 3-5 seconds</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {specsError && !loadingSpecs && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-yellow-900">Could not load technical specs</p>
+                              <p className="text-xs text-yellow-700 mt-1">{specsError}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleRetrySpecs}
+                            className="flex items-center gap-1 text-xs text-yellow-700 hover:text-yellow-900"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            Retry
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {technicalSpecs && !loadingSpecs && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setShowSpecs(!showSpecs)}
+                          className="w-full flex items-center justify-between p-4 hover:bg-green-100 transition"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Check className="w-5 h-5 text-green-600" />
+                            <span className="text-sm font-semibold text-green-900">
+                              Technical Specifications Loaded
+                            </span>
+                          </div>
+                          {showSpecs ? (
+                            <ChevronUp className="w-4 h-4 text-green-700" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-green-700" />
+                          )}
+                        </button>
+                        
+                        {showSpecs && (
+                          <div className="p-4 bg-white border-t border-green-200 space-y-4 text-sm">
+                            {/* Video Specs */}
+                            {(technicalSpecs.video_codec || technicalSpecs.video_resolution || technicalSpecs.aspect_ratio) && (
+                              <div>
+                                <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                  <Monitor className="w-4 h-4 text-blue-600" />
+                                  Video
+                                </h5>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  {technicalSpecs.video_codec && (
+                                    <div>
+                                      <span className="text-slate-600">Codec:</span>{' '}
+                                      <span className="font-medium text-slate-900">{technicalSpecs.video_codec}</span>
+                                    </div>
+                                  )}
+                                  {technicalSpecs.video_resolution && (
+                                    <div>
+                                      <span className="text-slate-600">Resolution:</span>{' '}
+                                      <span className="font-medium text-slate-900">{technicalSpecs.video_resolution}</span>
+                                    </div>
+                                  )}
+                                  {technicalSpecs.aspect_ratio && (
+                                    <div>
+                                      <span className="text-slate-600">Aspect ratio:</span>{' '}
+                                      <span className="font-medium text-slate-900">{technicalSpecs.aspect_ratio}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Audio Specs */}
+                            {technicalSpecs.audio_tracks && technicalSpecs.audio_tracks.length > 0 && (
+                              <div>
+                                <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                  <Volume2 className="w-4 h-4 text-green-600" />
+                                  Audio ({technicalSpecs.audio_tracks.length} track{technicalSpecs.audio_tracks.length !== 1 ? 's' : ''})
+                                </h5>
+                                <div className="space-y-1 text-xs">
+                                  {technicalSpecs.audio_tracks.slice(0, 3).map((track, index) => (
+                                    <div key={index} className="text-slate-700">
+                                      • {track}
+                                    </div>
+                                  ))}
+                                  {technicalSpecs.audio_tracks.length > 3 && (
+                                    <div className="text-slate-500 italic">
+                                      + {technicalSpecs.audio_tracks.length - 3} more
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Subtitles */}
+                            {technicalSpecs.subtitles && technicalSpecs.subtitles.length > 0 && (
+                              <div>
+                                <h5 className="font-semibold text-slate-900 mb-2">Subtitles</h5>
+                                <div className="text-xs text-slate-700">
+                                  {technicalSpecs.subtitles.join(', ')}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Disc Info */}
+                            {(technicalSpecs.disc_type || technicalSpecs.region) && (
+                              <div>
+                                <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                                  <Disc className="w-4 h-4 text-purple-600" />
+                                  Disc
+                                </h5>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  {technicalSpecs.disc_type && (
+                                    <div>
+                                      <span className="text-slate-600">Type:</span>{' '}
+                                      <span className="font-medium text-slate-900">{technicalSpecs.disc_type}</span>
+                                    </div>
+                                  )}
+                                  {technicalSpecs.region && (
+                                    <div>
+                                      <span className="text-slate-600">Region:</span>{' '}
+                                      <span className="font-medium text-slate-900">{technicalSpecs.region}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Skip Option */}
                 <div className="border-t border-slate-200 pt-4 mt-4">
                   <button
@@ -610,7 +803,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
               </div>
             )}
 
-            {/* SECTION 3: Library Details Form - SHOWS WHEN EDITION SELECTED */}
+            {/* SECTION 3: Library Details Form - SHOWS WHEN DETAILS FORM SHOWN */}
             {showDetailsForm && selectedMovie && (
               <div className="bg-green-50 rounded-lg p-4 border border-green-200 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
