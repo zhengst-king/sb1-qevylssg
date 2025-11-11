@@ -1,4 +1,4 @@
-// src/components/AddToLibraryModal.tsx - MODIFIED WITH SMART LINKING
+// src/components/AddToLibraryModal.tsx - SINGLE PAGE WITH EXPANDING SECTIONS
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -24,103 +24,29 @@ import {
   Edit2,
   Plus,
   Tv,
-  Copy,
-  CheckCircle
+  Copy
 } from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
+import { blurayApi } from '../lib/blurayApi';
 import { ItemStatusBadge } from './ItemStatusBadge';
 import type { PhysicalMediaCollection, CollectionType, BlurayTechnicalSpecs } from '../lib/supabase';
+import { blurayLinkService } from '../services/blurayLinkService';
+import type { BlurayEditionInfo } from '../services/blurayLinkService';
 
-// NEW: Import the smart linking service
-interface BlurayEditionInfo {
+interface BlurayEdition {
   url: string;
-  editionName?: string;
-  format?: 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray';
-  id?: string;
+  title: string;
+  year: number;
+  format: string;
+  edition?: string;
+  studio?: string;
+  releaseDate?: string;
+  isDigital?: boolean;
 }
 
-// NEW: Smart linking service (inline for now, move to separate file later)
-class BlurayLinkService {
-  private readonly BLURAY_BASE_URL = 'https://www.blu-ray.com';
-
-  generateGoogleSearchLink(title: string, year?: number): string {
-    const searchQuery = year 
-      ? `site:blu-ray.com "${title}" ${year}`
-      : `site:blu-ray.com "${title}"`;
-    return `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
-  }
-
-  generateBluraySearchLink(title: string, year?: number): string {
-    const searchQuery = year ? `${title} ${year}` : title;
-    return `${this.BLURAY_BASE_URL}/search/?quicksearch=1&quicksearch_keyword=${encodeURIComponent(searchQuery)}&section=bluraymovies`;
-  }
-
-  parseBlurayUrl(url: string): BlurayEditionInfo | null {
-    try {
-      const movieMatch = url.match(/blu-ray\.com\/movies\/([^/]+)\/(\d+)/i);
-      
-      if (movieMatch) {
-        const editionSlug = movieMatch[1];
-        const id = movieMatch[2];
-        
-        return {
-          url,
-          editionName: this.parseEditionName(editionSlug),
-          format: this.detectFormatFromSlug(editionSlug),
-          id
-        };
-      }
-
-      const shortMatch = url.match(/blu-ray\.com\/([^/]+)\/(\d+)/i);
-      if (shortMatch) {
-        const editionSlug = shortMatch[1];
-        const id = shortMatch[2];
-        
-        return {
-          url,
-          editionName: this.parseEditionName(editionSlug),
-          format: this.detectFormatFromSlug(editionSlug),
-          id
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error('[BlurayLink] Error parsing URL:', error);
-      return null;
-    }
-  }
-
-  private detectFormatFromSlug(slug: string): 'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray' | undefined {
-    const lowerSlug = slug.toLowerCase();
-    
-    if (lowerSlug.includes('-4k-') || lowerSlug.includes('-uhd-')) return '4K UHD';
-    if (lowerSlug.includes('-3d-blu-ray') || lowerSlug.includes('-3d-')) return '3D Blu-ray';
-    if (lowerSlug.includes('-blu-ray')) return 'Blu-ray';
-    if (lowerSlug.includes('-dvd')) return 'DVD';
-    
-    return 'Blu-ray';
-  }
-
-  private parseEditionName(slug: string): string {
-    let name = slug.replace(/-/g, ' ');
-    name = name.replace(/\s+(Blu ray|DVD|4K|UHD|3D)\s*$/i, '');
-    return name.split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ').trim();
-  }
-
-  isBlurayUrl(url: string): boolean {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.hostname === 'www.blu-ray.com' || urlObj.hostname === 'blu-ray.com';
-    } catch {
-      return false;
-    }
-  }
+interface SelectedEdition extends BlurayEdition {
+  specs?: BlurayTechnicalSpecs;
 }
-
-const blurayLinkService = new BlurayLinkService();
 
 interface AddToLibraryModalProps {
   isOpen: boolean;
@@ -138,18 +64,29 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   // Selected movie state
   const [selectedMovie, setSelectedMovie] = useState<any>(null);
   
+  // Physical editions state
+  const [physicalEditions, setPhysicalEditions] = useState<BlurayEdition[]>([]);
+  const [selectedEditions, setSelectedEditions] = useState<Set<string>>(new Set());
+  const [loadingEditions, setLoadingEditions] = useState(false);
+  
   // NEW: blu-ray.com linking state
   const [blurayUrl, setBlurayUrl] = useState('');
   const [parsedEdition, setParsedEdition] = useState<BlurayEditionInfo | null>(null);
   const [copied, setCopied] = useState(false);
   
+  // Selected edition for adding
+  const [editionToAdd, setEditionToAdd] = useState<SelectedEdition | null>(null);
+  const [loadingEditionSpecs, setLoadingEditionSpecs] = useState(false);
+  
   // Form visibility
   const [showDetailsForm, setShowDetailsForm] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  // Form state
+  // NEW: Format and edition name state (moved from inline to allow pre-filling)
   const [format, setFormat] = useState<'DVD' | 'Blu-ray' | '4K UHD' | '3D Blu-ray'>('Blu-ray');
   const [editionName, setEditionName] = useState('');
+
+  // Form state
   const [condition, setCondition] = useState<'New' | 'Like New' | 'Good' | 'Fair' | 'Poor'>('New');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
@@ -157,24 +94,6 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   const [personalRating, setPersonalRating] = useState('');
   const [notes, setNotes] = useState('');
   const [collectionType, setCollectionType] = useState<CollectionType>(defaultCollectionType);
-
-  // NEW: Parse blu-ray.com URL when user pastes it
-  useEffect(() => {
-    if (blurayUrl) {
-      const parsed = blurayLinkService.parseBlurayUrl(blurayUrl);
-      
-      if (parsed) {
-        setParsedEdition(parsed);
-        
-        // Auto-fill form
-        if (parsed.format) setFormat(parsed.format);
-        if (parsed.editionName) setEditionName(parsed.editionName);
-        
-        // Auto-advance to details form
-        setTimeout(() => setShowDetailsForm(true), 500);
-      }
-    }
-  }, [blurayUrl]);
 
   // Handle Esc key to close modal
   useEffect(() => {
@@ -192,27 +111,25 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // NEW: Parse blu-ray.com URL when user pastes it
+  useEffect(() => {
+    if (blurayUrl) {
+      const parsed = blurayLinkService.parseBlurayUrl(blurayUrl);
+      
+      if (parsed) {
+        setParsedEdition(parsed);
+        
+        // Auto-fill form
+        if (parsed.format) setFormat(parsed.format);
+        if (parsed.editionName) setEditionName(parsed.editionName);
+        
+        // Auto-advance to details form after a brief delay
+        setTimeout(() => setShowDetailsForm(true), 500);
+      }
+    }
+  }, [blurayUrl]);
 
-  const handleClose = () => {
-    // Reset all state
-    setSearchQuery('');
-    setMovieSearchResults([]);
-    setSelectedMovie(null);
-    setBlurayUrl('');
-    setParsedEdition(null);
-    setShowDetailsForm(false);
-    setFormat('Blu-ray');
-    setEditionName('');
-    setCondition('New');
-    setPurchaseDate('');
-    setPurchasePrice('');
-    setPurchaseLocation('');
-    setPersonalRating('');
-    setNotes('');
-    setCollectionType(defaultCollectionType);
-    onClose();
-  };
+  if (!isOpen) return null;
 
   // STEP 1: Search for Movie/TV Show
   const handleMovieSearch = async () => {
@@ -260,6 +177,13 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       console.error('[AddToLibrary] Error fetching movie details:', error);
       alert('Failed to load movie details. Please try again.');
     }
+  };
+
+  // Clear selected edition and go back to editions
+  const handleClearEdition = () => {
+    setEditionToAdd(null);
+    setShowDetailsForm(false);
+    setSelectedEditions(new Set());
   };
 
   // NEW: Handle search link opening
@@ -316,26 +240,102 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       await onAdd(libraryItem);
       handleClose();
     } catch (error) {
-      console.error('[AddToLibrary] Error adding to library:', error);
-      alert('Failed to add to library. Please try again.');
+      console.error('[AddToLibrary] Failed to add to library:', error);
+      alert('Failed to add item to library. Please try again.');
     } finally {
       setAdding(false);
     }
   };
 
+  const handleClose = () => {
+    onClose();
+    setSearchQuery('');
+    setMovieSearchResults([]);
+    setSelectedMovie(null);
+    setPhysicalEditions([]);
+    setSelectedEditions(new Set());
+    setEditionToAdd(null);
+    setShowDetailsForm(false);
+    setPurchaseDate('');
+    setPurchasePrice('');
+    setPurchaseLocation('');
+    setCondition('New');
+    setPersonalRating('');
+    setNotes('');
+    setCollectionType(defaultCollectionType);
+    // NEW: Reset blu-ray.com linking state
+    setBlurayUrl('');
+    setParsedEdition(null);
+    setFormat('Blu-ray');
+    setEditionName('');
+  };
+
+  const getFormatIcon = (format: string) => {
+    if (format.includes('4K') || format.includes('UHD')) return Monitor;
+    if (format.includes('DVD')) return FileVideo;
+    if (format.includes('3D')) return Package;
+    return Disc;
+  };
+
+  const getFormatBadgeColor = (format: string) => {
+    if (format.includes('4K') || format.includes('UHD')) return 'bg-purple-100 text-purple-800 border-purple-200';
+    if (format.includes('DVD')) return 'bg-red-100 text-red-800 border-red-200';
+    if (format.includes('3D')) return 'bg-green-100 text-green-800 border-green-200';
+    if (format.includes('Digital') || format.includes('Movies Anywhere')) return 'bg-blue-100 text-blue-800 border-blue-200';
+    return 'bg-blue-100 text-blue-800 border-blue-200';
+  };
+
   const collectionTypeOptions = [
-    { id: 'owned', label: 'Owned', icon: Package },
-    { id: 'wishlist', label: 'Wishlist', icon: Heart },
-    { id: 'loaned_out', label: 'Loaned Out', icon: UserCheck },
-    { id: 'for_sale', label: 'For Sale', icon: DollarSign }
+    { 
+      id: 'owned', 
+      label: 'Add to Library', 
+      description: 'I own this item',
+      icon: Package,
+      color: 'blue' as const
+    },
+    { 
+      id: 'wishlist', 
+      label: 'Add to Wishlist', 
+      description: 'I want to buy this',
+      icon: Heart,
+      color: 'red' as const
+    },
+    { 
+      id: 'for_sale', 
+      label: 'Mark for Sale', 
+      description: 'I\'m selling this item',
+      icon: DollarSign,
+      color: 'green' as const
+    },
+    { 
+      id: 'loaned_out', 
+      label: 'Loaned Out', 
+      description: 'Someone borrowed this',
+      icon: UserCheck,
+      color: 'orange' as const
+    }
   ];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      {/* Backdrop - Click to close */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50"
+        onClick={handleClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
-          <h2 className="text-2xl font-bold text-slate-900">Add to My Library</h2>
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Add to Library</h2>
+            <p className="text-sm text-slate-600 mt-1">
+              {!selectedMovie && 'Search for a movie or TV show'}
+              {selectedMovie && !showDetailsForm && 'Find your edition on blu-ray.com'}
+              {selectedMovie && showDetailsForm && 'Enter purchase details'}
+            </p>
+          </div>
           <button
             onClick={handleClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -344,73 +344,146 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-
-            {/* SECTION 1: Movie/TV Search */}
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto flex-1">
+          <div className="p-6 space-y-6">
+            
+            {/* SECTION 1: Movie/TV Search - ALWAYS VISIBLE */}
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center">
                 <Search className="h-5 w-5 mr-2 text-blue-600" />
-                Step 1: Search for Movie or TV Show
+                Step 1: Search Movie or TV Show
               </h3>
 
-              <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Search by title..."
-                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={handleMovieSearch}
-                    disabled={searching || !searchQuery.trim()}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
-                  >
-                    {searching ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    ) : (
-                      <>
-                        <Search className="h-5 w-5" />
-                        <span>Search</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Search Results */}
-                {movieSearchResults.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
-                    {movieSearchResults.map((movie) => (
-                      <button
-                        key={movie.imdbID}
-                        onClick={() => handleMovieSelect(movie)}
-                        className="text-left hover:bg-blue-100 rounded-lg p-2 transition-colors border-2 border-transparent hover:border-blue-500"
-                      >
-                        {movie.Poster && movie.Poster !== 'N/A' ? (
-                          <img
-                            src={movie.Poster}
-                            alt={movie.Title}
-                            className="w-full h-40 object-cover rounded mb-2"
-                          />
-                        ) : (
-                          <div className="w-full h-40 bg-slate-200 rounded mb-2 flex items-center justify-center">
-                            <FileVideo className="h-12 w-12 text-slate-400" />
-                          </div>
-                        )}
-                        <p className="font-medium text-sm text-slate-900 line-clamp-2">{movie.Title}</p>
-                        <p className="text-xs text-slate-500">{movie.Year}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+              {/* Search Bar - ALWAYS VISIBLE */}
+              <div className="flex space-x-2 mb-4">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Search by title (e.g., 'The Equalizer', 'Inception')"
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  onClick={handleMovieSearch}
+                  disabled={searching || !searchQuery.trim()}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Search className="h-4 w-4" />
+                  <span>{searching ? 'Searching...' : 'Search'}</span>
+                </button>
               </div>
+
+              {/* Movie Search Results - ALWAYS VISIBLE IF THERE ARE RESULTS */}
+              {movieSearchResults.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-sm text-slate-600 mb-2">
+                    Found {movieSearchResults.length} results:
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[500px] overflow-y-auto">
+                    {movieSearchResults.map((movie) => {
+                      const isSelected = selectedMovie?.imdbID === movie.imdbID;
+                      // Note: We don't know if it's in watchlist yet without checking
+                      // For now, we'll show + icon and link to TMDB
+                      const tmdbUrl = `https://www.themoviedb.org/search?query=${encodeURIComponent(movie.Title)}`;
+                      
+                      return (
+                        <div
+                          key={movie.imdbID}
+                          className={`group relative rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
+                            isSelected ? 'ring-2 ring-blue-500' : ''
+                          }`}
+                        >
+                          {/* Poster - Clickable to view on TMDB */}
+                          <div 
+                            className="aspect-[2/3] bg-slate-200 relative overflow-hidden cursor-pointer"
+                            onClick={() => window.open(tmdbUrl, '_blank')}
+                          >
+                            {movie.Poster && movie.Poster !== 'N/A' ? (
+                              <img
+                                src={movie.Poster}
+                                alt={movie.Title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                {movie.Type === 'series' ? (
+                                  <Monitor className="h-12 w-12 text-slate-400" />
+                                ) : (
+                                  <FileVideo className="h-12 w-12 text-slate-400" />
+                                )}
+                              </div>
+                            )}
+
+                            {/* Upper Left: Rating Badge (if available) */}
+                            {movie.imdbRating && movie.imdbRating !== 'N/A' && (
+                              <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
+                                <div className="flex items-center space-x-1">
+                                  <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                                  <span className="text-white text-xs font-semibold">
+                                    {parseFloat(movie.imdbRating).toFixed(1)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Upper Right: View on TMDB Button */}
+                            <a
+                              href={tmdbUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors z-10"
+                              title="View on TMDB"
+                            >
+                              <Plus className="h-4 w-4 text-slate-600 hover:text-purple-500" />
+                            </a>
+
+                            {/* Lower Right: Media Type Badge */}
+                            <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-md font-medium">
+                              {movie.Type === 'series' ? 'TV' : 'Movie'}
+                            </div>
+                          </div>
+
+                          {/* Item Info */}
+                          <div className="p-3 bg-white">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 flex-1">
+                                {movie.Title}
+                              </h4>
+                              {/* Add Disc Icon */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMovieSelect(movie);
+                                }}
+                                className={`flex-shrink-0 p-1.5 rounded-full transition-colors ${
+                                  isSelected 
+                                    ? 'bg-blue-500 text-white' 
+                                    : 'bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-600'
+                                }`}
+                                title="Add to library"
+                              >
+                                <Disc className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {movie.Year && (
+                              <div className="flex items-center text-xs text-slate-500 mt-1">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {movie.Year}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* SECTION 2: Find Edition on blu-ray.com (NEW) */}
+            {/* SECTION 2: Find Edition on blu-ray.com - SHOWS AFTER MOVIE SELECTED */}
             {selectedMovie && !showDetailsForm && (
               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 animate-fadeIn">
                 <div className="flex items-start gap-4 mb-4">
@@ -482,7 +555,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       >
                         {copied ? (
                           <>
-                            <CheckCircle className="w-3 h-3" />
+                            <Check className="w-3 h-3" />
                             Copied!
                           </>
                         ) : (
@@ -514,7 +587,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                   
                   {parsedEdition && (
                     <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-                      <CheckCircle className="w-4 h-4" />
+                      <Check className="w-4 h-4" />
                       Edition detected: {parsedEdition.format} - {parsedEdition.editionName}
                     </div>
                   )}
@@ -537,7 +610,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
               </div>
             )}
 
-            {/* SECTION 3: Library Details Form */}
+            {/* SECTION 3: Library Details Form - SHOWS WHEN EDITION SELECTED */}
             {showDetailsForm && selectedMovie && (
               <div className="bg-green-50 rounded-lg p-4 border border-green-200 animate-fadeIn">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
@@ -546,7 +619,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                 </h3>
 
                 <div className="space-y-6">
-                  {/* Item Status Selection */}
+                  {/* Item Status Selection - Compact single row */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       Item Status
@@ -568,7 +641,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             `}
                           >
                             <IconComponent className="h-4 w-4" />
-                            <span>{type.label}</span>
+                            <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
                           </button>
                         );
                       })}
@@ -608,21 +681,22 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     </div>
                   </div>
 
-                  {/* Condition */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Condition *</label>
-                    <select
-                      value={condition}
-                      onChange={(e) => setCondition(e.target.value as any)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="New">New</option>
-                      <option value="Like New">Like New</option>
-                      <option value="Good">Good</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Poor">Poor</option>
-                    </select>
+                  {/* Physical Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
+                      <select
+                        value={condition}
+                        onChange={(e) => setCondition(e.target.value as any)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="New">New</option>
+                        <option value="Like New">Like New</option>
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Poor">Poor</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Purchase Information */}
@@ -630,7 +704,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         <Calendar className="inline h-4 w-4 mr-1" />
-                        Purchase Date
+                        {collectionType === 'wishlist' ? 'Target Date' : 'Purchase Date'}
                       </label>
                       <input
                         type="date"
@@ -643,7 +717,12 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         <DollarSign className="inline h-4 w-4 mr-1" />
-                        Purchase Price
+                        {collectionType === 'for_sale' 
+                          ? 'Asking Price' 
+                          : collectionType === 'wishlist' 
+                          ? 'Target Price' 
+                          : 'Purchase Price'
+                        }
                       </label>
                       <input
                         type="number"
@@ -658,33 +737,46 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         <MapPin className="inline h-4 w-4 mr-1" />
-                        Purchase Location
+                        {collectionType === 'loaned_out' 
+                          ? 'Loaned To' 
+                          : collectionType === 'for_sale' 
+                          ? 'Selling Platform' 
+                          : 'Purchase Location'
+                        }
                       </label>
                       <input
                         type="text"
                         value={purchaseLocation}
                         onChange={(e) => setPurchaseLocation(e.target.value)}
-                        placeholder="Best Buy, Amazon, etc."
+                        placeholder={
+                          collectionType === 'loaned_out' 
+                            ? 'Friend\'s name' 
+                            : collectionType === 'for_sale' 
+                            ? 'eBay, Facebook, etc.' 
+                            : 'Best Buy, Amazon, etc.'
+                        }
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      <Star className="inline h-4 w-4 mr-1" />
-                      Personal Rating
-                    </label>
-                    <select
-                      value={personalRating}
-                      onChange={(e) => setPersonalRating(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">No rating</option>
-                      {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rating => (
-                        <option key={rating} value={rating}>{rating}/10</option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <Star className="inline h-4 w-4 mr-1" />
+                        Personal Rating
+                      </label>
+                      <select
+                        value={personalRating}
+                        onChange={(e) => setPersonalRating(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">No rating</option>
+                        {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rating => (
+                          <option key={rating} value={rating}>{rating}/10</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div>
@@ -698,32 +790,24 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                     />
                   </div>
 
-                  {/* Buttons */}
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowDetailsForm(false)}
-                      className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition"
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={handleAddToLibrary}
-                      disabled={adding}
-                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
-                    >
-                      {adding ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          <span>Adding to Library...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Package className="h-5 w-5" />
-                          <span>Add to Library</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  {/* Add to Library Button */}
+                  <button
+                    onClick={handleAddToLibrary}
+                    disabled={adding}
+                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {adding ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Adding to Library...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Package className="h-5 w-5" />
+                        <span>Add to Library</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             )}
