@@ -1,4 +1,4 @@
-// src/components/MediaLibraryItemDetailModal.tsx - UPDATED WITH WIDER WIDTH AND ALL USER FIELDS
+// src/components/MediaLibraryItemDetailModal.tsx - FIXED VERSION THAT ALWAYS SHOWS ALL FIELDS
 import React, { useEffect } from 'react';
 import { 
   X, 
@@ -13,7 +13,8 @@ import {
   Heart,
   UserCheck,
   Disc,
-  Loader
+  Loader,
+  Edit3
 } from 'lucide-react';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 import { useTechnicalSpecs } from '../hooks/useTechnicalSpecs';
@@ -173,18 +174,33 @@ export function MediaLibraryItemDetailModal({
                 )}
               </div>
 
-              {/* Personal Rating */}
-              {item.personal_rating && (
-                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200">
-                  <div className="flex items-center space-x-2 mb-2">
+              {/* Personal Rating - ALWAYS SHOWN */}
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
                     <Star className="h-5 w-5 text-yellow-500 fill-current" />
                     <span className="font-semibold text-slate-900">Your Rating</span>
                   </div>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(item)}
+                      className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Edit rating"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {item.personal_rating ? (
                   <div className="text-3xl font-bold text-slate-900">
                     {item.personal_rating}/10
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-slate-500 text-sm italic">
+                    Not rated yet
+                  </div>
+                )}
+              </div>
 
               {/* Condition Badge */}
               <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
@@ -213,59 +229,117 @@ export function MediaLibraryItemDetailModal({
                 )}
               </div>
 
-              {/* Collection Details */}
+              {/* Collection Details - ALWAYS SHOWN WITH ALL FIELDS */}
               <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-blue-600" />
-                  Collection Details
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                    <Package className="h-5 w-5 text-blue-600" />
+                    Collection Details
+                  </h3>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(item)}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Edit Details
+                    </button>
+                  )}
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {item.purchase_date && (
-                    <div className="flex items-start space-x-2">
-                      <Calendar className="h-4 w-4 text-slate-400 mt-0.5" />
-                      <div>
-                        <div className="text-slate-500">
-                          {item.collection_type === 'wishlist' ? 'Target Date' : 'Purchase Date'}
-                        </div>
+                  {/* Purchase Date - ALWAYS SHOWN */}
+                  <div className="flex items-start space-x-2">
+                    <Calendar className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-slate-500">
+                        {item.collection_type === 'wishlist' ? 'Target Date' : 'Purchase Date'}
+                      </div>
+                      {item.purchase_date ? (
                         <div className="font-medium text-slate-900">
                           {new Date(item.purchase_date).toLocaleDateString()}
                         </div>
-                      </div>
+                      ) : (
+                        <div className="text-slate-400 italic">Not set</div>
+                      )}
                     </div>
-                  )}
-                  {item.purchase_price && (
-                    <div className="flex items-start space-x-2">
-                      <DollarSign className="h-4 w-4 text-slate-400 mt-0.5" />
-                      <div>
-                        <div className="text-slate-500">
-                          {item.collection_type === 'for_sale' 
-                            ? 'Asking Price' 
-                            : item.collection_type === 'wishlist' 
-                            ? 'Target Price' 
-                            : 'Purchase Price'
-                          }
+                  </div>
+
+                  {/* Purchase Price - ALWAYS SHOWN */}
+                  <div className="flex items-start space-x-2">
+                    <DollarSign className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-slate-500">
+                        {item.collection_type === 'for_sale' 
+                          ? 'Asking Price' 
+                          : item.collection_type === 'wishlist' 
+                          ? 'Target Price' 
+                          : 'Purchase Price'
+                        }
+                      </div>
+                      {item.purchase_price ? (
+                        <div className="font-medium text-slate-900">
+                          ${item.purchase_price.toFixed(2)}
                         </div>
-                        <div className="font-medium text-slate-900">${item.purchase_price.toFixed(2)}</div>
-                      </div>
+                      ) : (
+                        <div className="text-slate-400 italic">Not set</div>
+                      )}
                     </div>
-                  )}
-                  {item.purchase_location && (
-                    <div className="flex items-start space-x-2">
-                      <MapPin className="h-4 w-4 text-slate-400 mt-0.5" />
-                      <div>
-                        <div className="text-slate-500">
-                          {item.collection_type === 'loaned_out' 
-                            ? 'Loaned To' 
-                            : item.collection_type === 'for_sale' 
-                            ? 'Selling Platform' 
-                            : 'Purchase Location'
-                          }
+                  </div>
+
+                  {/* Purchase Location - ALWAYS SHOWN */}
+                  <div className="flex items-start space-x-2">
+                    <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="text-slate-500">
+                        {item.collection_type === 'loaned_out' 
+                          ? 'Loaned To' 
+                          : item.collection_type === 'for_sale' 
+                          ? 'Selling Platform' 
+                          : 'Purchase Location'
+                        }
+                      </div>
+                      {item.purchase_location ? (
+                        <div className="font-medium text-slate-900">
+                          {item.purchase_location}
                         </div>
-                        <div className="font-medium text-slate-900">{item.purchase_location}</div>
-                      </div>
+                      ) : (
+                        <div className="text-slate-400 italic">Not set</div>
+                      )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Show edit hint if any fields are missing */}
+                {(!item.purchase_date || !item.purchase_price || !item.purchase_location) && onEdit && (
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Edit3 className="h-4 w-4" />
+                      <span>Click "Edit Details" to add missing information</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Notes - ALWAYS SHOWN */}
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-900">Notes</h3>
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(item)}
+                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      {item.notes ? 'Edit' : 'Add Notes'}
+                    </button>
                   )}
                 </div>
+                {item.notes ? (
+                  <p className="text-slate-700 whitespace-pre-wrap">{item.notes}</p>
+                ) : (
+                  <p className="text-slate-400 italic text-sm">No notes added yet</p>
+                )}
               </div>
 
               {/* Technical Specifications */}
@@ -308,14 +382,6 @@ export function MediaLibraryItemDetailModal({
                   </div>
                 </div>
               ) : null}
-
-              {/* Notes */}
-              {item.notes && (
-                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                  <h3 className="font-semibold text-slate-900 mb-2">Notes</h3>
-                  <p className="text-slate-700 whitespace-pre-wrap">{item.notes}</p>
-                </div>
-              )}
 
               {/* External Links */}
               <div className="flex flex-wrap gap-3">
