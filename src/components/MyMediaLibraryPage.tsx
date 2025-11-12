@@ -599,7 +599,7 @@ export const MyMediaLibraryPage: React.FC<MyMediaLibraryPageProps> = () => {
               <MediaLibraryItemCard
                 key={item.id}
                 item={item}
-                onRemove={removeFromLibrary}
+                onDelete={removeFromLibrary}
                 onUpdate={updateLibraryItem}
                 onMoveToType={handleMoveToType}
                 showCollectionType={activeCollectionType === 'all'}
