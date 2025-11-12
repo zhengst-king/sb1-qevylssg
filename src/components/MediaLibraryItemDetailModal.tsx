@@ -1,10 +1,23 @@
-// src/components/MediaLibraryItemDetailModal.tsx - RENAMED FROM CollectionItemDetailModal
-import React from 'react';
-import { X, Star, Calendar, DollarSign, MapPin, ExternalLink, Edit, Trash2 } from 'lucide-react';
-import type { PhysicalMediaCollection } from '../lib/supabase';
+// src/components/MediaLibraryItemDetailModal.tsx - UPDATED WITH WIDER WIDTH AND ALL USER FIELDS
+import React, { useEffect } from 'react';
+import { 
+  X, 
+  Star, 
+  Calendar, 
+  DollarSign, 
+  MapPin, 
+  ExternalLink, 
+  Edit, 
+  Trash2,
+  Package,
+  Heart,
+  UserCheck,
+  Disc,
+  Loader
+} from 'lucide-react';
+import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 import { useTechnicalSpecs } from '../hooks/useTechnicalSpecs';
 import { TechnicalSpecsDisplay } from './TechnicalSpecsDisplay';
-import { TechnicalSpecsRequest } from './TechnicalSpecsRequest';
 
 interface MediaLibraryItemDetailModalProps {
   item: PhysicalMediaCollection;
@@ -23,20 +36,36 @@ export function MediaLibraryItemDetailModal({
   onDelete,
   onUpdate 
 }: MediaLibraryItemDetailModalProps) {
-  const { specs, hasSpecs } = useTechnicalSpecs(
+  const { 
+    specs, 
+    hasSpecs, 
+    loading, 
+    requestSpecs, 
+    isProcessing, 
+    isPending,
+    refreshSpecs 
+  } = useTechnicalSpecs(
     item.title, 
     item.year, 
     item.format,
     item.id
   );
 
+  // Automatically request specs if we have a bluray URL but no specs yet
+  useEffect(() => {
+    if (isOpen && item.bluray_com_url && !hasSpecs && !loading && !isProcessing && !isPending) {
+      console.log('[DetailModal] Auto-requesting specs for:', item.title);
+      requestSpecs(1); // High priority since user is viewing
+    }
+  }, [isOpen, item.bluray_com_url, hasSpecs, loading, isProcessing, isPending]);
+
   if (!isOpen) return null;
 
   const formatBadgeColor = {
-    'DVD': 'bg-red-100 text-red-800',
-    'Blu-ray': 'bg-blue-100 text-blue-800',
-    '4K UHD': 'bg-purple-100 text-purple-800',
-    '3D Blu-ray': 'bg-green-100 text-green-800',
+    'DVD': 'bg-red-100 text-red-800 border-red-200',
+    'Blu-ray': 'bg-blue-100 text-blue-800 border-blue-200',
+    '4K UHD': 'bg-purple-100 text-purple-800 border-purple-200',
+    '3D Blu-ray': 'bg-green-100 text-green-800 border-green-200',
   };
 
   const conditionColor = {
@@ -47,6 +76,16 @@ export function MediaLibraryItemDetailModal({
     'Poor': 'text-red-600',
   };
 
+  const collectionTypeInfo = {
+    'owned': { label: 'Owned', icon: Package, color: 'bg-blue-100 text-blue-800 border-blue-200' },
+    'wishlist': { label: 'Wishlist', icon: Heart, color: 'bg-red-100 text-red-800 border-red-200' },
+    'for_sale': { label: 'For Sale', icon: DollarSign, color: 'bg-green-100 text-green-800 border-green-200' },
+    'loaned_out': { label: 'Loaned Out', icon: UserCheck, color: 'bg-orange-100 text-orange-800 border-orange-200' },
+  };
+
+  const currentType = collectionTypeInfo[item.collection_type || 'owned'];
+  const TypeIcon = currentType.icon;
+
   const handleDelete = () => {
     if (window.confirm(`Are you sure you want to remove "${item.title}" from your library?`)) {
       onDelete?.(item.id);
@@ -56,19 +95,32 @@ export function MediaLibraryItemDetailModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      {/* Backdrop - Click to close */}
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50"
+        onClick={onClose}
+      />
+      
+      {/* Modal - WIDENED TO MATCH AddToLibraryModal */}
+      <div className="relative bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 flex-shrink-0">
           <div className="flex items-center space-x-4">
             <div>
               <h2 className="text-2xl font-bold text-slate-900">{item.title}</h2>
-              <div className="flex items-center space-x-3 mt-1">
+              <div className="flex items-center space-x-2 mt-2">
                 <span className="text-slate-600">{item.year}</span>
-                <span className={`px-3 py-1 text-sm font-medium rounded-full ${formatBadgeColor[item.format]}`}>
+                <span className={`px-3 py-1 text-sm font-medium rounded-full border ${formatBadgeColor[item.format]}`}>
                   {item.format}
                 </span>
-                <span className={`text-sm font-medium ${conditionColor[item.condition]}`}>
-                  {item.condition}
+                {item.edition_name && (
+                  <span className="px-3 py-1 text-sm font-medium rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                    {item.edition_name}
+                  </span>
+                )}
+                <span className={`px-3 py-1 text-sm font-medium rounded-full border flex items-center gap-1 ${currentType.color}`}>
+                  <TypeIcon className="h-3 w-3" />
+                  {currentType.label}
                 </span>
               </div>
             </div>
@@ -78,6 +130,7 @@ export function MediaLibraryItemDetailModal({
               <button
                 onClick={() => onEdit(item)}
                 className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                title="Edit"
               >
                 <Edit className="h-5 w-5" />
               </button>
@@ -86,6 +139,7 @@ export function MediaLibraryItemDetailModal({
               <button
                 onClick={handleDelete}
                 className="p-2 text-slate-400 hover:text-red-600 transition-colors"
+                title="Delete"
               >
                 <Trash2 className="h-5 w-5" />
               </button>
@@ -99,9 +153,10 @@ export function MediaLibraryItemDetailModal({
           </div>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+        {/* Scrollable Content */}
+        <div className="overflow-y-auto flex-1">
           <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Poster and Basic Info */}
+            {/* Left Column - Poster and Personal Rating */}
             <div className="space-y-4">
               {/* Poster */}
               <div className="aspect-[2/3] bg-slate-100 rounded-lg overflow-hidden">
@@ -113,23 +168,31 @@ export function MediaLibraryItemDetailModal({
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-400">
-                    <span>No Poster Available</span>
+                    <Disc className="h-16 w-16" />
                   </div>
                 )}
               </div>
 
               {/* Personal Rating */}
               {item.personal_rating && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                    <span className="font-medium">Your Rating</span>
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                    <span className="font-semibold text-slate-900">Your Rating</span>
                   </div>
-                  <div className="text-2xl font-bold text-slate-900 mt-1">
+                  <div className="text-3xl font-bold text-slate-900">
                     {item.personal_rating}/10
                   </div>
                 </div>
               )}
+
+              {/* Condition Badge */}
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <div className="text-sm font-medium text-slate-500 mb-1">Condition</div>
+                <div className={`text-lg font-semibold ${conditionColor[item.condition]}`}>
+                  {item.condition}
+                </div>
+              </div>
             </div>
 
             {/* Right Column - Details and Specs */}
@@ -137,47 +200,68 @@ export function MediaLibraryItemDetailModal({
               {/* Movie Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {item.director && (
-                  <div>
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                     <label className="text-sm font-medium text-slate-500">Director</label>
-                    <p className="text-slate-900">{item.director}</p>
+                    <p className="text-slate-900 font-medium mt-1">{item.director}</p>
                   </div>
                 )}
                 {item.genre && (
-                  <div>
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                     <label className="text-sm font-medium text-slate-500">Genre</label>
-                    <p className="text-slate-900">{item.genre}</p>
+                    <p className="text-slate-900 font-medium mt-1">{item.genre}</p>
                   </div>
                 )}
               </div>
 
-              {/* Purchase Information */}
-              <div className="bg-slate-50 rounded-lg p-4">
-                <h3 className="font-medium text-slate-900 mb-3">Purchase Information</h3>
+              {/* Collection Details */}
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-blue-600" />
+                  Collection Details
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   {item.purchase_date && (
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-start space-x-2">
+                      <Calendar className="h-4 w-4 text-slate-400 mt-0.5" />
                       <div>
-                        <div className="text-slate-500">Date</div>
-                        <div className="font-medium">{new Date(item.purchase_date).toLocaleDateString()}</div>
+                        <div className="text-slate-500">
+                          {item.collection_type === 'wishlist' ? 'Target Date' : 'Purchase Date'}
+                        </div>
+                        <div className="font-medium text-slate-900">
+                          {new Date(item.purchase_date).toLocaleDateString()}
+                        </div>
                       </div>
                     </div>
                   )}
                   {item.purchase_price && (
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-start space-x-2">
+                      <DollarSign className="h-4 w-4 text-slate-400 mt-0.5" />
                       <div>
-                        <div className="text-slate-500">Price</div>
-                        <div className="font-medium">${item.purchase_price.toFixed(2)}</div>
+                        <div className="text-slate-500">
+                          {item.collection_type === 'for_sale' 
+                            ? 'Asking Price' 
+                            : item.collection_type === 'wishlist' 
+                            ? 'Target Price' 
+                            : 'Purchase Price'
+                          }
+                        </div>
+                        <div className="font-medium text-slate-900">${item.purchase_price.toFixed(2)}</div>
                       </div>
                     </div>
                   )}
                   {item.purchase_location && (
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-start space-x-2">
+                      <MapPin className="h-4 w-4 text-slate-400 mt-0.5" />
                       <div>
-                        <div className="text-slate-500">Location</div>
-                        <div className="font-medium">{item.purchase_location}</div>
+                        <div className="text-slate-500">
+                          {item.collection_type === 'loaned_out' 
+                            ? 'Loaned To' 
+                            : item.collection_type === 'for_sale' 
+                            ? 'Selling Platform' 
+                            : 'Purchase Location'
+                          }
+                        </div>
+                        <div className="font-medium text-slate-900">{item.purchase_location}</div>
                       </div>
                     </div>
                   )}
@@ -187,19 +271,48 @@ export function MediaLibraryItemDetailModal({
               {/* Technical Specifications */}
               {hasSpecs && specs ? (
                 <TechnicalSpecsDisplay specs={specs} />
-              ) : (
-                <TechnicalSpecsRequest
-                  title={item.title}
-                  year={item.year}
-                  discFormat={item.format}
-                  collectionItemId={item.id}
-                />
-              )}
+              ) : loading ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <Loader className="h-5 w-5 text-blue-600 animate-spin" />
+                    <div>
+                      <div className="font-medium text-blue-900">Checking for specifications...</div>
+                      <div className="text-sm text-blue-700 mt-1">This will only take a moment</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (isProcessing || isPending) ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <Loader className="h-5 w-5 text-yellow-600 animate-spin" />
+                    <div>
+                      <div className="font-medium text-yellow-900">
+                        {isProcessing ? 'Scraping specifications...' : 'Queued for scraping...'}
+                      </div>
+                      <div className="text-sm text-yellow-700 mt-1">
+                        This may take 20-30 seconds. Refresh the page to check status.
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={refreshSpecs}
+                    className="mt-3 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-sm"
+                  >
+                    Check Status
+                  </button>
+                </div>
+              ) : item.bluray_com_url ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <div className="text-sm text-slate-600">
+                    Specifications will be loaded automatically in the background.
+                  </div>
+                </div>
+              ) : null}
 
               {/* Notes */}
               {item.notes && (
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <h3 className="font-medium text-slate-900 mb-2">Notes</h3>
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                  <h3 className="font-semibold text-slate-900 mb-2">Notes</h3>
                   <p className="text-slate-700 whitespace-pre-wrap">{item.notes}</p>
                 </div>
               )}
@@ -211,20 +324,20 @@ export function MediaLibraryItemDetailModal({
                     href={`https://www.imdb.com/title/${item.imdb_id}/`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-3 py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors"
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors border border-yellow-200"
                   >
-                    <span>View on IMDb</span>
+                    <span className="font-medium">View on IMDb</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
-                {specs?.bluray_com_url && (
+                {item.bluray_com_url && (
                   <a
-                    href={specs.bluray_com_url}
+                    href={item.bluray_com_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors"
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 transition-colors border border-blue-200"
                   >
-                    <span>View on Blu-ray.com</span>
+                    <span className="font-medium">View on Blu-ray.com</span>
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
