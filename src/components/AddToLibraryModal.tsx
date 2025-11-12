@@ -369,7 +369,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             )}
 
                             {/* Upper Right: View on TMDB Button */}
-                            
+                            <a
                               href={tmdbUrl}
                               target="_blank"
                               rel="noopener noreferrer"
