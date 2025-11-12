@@ -432,6 +432,11 @@ export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
         onClose={() => setShowDetailModal(false)}
         item={item}
         onUpdate={onUpdate}
+        onEdit={(item) => {
+          setShowDetailModal(false);
+          setShowEditModal(true);
+        }}
+        onDelete={onDelete}
       />
 
       {/* Edit Modal */}
