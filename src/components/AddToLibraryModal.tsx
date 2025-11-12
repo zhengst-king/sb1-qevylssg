@@ -377,7 +377,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                               className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors z-10"
                               title="View on TMDB"
                             >
-                              <Plus className="h-4 w-4 text-slate-600 hover:text-purple-500" />
+                              <Plus className="h-4 w-4 text-slate-600" />
                             </a>
 
                             {/* Lower Right: Media Type Badge */}
