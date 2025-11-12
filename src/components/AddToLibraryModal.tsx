@@ -759,7 +759,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       {showSpecs && (
                         <div className="p-4 bg-white border-t border-green-200 space-y-4 text-sm">
                           {/* Video Specs */}
-                          {(technicalSpecs.video_codec || technicalSpecs.video_resolution || technicalSpecs.aspect_ratio) && (
+                          {(technicalSpecs.video_codec || technicalSpecs.video_resolution || technicalSpecs.aspect_ratio || technicalSpecs.hdr_format) && (
                             <div>
                               <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                                 <Monitor className="w-4 h-4 text-blue-600" />
@@ -784,26 +784,42 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                                     <span className="font-medium text-slate-900">{technicalSpecs.aspect_ratio}</span>
                                   </div>
                                 )}
+                                {technicalSpecs.hdr_format && (
+                                  <div>
+                                    <span className="text-slate-600">HDR:</span>{' '}
+                                    <span className="font-medium text-slate-900">
+                                      {Array.isArray(technicalSpecs.hdr_format) 
+                                        ? technicalSpecs.hdr_format.join(', ') 
+                                        : technicalSpecs.hdr_format}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
 
                           {/* Audio Specs */}
-                          {technicalSpecs.audio_tracks && technicalSpecs.audio_tracks.length > 0 && (
+                          {(technicalSpecs.audio_codecs?.length > 0 || technicalSpecs.audio_channels?.length > 0) && (
                             <div>
                               <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                                 <Volume2 className="w-4 h-4 text-green-600" />
-                                Audio ({technicalSpecs.audio_tracks.length} track{technicalSpecs.audio_tracks.length !== 1 ? 's' : ''})
+                                Audio
                               </h5>
                               <div className="space-y-1 text-xs">
-                                {technicalSpecs.audio_tracks.slice(0, 3).map((track, index) => (
-                                  <div key={index} className="text-slate-700">
-                                    • {track}
-                                  </div>
-                                ))}
-                                {technicalSpecs.audio_tracks.length > 3 && (
+                                {technicalSpecs.audio_codecs?.map((codec, index) => {
+                                  const channel = technicalSpecs.audio_channels?.[index];
+                                  const language = technicalSpecs.audio_languages?.[index];
+                                  return (
+                                    <div key={index} className="text-slate-700">
+                                      • {codec}
+                                      {channel && ` (${channel})`}
+                                      {language && ` - ${language}`}
+                                    </div>
+                                  );
+                                })}
+                                {technicalSpecs.audio_codecs?.length > 3 && (
                                   <div className="text-slate-500 italic">
-                                    + {technicalSpecs.audio_tracks.length - 3} more
+                                    + {technicalSpecs.audio_codecs.length - 3} more
                                   </div>
                                 )}
                               </div>
@@ -821,23 +837,27 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                           )}
 
                           {/* Disc Info */}
-                          {(technicalSpecs.disc_type || technicalSpecs.region) && (
+                          {(technicalSpecs.disc_format || technicalSpecs.region_codes) && (
                             <div>
                               <h5 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
                                 <Disc className="w-4 h-4 text-purple-600" />
                                 Disc
                               </h5>
                               <div className="grid grid-cols-2 gap-2 text-xs">
-                                {technicalSpecs.disc_type && (
+                                {technicalSpecs.disc_format && (
                                   <div>
-                                    <span className="text-slate-600">Type:</span>{' '}
-                                    <span className="font-medium text-slate-900">{technicalSpecs.disc_type}</span>
+                                    <span className="text-slate-600">Format:</span>{' '}
+                                    <span className="font-medium text-slate-900">{technicalSpecs.disc_format}</span>
                                   </div>
                                 )}
-                                {technicalSpecs.region && (
+                                {technicalSpecs.region_codes && (
                                   <div>
                                     <span className="text-slate-600">Region:</span>{' '}
-                                    <span className="font-medium text-slate-900">{technicalSpecs.region}</span>
+                                    <span className="font-medium text-slate-900">
+                                      {Array.isArray(technicalSpecs.region_codes) 
+                                        ? technicalSpecs.region_codes.join(', ') 
+                                        : technicalSpecs.region_codes}
+                                    </span>
                                   </div>
                                 )}
                               </div>
