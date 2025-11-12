@@ -586,6 +586,16 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             key={type.id}
                             type="button"
                             onClick={() => setCollectionType(type.id as CollectionType)}
-                            className={`
-                              flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200
-                              ${collecti
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${
+                              collectionType === type.id
+                                ? 'border-blue-500 bg-blue-50 text-blue-900'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            <IconComponent className="h-4 w-4" />
+                            <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
