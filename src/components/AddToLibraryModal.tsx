@@ -369,7 +369,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             )}
 
                             {/* Upper Right: View on TMDB Button */}
-                            <a
+                            
                               href={tmdbUrl}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -557,7 +557,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       className="text-slate-600 hover:text-slate-900 text-sm flex items-center gap-1"
                     >
                       Skip and enter details manually
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -586,11 +586,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             key={type.id}
                             type="button"
                             onClick={() => setCollectionType(type.id as CollectionType)}
-                            className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${
-                              collectionType === type.id
-                                ? 'border-blue-500 bg-blue-50 text-blue-900'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${collectionType === type.id ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
                           >
                             <IconComponent className="h-4 w-4" />
                             <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
@@ -599,3 +595,192 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       })}
                     </div>
                   </div>
+
+                  {/* Format and Edition */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Format *
+                      </label>
+                      <select
+                        value={format}
+                        onChange={(e) => setFormat(e.target.value as any)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="DVD">DVD</option>
+                        <option value="Blu-ray">Blu-ray</option>
+                        <option value="4K UHD">4K UHD</option>
+                        <option value="3D Blu-ray">3D Blu-ray</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Edition Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editionName}
+                        onChange={(e) => setEditionName(e.target.value)}
+                        placeholder="e.g., Steelbook, Collector's Edition"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Condition */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
+                      <select
+                        value={condition}
+                        onChange={(e) => setCondition(e.target.value as any)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="New">New</option>
+                        <option value="Like New">Like New</option>
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Poor">Poor</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Purchase Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <Calendar className="inline h-4 w-4 mr-1" />
+                        {collectionType === 'wishlist' ? 'Target Date' : 'Purchase Date'}
+                      </label>
+                      <input
+                        type="date"
+                        value={purchaseDate}
+                        onChange={(e) => setPurchaseDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <DollarSign className="inline h-4 w-4 mr-1" />
+                        {collectionType === 'for_sale' 
+                          ? 'Asking Price' 
+                          : collectionType === 'wishlist' 
+                          ? 'Target Price' 
+                          : 'Purchase Price'
+                        }
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={purchasePrice}
+                        onChange={(e) => setPurchasePrice(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <MapPin className="inline h-4 w-4 mr-1" />
+                        {collectionType === 'loaned_out' 
+                          ? 'Loaned To' 
+                          : collectionType === 'for_sale' 
+                          ? 'Selling Platform' 
+                          : 'Purchase Location'
+                        }
+                      </label>
+                      <input
+                        type="text"
+                        value={purchaseLocation}
+                        onChange={(e) => setPurchaseLocation(e.target.value)}
+                        placeholder={
+                          collectionType === 'loaned_out' 
+                            ? 'Friend\'s name' 
+                            : collectionType === 'for_sale' 
+                            ? 'eBay, Facebook, etc.' 
+                            : 'Best Buy, Amazon, etc.'
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        <Star className="inline h-4 w-4 mr-1" />
+                        Personal Rating
+                      </label>
+                      <select
+                        value={personalRating}
+                        onChange={(e) => setPersonalRating(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">No rating</option>
+                        {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rating => (
+                          <option key={rating} value={rating}>{rating}/10</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Special edition details, condition notes, etc."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Add to Library Button */}
+                  <button
+                    onClick={handleAddToLibrary}
+                    disabled={adding}
+                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {adding ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Adding to Library...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Package className="h-5 w-5" />
+                        <span>Add to Library</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+
+      {/* Add fadeIn animation */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+}
