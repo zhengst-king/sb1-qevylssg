@@ -288,10 +288,10 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         personal_rating: personalRating ? parseInt(personalRating) : undefined,
         notes: notes || undefined,
         collection_type: collectionType,
-        // NEW: Store blu-ray.com URL, edition name, and technical specs
         edition_name: editionName || undefined,
         bluray_com_url: parsedEdition?.url || undefined,
-        technical_specs: technicalSpecs || undefined
+        // DO NOT SAVE technical_specs object - it should be saved separately
+        // and only the ID should be stored here
       };
 
       await onAdd(libraryItem);
