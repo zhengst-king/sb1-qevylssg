@@ -356,7 +356,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                               </div>
                             )}
 
-                            {/* Upper Left: Rating Badge (if available) */}
+                            {/* Upper Left: Rating Badge */}
                             {movie.imdbRating && movie.imdbRating !== 'N/A' && (
                               <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm px-2 py-1 rounded-md">
                                 <div className="flex items-center space-x-1">
