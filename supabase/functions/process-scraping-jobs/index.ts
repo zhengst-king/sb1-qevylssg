@@ -83,7 +83,7 @@ serve(async (req) => {
           .from('scraping_queue')
           .update({ 
             status: 'processing',
-            retry_count: (job.retry_count || 0) + 1,
+            attempts: (job.attempts || 0) + 1,
             updated_at: new Date().toISOString()
           })
           .eq('id', job.id)
