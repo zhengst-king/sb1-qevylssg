@@ -57,7 +57,7 @@ serve(async (req) => {
       .from('scraping_queue')
       .select('*')
       .eq('status', 'pending')
-      .lt('retry_after', new Date().toISOString())
+      .or('retry_after.is.null,retry_after.lt.' + new Date().toISOString())
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(5)
