@@ -20,7 +20,7 @@ jobs:
       - name: Trigger Scraping Function
         run: |
           response=$(curl -X POST \
-            "https://ofzcqugxmlazjwbw1kxb.supabase.co/functions/v1/process-scraping-jobs" \
+            "https://ofzcqugxmlazjwbwikxb.supabase.co/functions/v1/process-scraping-jobs" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
             -H "Content-Type: application/json" \
             -w "\n%{http_code}" \
