@@ -135,11 +135,11 @@ serve(async (req) => {
         console.error(`Failed to process job ${job.id}:`, error)
 
         const maxRetries = 3
-        const shouldRetry = (job.retry_count || 0) < maxRetries
+        const shouldRetry = (job.attempts || 0) < maxRetries;
 
         if (shouldRetry) {
           // Schedule retry with exponential backoff
-          const retryDelay = Math.pow(2, job.retry_count || 0) * 60 * 1000 // minutes
+          const retryDelay = Math.pow(2, job.attempts || 0) * 60 * 1000 // minutes
           const retryAfter = new Date(Date.now() + retryDelay).toISOString()
 
           await supabaseClient
