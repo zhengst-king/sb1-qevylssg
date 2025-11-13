@@ -1,4 +1,4 @@
-// supabase/functions/process-scraping-jobs/index.ts
+// supabase/functions/process-scraping-jobs/index.ts - FIXED VERSION
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -12,12 +12,14 @@ interface ScrapingJob {
   title: string
   year?: number
   imdb_id?: string
+  blu_ray_url?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   collection_item_id?: string
+  attempts: number
+  max_attempts: number
 }
 
 interface BluraySpecs {
-  id: string
   title: string
   year: number
   video_codec?: string
@@ -34,7 +36,7 @@ interface BluraySpecs {
   runtime_minutes?: number
   aspect_ratio?: string
   subtitles?: string[]
-  languages?: string[]
+  audio_languages?: string[]
   bluray_com_url?: string
   data_quality: 'complete' | 'partial' | 'minimal'
   last_scraped_at: string
@@ -47,24 +49,29 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[ScrapingWorker] Starting scraping worker...')
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get pending jobs (limit to 5 at a time to respect rate limits)
+    // Get pending jobs (limit to 3 at a time to respect rate limits)
     const { data: pendingJobs, error: jobsError } = await supabaseClient
       .from('scraping_queue')
       .select('*')
       .eq('status', 'pending')
-      .or('retry_after.is.null,retry_after.lt.' + new Date().toISOString())
+      .or(`retry_after.is.null,retry_after.lt.${new Date().toISOString()}`)
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
-      .limit(5)
+      .limit(3)
 
     if (jobsError) {
+      console.error('[ScrapingWorker] Failed to fetch jobs:', jobsError)
       throw new Error(`Failed to fetch jobs: ${jobsError.message}`)
     }
+
+    console.log(`[ScrapingWorker] Found ${pendingJobs?.length || 0} pending jobs`)
 
     if (!pendingJobs || pendingJobs.length === 0) {
       return new Response(
@@ -76,7 +83,10 @@ serve(async (req) => {
     const results = []
 
     // Process each job with rate limiting
-    for (const job of pendingJobs) {
+    for (let i = 0; i < pendingJobs.length; i++) {
+      const job = pendingJobs[i]
+      console.log(`[ScrapingWorker] Processing job ${i + 1}/${pendingJobs.length}: ${job.title}`)
+
       try {
         // Mark job as processing
         await supabaseClient
@@ -84,22 +94,34 @@ serve(async (req) => {
           .update({ 
             status: 'processing',
             attempts: (job.attempts || 0) + 1,
+            started_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', job.id)
+
+        // Add delay BEFORE scraping (22-36 seconds as recommended)
+        const baseDelay = 22000 // 22 seconds
+        const randomDelay = Math.floor(Math.random() * 14000) // 0-14 seconds
+        const totalDelay = baseDelay + randomDelay
+        
+        console.log(`[ScrapingWorker] Waiting ${totalDelay / 1000}s before scraping...`)
+        await new Promise(resolve => setTimeout(resolve, totalDelay))
 
         // Scrape the specs
         const specs = await scrapeDiscSpecs(job)
 
         if (specs) {
+          console.log(`[ScrapingWorker] Successfully scraped specs for: ${job.title}`)
+          
           // Save specs to database
           const { data: savedSpecs, error: specsError } = await supabaseClient
             .from('bluray_technical_specs')
-            .upsert([specs], { onConflict: 'title,year' })
+            .upsert([specs], { onConflict: 'title,year,disc_format' })
             .select()
             .single()
 
           if (specsError) {
+            console.error('[ScrapingWorker] Failed to save specs:', specsError)
             throw new Error(`Failed to save specs: ${specsError.message}`)
           }
 
@@ -121,26 +143,29 @@ serve(async (req) => {
             })
             .eq('id', job.id)
 
-          results.push({ job_id: job.id, status: 'completed', specs_id: savedSpecs?.id })
+          results.push({ 
+            job_id: job.id, 
+            title: job.title,
+            status: 'completed', 
+            specs_id: savedSpecs?.id 
+          })
         } else {
-          throw new Error('No specs found')
-        }
-
-        // Rate limiting: wait 22 seconds between requests
-        if (pendingJobs.indexOf(job) < pendingJobs.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 22000))
+          throw new Error('No specs found - search returned empty results')
         }
 
       } catch (error) {
-        console.error(`Failed to process job ${job.id}:`, error)
+        console.error(`[ScrapingWorker] Failed to process job ${job.id}:`, error.message)
 
-        const maxRetries = 3
-        const shouldRetry = (job.attempts || 0) < maxRetries;
+        const currentAttempts = (job.attempts || 0) + 1
+        const maxRetries = job.max_attempts || 3
+        const shouldRetry = currentAttempts < maxRetries
 
         if (shouldRetry) {
           // Schedule retry with exponential backoff
-          const retryDelay = Math.pow(2, job.attempts || 0) * 60 * 1000 // minutes
+          const retryDelay = Math.pow(2, currentAttempts) * 60 * 1000 // 2^attempts minutes
           const retryAfter = new Date(Date.now() + retryDelay).toISOString()
+
+          console.log(`[ScrapingWorker] Scheduling retry ${currentAttempts}/${maxRetries} for ${job.title} at ${retryAfter}`)
 
           await supabaseClient
             .from('scraping_queue')
@@ -152,9 +177,19 @@ serve(async (req) => {
             })
             .eq('id', job.id)
 
-          results.push({ job_id: job.id, status: 'retrying', retry_after: retryAfter })
+          results.push({ 
+            job_id: job.id, 
+            title: job.title,
+            status: 'retrying', 
+            retry_after: retryAfter,
+            attempts: currentAttempts,
+            max_attempts: maxRetries,
+            error: error.message
+          })
         } else {
           // Mark as failed after max retries
+          console.log(`[ScrapingWorker] Job ${job.title} failed after ${maxRetries} attempts`)
+          
           await supabaseClient
             .from('scraping_queue')
             .update({ 
@@ -165,10 +200,17 @@ serve(async (req) => {
             })
             .eq('id', job.id)
 
-          results.push({ job_id: job.id, status: 'failed', error: error.message })
+          results.push({ 
+            job_id: job.id, 
+            title: job.title,
+            status: 'failed', 
+            error: error.message 
+          })
         }
       }
     }
+
+    console.log(`[ScrapingWorker] Completed processing ${results.length} jobs`)
 
     return new Response(
       JSON.stringify({ 
@@ -180,7 +222,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in scraping processor:', error)
+    console.error('[ScrapingWorker] Fatal error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -188,55 +230,78 @@ serve(async (req) => {
   }
 })
 
-// Scraping function using web APIs instead of Python subprocess
+// Scraping function using web APIs
 async function scrapeDiscSpecs(job: ScrapingJob): Promise<BluraySpecs | null> {
   try {
-    const searchQuery = job.year ? `${job.title} ${job.year}` : job.title
+    console.log(`[Scraper] Starting scrape for: ${job.title}`)
     
-    // Search blu-ray.com using web scraping
+    // If we have a direct URL, use it
+    if (job.blu_ray_url) {
+      console.log(`[Scraper] Using provided URL: ${job.blu_ray_url}`)
+      const specs = await scrapeDiscDetails(job.blu_ray_url, job.title, job.year || new Date().getFullYear())
+      return specs
+    }
+
+    // Otherwise, search for it
+    const searchQuery = job.year ? `${job.title} ${job.year}` : job.title
+    console.log(`[Scraper] Searching for: ${searchQuery}`)
+    
     const searchResults = await searchBlurayDotCom(searchQuery)
+    console.log(`[Scraper] Found ${searchResults.length} search results`)
     
     if (searchResults.length === 0) {
-      console.log(`No results found for: ${job.title}`)
+      console.log(`[Scraper] No results found for: ${job.title}`)
       return null
     }
 
     // Get the best match
     const bestMatch = selectBestMatch(searchResults, job.title, job.year)
+    console.log(`[Scraper] Best match: ${bestMatch.title} (${bestMatch.year})`)
     
     // Scrape detailed specs from the page
     const specs = await scrapeDiscDetails(bestMatch.url, job.title, job.year || new Date().getFullYear())
+    console.log(`[Scraper] Scraped specs successfully`)
     
     return specs
   } catch (error) {
-    console.error(`Scraping failed for ${job.title}:`, error)
+    console.error(`[Scraper] Scraping failed for ${job.title}:`, error.message)
     throw error
   }
 }
 
-// Search function using fetch instead of Python
+// Search function
 async function searchBlurayDotCom(query: string): Promise<Array<{url: string, title: string, year: number}>> {
   try {
     const searchUrl = `https://www.blu-ray.com/search/?quicksearch=1&quicksearch_country=US&quicksearch_keyword=${encodeURIComponent(query)}&section=bluraymovies`
     
+    console.log(`[Scraper] Fetching search URL: ${searchUrl}`)
+    
     const response = await fetch(searchUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
       }
     })
 
+    console.log(`[Scraper] Search response status: ${response.status}`)
+
     if (!response.ok) {
-      throw new Error(`Search failed: ${response.status}`)
+      throw new Error(`Search failed with status: ${response.status}`)
     }
 
     const html = await response.text()
+    console.log(`[Scraper] Received HTML length: ${html.length} characters`)
     
-    // Parse search results using regex (basic approach)
+    // Parse search results
     const results = parseSearchResults(html)
+    console.log(`[Scraper] Parsed ${results.length} results from HTML`)
     
     return results.slice(0, 5) // Return top 5 results
   } catch (error) {
-    console.error('Search failed:', error)
+    console.error('[Scraper] Search failed:', error.message)
     return []
   }
 }
@@ -245,24 +310,41 @@ async function searchBlurayDotCom(query: string): Promise<Array<{url: string, ti
 function parseSearchResults(html: string): Array<{url: string, title: string, year: number}> {
   const results = []
   
-  // Look for movie links in search results
-  const linkRegex = /<a[^>]+href="(\/movies\/[^"]+)"[^>]*>.*?<b>([^<]+)<\/b>.*?\((\d{4})\)/gi
+  // Try multiple regex patterns to match different HTML structures
+  const patterns = [
+    // Pattern 1: Standard format
+    /<a[^>]+href="(\/movies\/[^"]+)"[^>]*>.*?<b>([^<]+)<\/b>.*?\((\d{4})\)/gi,
+    // Pattern 2: Alternative format
+    /<a[^>]+href="(\/movies\/[^"]+)"[^>]*>[^<]*<[^>]+>([^<]+)<\/[^>]+>[^(]*\((\d{4})\)/gi,
+    // Pattern 3: Simple format
+    /href="(\/movies\/[^"]+)"[^>]*>([^<]+)<.*?(\d{4})/gi
+  ]
   
-  let match
-  while ((match = linkRegex.exec(html)) !== null) {
-    const [, relativeUrl, title, year] = match
-    results.push({
-      url: `https://www.blu-ray.com${relativeUrl}`,
-      title: title.trim(),
-      year: parseInt(year)
-    })
+  for (const pattern of patterns) {
+    let match
+    while ((match = pattern.exec(html)) !== null) {
+      const [, relativeUrl, title, year] = match
+      if (relativeUrl && title && year) {
+        results.push({
+          url: `https://www.blu-ray.com${relativeUrl}`,
+          title: title.trim().replace(/<[^>]+>/g, ''), // Strip any remaining HTML
+          year: parseInt(year)
+        })
+      }
+    }
+    if (results.length > 0) break // If we found results, stop trying patterns
   }
   
+  console.log(`[Scraper] Pattern matching found ${results.length} results`)
   return results
 }
 
 // Select best matching result
-function selectBestMatch(results: Array<{url: string, title: string, year: number}>, targetTitle: string, targetYear?: number): {url: string, title: string, year: number} {
+function selectBestMatch(
+  results: Array<{url: string, title: string, year: number}>, 
+  targetTitle: string, 
+  targetYear?: number
+): {url: string, title: string, year: number} {
   if (results.length === 0) {
     throw new Error('No results to select from')
   }
@@ -270,7 +352,10 @@ function selectBestMatch(results: Array<{url: string, title: string, year: numbe
   // If we have a year, prefer exact year matches
   if (targetYear) {
     const exactYearMatch = results.find(r => Math.abs(r.year - targetYear) <= 1)
-    if (exactYearMatch) return exactYearMatch
+    if (exactYearMatch) {
+      console.log(`[Scraper] Found exact year match: ${exactYearMatch.title}`)
+      return exactYearMatch
+    }
   }
 
   // Find best title match
@@ -280,30 +365,46 @@ function selectBestMatch(results: Array<{url: string, title: string, year: numbe
     targetLower.includes(r.title.toLowerCase())
   )
 
-  return bestMatch || results[0]
+  if (bestMatch) {
+    console.log(`[Scraper] Found title match: ${bestMatch.title}`)
+    return bestMatch
+  }
+
+  console.log(`[Scraper] Using first result: ${results[0].title}`)
+  return results[0]
 }
 
 // Scrape detailed specs from a movie page
 async function scrapeDiscDetails(url: string, title: string, year: number): Promise<BluraySpecs> {
   try {
+    console.log(`[Scraper] Fetching details from: ${url}`)
+    
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
       }
     })
+
+    console.log(`[Scraper] Details page response status: ${response.status}`)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch movie page: ${response.status}`)
     }
 
     const html = await response.text()
+    console.log(`[Scraper] Received details HTML length: ${html.length} characters`)
     
     // Parse technical specifications from the HTML
     const specs = parseMovieSpecs(html, title, year, url)
+    console.log(`[Scraper] Parsed specs with quality: ${specs.data_quality}`)
     
     return specs
   } catch (error) {
-    console.error(`Failed to scrape ${url}:`, error)
+    console.error(`[Scraper] Failed to scrape ${url}:`, error.message)
     throw error
   }
 }
@@ -311,7 +412,6 @@ async function scrapeDiscDetails(url: string, title: string, year: number): Prom
 // Parse movie specifications from HTML
 function parseMovieSpecs(html: string, title: string, year: number, sourceUrl: string): BluraySpecs {
   const specs: BluraySpecs = {
-    id: generateId(title, year),
     title,
     year,
     disc_format: 'Blu-ray',
@@ -321,67 +421,76 @@ function parseMovieSpecs(html: string, title: string, year: number, sourceUrl: s
   }
 
   try {
+    // Detect disc format from URL or content
+    if (sourceUrl.includes('4K-Blu-ray') || html.match(/4K Ultra HD|UHD/i)) {
+      specs.disc_format = '4K UHD'
+    }
+
     // Extract video codec
     const videoCodecMatch = html.match(/Video\s*Codec[:\s]*([^<\n]+)/i)
     if (videoCodecMatch) {
       specs.video_codec = videoCodecMatch[1].trim()
+      console.log(`[Scraper] Found video codec: ${specs.video_codec}`)
     }
 
     // Extract video resolution
     const resolutionMatch = html.match(/Resolution[:\s]*([^<\n]+)/i)
     if (resolutionMatch) {
       specs.video_resolution = normalizeResolution(resolutionMatch[1].trim())
+      console.log(`[Scraper] Found resolution: ${specs.video_resolution}`)
     }
 
     // Extract HDR format
     const hdrMatch = html.match(/(HDR10|Dolby Vision|HDR10\+)/gi)
     if (hdrMatch) {
       specs.hdr_format = [...new Set(hdrMatch)]
+      console.log(`[Scraper] Found HDR formats: ${specs.hdr_format.join(', ')}`)
     }
 
     // Extract audio codecs
-    const audioMatches = html.match(/(DTS-HD Master Audio|Dolby Atmos|DTS-X|DTS-HD|Dolby TrueHD|LPCM)/gi)
+    const audioMatches = html.match(/(DTS-HD Master Audio|Dolby Atmos|DTS-X|DTS-HD|Dolby TrueHD|LPCM|DTS:\s*X)/gi)
     if (audioMatches) {
       specs.audio_codecs = [...new Set(audioMatches)]
+      console.log(`[Scraper] Found audio codecs: ${specs.audio_codecs.join(', ')}`)
     }
 
     // Extract audio channels
     const channelMatches = html.match(/(\d\.\d)/g)
     if (channelMatches) {
       specs.audio_channels = [...new Set(channelMatches)]
+      console.log(`[Scraper] Found audio channels: ${specs.audio_channels.join(', ')}`)
     }
 
     // Extract runtime
     const runtimeMatch = html.match(/Runtime[:\s]*(\d+)/i)
     if (runtimeMatch) {
       specs.runtime_minutes = parseInt(runtimeMatch[1])
+      console.log(`[Scraper] Found runtime: ${specs.runtime_minutes} minutes`)
     }
 
     // Extract aspect ratio
     const aspectMatch = html.match(/Aspect Ratio[:\s]*([^<\n]+)/i)
     if (aspectMatch) {
       specs.aspect_ratio = aspectMatch[1].trim()
+      console.log(`[Scraper] Found aspect ratio: ${specs.aspect_ratio}`)
     }
 
     // Extract studio
     const studioMatch = html.match(/Studio[:\s]*([^<\n]+)/i)
     if (studioMatch) {
       specs.studio = studioMatch[1].trim()
+      console.log(`[Scraper] Found studio: ${specs.studio}`)
     }
 
     // Assess data quality
     specs.data_quality = assessDataQuality(specs)
+    console.log(`[Scraper] Data quality assessed as: ${specs.data_quality}`)
 
   } catch (error) {
-    console.error('Error parsing specs:', error)
+    console.error('[Scraper] Error parsing specs:', error.message)
   }
 
   return specs
-}
-
-function generateId(title: string, year: number): string {
-  const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '')
-  return `${normalized}_${year}`
 }
 
 function normalizeResolution(resolution: string): string {
