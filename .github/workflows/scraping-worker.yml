@@ -37,18 +37,3 @@ jobs:
             echo "Error: Function returned $http_code"
             exit 1
           fi
-```
-
----
-
-### Step 2: Add Your Service Role Key to GitHub
-
-1. **Go to your GitHub repository** → Settings → Secrets and variables → Actions
-
-2. **Click "New repository secret"**
-
-3. **Add secret:**
-   - **Name:** `SUPABASE_SERVICE_KEY`
-   - **Value:** 
-```
-     eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9memNxdWd4bWxhemp3Yndpa3hiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDY1OTU0OCwiZXhwIjoyMDcwMjM1NTQ4fQ.yiUZO7gdi_99dwiZhDJkhsxUDhomKL8MRfYgjRLELhg
