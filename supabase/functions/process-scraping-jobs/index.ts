@@ -12,7 +12,7 @@ interface ScrapingJob {
   title: string
   year?: number
   imdb_id?: string
-  blu_ray_url?: string
+  bluray_com_url?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   collection_item_id?: string
   attempts: number
@@ -236,9 +236,9 @@ async function scrapeDiscSpecs(job: ScrapingJob): Promise<BluraySpecs | null> {
     console.log(`[Scraper] Starting scrape for: ${job.title}`)
     
     // If we have a direct URL, use it
-    if (job.blu_ray_url) {
-      console.log(`[Scraper] Using provided URL: ${job.blu_ray_url}`)
-      const specs = await scrapeDiscDetails(job.blu_ray_url, job.title, job.year || new Date().getFullYear())
+    if (job.bluray_com_url) {
+      console.log(`[Scraper] Using provided URL: ${job.bluray_com_url}`)
+      const specs = await scrapeDiscDetails(job.bluray_com_url, job.title, job.year || new Date().getFullYear())
       return specs
     }
 
