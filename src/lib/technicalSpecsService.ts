@@ -1,3 +1,4 @@
+//src/lib/technicalSpecsService.ts
 import { supabase } from './supabase';
 import type { BlurayTechnicalSpecs, ScrapingJob } from './supabase';
 
