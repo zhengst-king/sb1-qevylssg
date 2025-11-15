@@ -7,7 +7,8 @@ export function useTechnicalSpecs(
   title: string, 
   year?: number, 
   discFormat?: string,
-  libraryItemId?: string
+  libraryItemId?: string,
+  blurayComUrl?: string  // ✅ ADDED: blu-ray.com URL parameter
 ) {
   const [specs, setSpecs] = useState<BlurayTechnicalSpecs | null>(null);
   const [scrapingJob, setScrapingJob] = useState<ScrapingJob | null>(null);
@@ -54,6 +55,7 @@ export function useTechnicalSpecs(
         title,
         year,
         undefined, // imdbId - we can add this later
+        blurayComUrl,  // ✅ ADDED: Pass bluray_com_url to service
         libraryItemId,
         priority
       );
