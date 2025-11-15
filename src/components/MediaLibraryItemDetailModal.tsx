@@ -49,7 +49,8 @@ export function MediaLibraryItemDetailModal({
     item.title, 
     item.year, 
     item.format,
-    item.id
+    item.id,
+    item.bluray_com_url  // ✅ ADDED: Pass bluray_com_url to hook
   );
 
   // Automatically request specs if we have a bluray URL but no specs yet
