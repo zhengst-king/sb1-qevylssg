@@ -47,6 +47,7 @@ class TechnicalSpecsService {
     title: string, 
     year?: number, 
     imdbId?: string,
+    blurayComUrl?: string,  // ✅ ADDED: blu-ray.com URL parameter
     collectionItemId?: string,
     priority: number = 0
   ): Promise<ScrapingJob | null> {
@@ -77,6 +78,7 @@ class TechnicalSpecsService {
           title,
           year,
           imdb_id: imdbId,
+          bluray_com_url: blurayComUrl,  // ✅ ADDED: Pass bluray_com_url to database
           search_query: year ? `${title} ${year}` : title,
           priority,
           requested_by_user_id: user.user.id,
@@ -90,7 +92,7 @@ class TechnicalSpecsService {
         return null;
       }
 
-      console.log('Created scraping job:', data.id);
+      console.log('Created scraping job:', data.id, blurayComUrl ? `with URL: ${blurayComUrl}` : 'without URL');
       return data;
     } catch (error) {
       console.error('Error in requestTechnicalSpecs:', error);
