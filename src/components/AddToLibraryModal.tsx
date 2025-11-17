@@ -63,6 +63,12 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   const [notes, setNotes] = useState('');
   const [collectionType, setCollectionType] = useState<CollectionType>(defaultCollectionType);
 
+  // Add state for extracted data
+  const [extractedSpecs, setExtractedSpecs] = useState<any>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [specsCollapsed, setSpecsCollapsed] = useState(true);
+  const [ratingsCollapsed, setRatingsCollapsed] = useState(true);
+
   // Handle Esc key to close modal
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
@@ -86,16 +92,36 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
       
       if (parsed) {
         setParsedEdition(parsed);
-        
-        // Auto-fill form
         if (parsed.format) setFormat(parsed.format);
         if (parsed.editionName) setEditionName(parsed.editionName);
+        
+        // Fetch and extract specs
+        fetchAndExtractSpecs(blurayUrl);
         
         // Auto-advance to details form (but keep Step 2 visible)
         setShowDetailsForm(true);
       }
     }
   }, [blurayUrl]);
+
+  // New function to fetch specs
+  const fetchAndExtractSpecs = async (url: string) => {
+    setExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-bluray-page', {
+        body: { url }
+      });
+    
+      if (error) throw error;
+    
+      setExtractedSpecs(data);
+      console.log('[AddToLibrary] Extracted specs:', data);
+    } catch (error) {
+      console.error('[AddToLibrary] Failed to extract specs:', error);
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -628,6 +654,230 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       />
                     </div>
                   </div>
+
+                  {/* Tech Specs Section - Collapsible */}
+                  {extractedSpecs && (
+                    <div className="border border-blue-200 rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setSpecsCollapsed(!specsCollapsed)}
+                        className="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileVideo className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium text-slate-900">Technical Specifications</span>
+                          {extracting && <span className="text-xs text-slate-500">(extracting...)</span>}
+                        </div>
+                        <ChevronRight className={`w-4 h-4 transition-transform ${specsCollapsed ? '' : 'rotate-90'}`} />
+                      </button>
+                      
+                      {!specsCollapsed && (
+                        <div className="p-4 bg-white space-y-3 text-sm">
+                          {extractedSpecs.video_codec && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Video Codec:</span>
+                              <span className="font-medium">{extractedSpecs.video_codec}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.video_resolution && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Resolution:</span>
+                              <span className="font-medium">{extractedSpecs.video_resolution}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.hdr_format && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">HDR:</span>
+                              <span className="font-medium">{extractedSpecs.hdr_format.join(', ')}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.aspect_ratio && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Aspect Ratio:</span>
+                              <span className="font-medium">{extractedSpecs.aspect_ratio}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.original_aspect_ratio && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Original Aspect Ratio:</span>
+                              <span className="font-medium">{extractedSpecs.original_aspect_ratio}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.audio_tracks && extractedSpecs.audio_tracks.length > 0 && (
+                            <div>
+                              <span className="text-slate-600 block mb-1">Audio:</span>
+                              <div className="space-y-1 ml-4">
+                                {extractedSpecs.audio_tracks.map((track: string, i: number) => (
+                                  <div key={i} className="text-slate-700">{track}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.subtitles && extractedSpecs.subtitles.length > 0 && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Subtitles:</span>
+                              <span className="font-medium">{extractedSpecs.subtitles.join(', ')}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.discs && extractedSpecs.discs.length > 0 && (
+                            <div>
+                              <span className="text-slate-600 block mb-1">Discs:</span>
+                              <div className="space-y-1 ml-4">
+                                {extractedSpecs.discs.map((disc: string, i: number) => (
+                                  <div key={i} className="text-slate-700">{disc}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.digital_copy_included !== undefined && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Digital Copy:</span>
+                              <span className={`font-medium ${extractedSpecs.digital_copy_included ? 'text-green-600' : 'text-slate-400'}`}>
+                                {extractedSpecs.digital_copy_included ? 'Yes' : 'No'}
+                              </span>
+                            </div>
+                          )}
+                          {extractedSpecs.packaging && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Packaging:</span>
+                              <span className="font-medium">{extractedSpecs.packaging}</span>
+                            </div>
+                          )}
+                          {extractedSpecs.playback_info && (
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Playback:</span>
+                              <span className="font-medium">{extractedSpecs.playback_info}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Blu-ray.com Ratings Section - Collapsible */}
+                  {extractedSpecs && (
+                    extractedSpecs.bluray_video_4k_rating || 
+                    extractedSpecs.bluray_video_2k_rating || 
+                    extractedSpecs.bluray_3d_rating ||
+                    extractedSpecs.bluray_audio_rating || 
+                    extractedSpecs.bluray_extras_rating ||
+                    extractedSpecs.bluray_overall_rating
+                  ) && (
+                    <div className="border border-purple-200 rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setRatingsCollapsed(!ratingsCollapsed)}
+                        className="w-full flex items-center justify-between p-3 bg-purple-50 hover:bg-purple-100 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-purple-600" />
+                          <span className="font-medium text-slate-900">Blu-ray.com User Ratings</span>
+                        </div>
+                        <ChevronRight className={`w-4 h-4 transition-transform ${ratingsCollapsed ? '' : 'rotate-90'}`} />
+                      </button>
+                      
+                      {!ratingsCollapsed && (
+                        <div className="p-4 bg-white space-y-3">
+                          {extractedSpecs.bluray_video_4k_rating && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-700 font-medium">Video 4K</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(star => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_4k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_4k_rating}/5</span>
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.bluray_3d_rating && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-700 font-medium">3D</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(star => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_3d_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_3d_rating}/5</span>
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.bluray_video_2k_rating && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-700 font-medium">Video 2K</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(star => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_2k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_2k_rating}/5</span>
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.bluray_audio_rating && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-700 font-medium">Audio</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(star => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_audio_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_audio_rating}/5</span>
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.bluray_extras_rating && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-700 font-medium">Special Features</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(star => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_extras_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_extras_rating}/5</span>
+                              </div>
+                            </div>
+                          )}
+                          {extractedSpecs.bluray_overall_rating && (
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                              <span className="text-slate-900 font-semibold">Overall</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(star => (
+                                    <Star 
+                                      key={star} 
+                                      className={`w-5 h-5 ${star <= extractedSpecs.bluray_overall_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="font-bold text-slate-900 text-lg">{extractedSpecs.bluray_overall_rating}/5</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Condition */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
