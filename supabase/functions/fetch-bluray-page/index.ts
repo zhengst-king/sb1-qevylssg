@@ -148,9 +148,23 @@ function extractTechSpecs(html: string) {
       else if (/slipcover/i.test(html)) specs.packaging = 'Slipcover'
     }
     
-    const regionMatch = html.match(/Region:\s*([^<\n]+)/i)
-    if (regionMatch) {
-      specs.playback_info = `Region ${regionMatch[1].trim()}`
+    // IMPROVED: Better playback/region extraction
+    // Look for patterns like "4K Blu-ray: Region free" or "Region A"
+    const playbackMatch = html.match(/<span class="subheading">Playback<\/span><br>([\s\S]*?)(?:<br><br>|<span class="subheading">)/i)
+    if (playbackMatch) {
+      const playbackText = playbackMatch[1].replace(/<[^>]+>/g, '').trim()
+      specs.playback_info = playbackText
+    } else {
+      // Try alternative patterns
+      const regionFreeMatch = html.match(/(?:4K Blu-ray|Blu-ray):\s*(Region\s+free)/i)
+      if (regionFreeMatch) {
+        specs.playback_info = regionFreeMatch[1]
+      } else {
+        const regionMatch = html.match(/Region:\s*([ABC\d\s,]+)/i)
+        if (regionMatch) {
+          specs.playback_info = `Region ${regionMatch[1].trim()}`
+        }
+      }
     }
   } catch (error) {
     console.error('[ExtractSpecs] Error:', error)
@@ -163,25 +177,89 @@ function extractRatings(html: string) {
   const ratings: any = {}
   
   try {
-    const video4kMatch = html.match(/(?:Video\s*4K|4K)\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
-    if (video4kMatch) ratings.bluray_video_4k_rating = parseFloat(video4kMatch[1])
+    // IMPROVED: Multiple pattern matching strategies
     
-    const video2kMatch = html.match(/(?:Video\s*2K|Video)\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+    // Strategy 1: Look for "Video 4K" or "4K" followed by rating number
+    // Pattern: Video 4K</td><td>rating or in divs/spans
+    let video4kMatch = html.match(/Video\s*4K[^>]*>[\s\S]*?(\d+\.?\d*)/i)
+    if (video4kMatch) {
+      ratings.bluray_video_4k_rating = parseFloat(video4kMatch[1])
+    }
+    
+    // Strategy 2: Look in table cells
+    if (!ratings.bluray_video_4k_rating) {
+      video4kMatch = html.match(/(?:Video\s*4K|4K)\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+      if (video4kMatch) {
+        ratings.bluray_video_4k_rating = parseFloat(video4kMatch[1])
+      }
+    }
+    
+    // Video 2K rating
+    let video2kMatch = html.match(/Video\s*2K[^>]*>[\s\S]*?(\d+\.?\d*)/i)
     if (video2kMatch && !ratings.bluray_video_4k_rating) {
       ratings.bluray_video_2k_rating = parseFloat(video2kMatch[1])
     }
     
-    const video3dMatch = html.match(/3D\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
-    if (video3dMatch) ratings.bluray_3d_rating = parseFloat(video3dMatch[1])
+    if (!ratings.bluray_video_2k_rating) {
+      video2kMatch = html.match(/(?:Video\s*2K|Video)\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+      if (video2kMatch && !ratings.bluray_video_4k_rating) {
+        ratings.bluray_video_2k_rating = parseFloat(video2kMatch[1])
+      }
+    }
     
-    const audioMatch = html.match(/Audio\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
-    if (audioMatch) ratings.bluray_audio_rating = parseFloat(audioMatch[1])
+    // 3D rating
+    let video3dMatch = html.match(/3D[^>]*>[\s\S]*?(\d+\.?\d*)/i)
+    if (video3dMatch) {
+      ratings.bluray_3d_rating = parseFloat(video3dMatch[1])
+    }
     
-    const extrasMatch = html.match(/Extras\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
-    if (extrasMatch) ratings.bluray_extras_rating = parseFloat(extrasMatch[1])
+    if (!ratings.bluray_3d_rating) {
+      video3dMatch = html.match(/3D\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+      if (video3dMatch) {
+        ratings.bluray_3d_rating = parseFloat(video3dMatch[1])
+      }
+    }
     
-    const overallMatch = html.match(/Overall\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
-    if (overallMatch) ratings.bluray_overall_rating = parseFloat(overallMatch[1])
+    // Audio rating - look for "Audio" text followed by number
+    let audioMatch = html.match(/Audio[^>]*>[\s\S]*?(\d+\.?\d*)/i)
+    if (audioMatch) {
+      ratings.bluray_audio_rating = parseFloat(audioMatch[1])
+    }
+    
+    if (!ratings.bluray_audio_rating) {
+      audioMatch = html.match(/Audio\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+      if (audioMatch) {
+        ratings.bluray_audio_rating = parseFloat(audioMatch[1])
+      }
+    }
+    
+    // Extras rating
+    let extrasMatch = html.match(/Extras[^>]*>[\s\S]*?(\d+\.?\d*)/i)
+    if (extrasMatch) {
+      ratings.bluray_extras_rating = parseFloat(extrasMatch[1])
+    }
+    
+    if (!ratings.bluray_extras_rating) {
+      extrasMatch = html.match(/Extras\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+      if (extrasMatch) {
+        ratings.bluray_extras_rating = parseFloat(extrasMatch[1])
+      }
+    }
+    
+    // Overall rating
+    let overallMatch = html.match(/Overall[^>]*>[\s\S]*?(\d+\.?\d*)/i)
+    if (overallMatch) {
+      ratings.bluray_overall_rating = parseFloat(overallMatch[1])
+    }
+    
+    if (!ratings.bluray_overall_rating) {
+      overallMatch = html.match(/Overall\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i)
+      if (overallMatch) {
+        ratings.bluray_overall_rating = parseFloat(overallMatch[1])
+      }
+    }
+    
+    console.log('[ExtractRatings] Found ratings:', ratings)
   } catch (error) {
     console.error('[ExtractRatings] Error:', error)
   }
