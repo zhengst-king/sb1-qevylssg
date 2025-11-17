@@ -21,6 +21,7 @@ import {
   Copy
 } from 'lucide-react';
 import { omdbApi } from '../lib/omdb';
+import { supabase } from '../lib/supabase';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 import { blurayLinkService } from '../services/blurayLinkService';
 import type { BlurayEditionInfo } from '../services/blurayLinkService';
@@ -251,6 +252,10 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
     setParsedEdition(null);
     setFormat('Blu-ray');
     setEditionName('');
+    setExtractedSpecs(null);
+    setExtracting(false);
+    setSpecsCollapsed(true);
+    setRatingsCollapsed(true);
   };
 
   const collectionTypeOptions = [
