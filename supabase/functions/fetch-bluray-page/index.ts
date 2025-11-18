@@ -140,12 +140,14 @@ function extractTechSpecs(html: string) {
     
     specs.digital_copy_included = /digital\s*(hd|copy|download|ultraviolet|vudu|itunes)/i.test(html)
     
-    // Extract packaging as-is from the page
-    const packagingMatch = html.match(/Packaging:\s*([^<\n]+)/i)
+    // Extract packaging - same pattern as Subtitles
+    const packagingMatch = html.match(/<span class="subheading">Packaging<\/span><br>([\s\S]*?)(?:<br><br>|<span class="subheading">)/i)
     if (packagingMatch) {
-      specs.packaging = packagingMatch[1].trim()
+      const packagingText = packagingMatch[1].replace(/<[^>]+>/g, '').trim()
+      if (packagingText) {
+        specs.packaging = packagingText
+      }
     }
-    // If not found, leave undefined - don't guess
     
     // Look for Playback section first
     const playbackMatch = html.match(/<span class="subheading">Playback<\/span><br>([\s\S]*?)(?:<br><br>|<span class="subheading">)/i)
