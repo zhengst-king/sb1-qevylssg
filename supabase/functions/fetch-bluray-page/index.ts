@@ -178,59 +178,46 @@ function extractRatings(html: string) {
   const ratings: any = {}
   
   try {
-    // Look for the Blu-ray user rating section
-    // Pattern: <td>Label</td> [skip graphics] <td>rating</td>
+    // Find the ratings table - look for the specific table structure
+    // The ratings are in a table with labels in one column and values in another
     
-    // More robust pattern: look for table row with rating label and capture number in same or next cell
-    const ratingPatterns = [
-      { key: 'bluray_video_4k_rating', patterns: [/(?:Video 4K|4K)[\s\S]*?<td[^>]*>(\d+\.?\d*)<\/td>/i] },
-      { key: 'bluray_video_2k_rating', patterns: [/Video(?:\s+2K)?[\s\S]*?<td[^>]*>(\d+\.?\d*)<\/td>/i] },
-      { key: 'bluray_3d_rating', patterns: [/3D[\s\S]*?<td[^>]*>(\d+\.?\d*)<\/td>/i] },
-      { key: 'bluray_audio_rating', patterns: [/Audio[\s\S]*?<td[^>]*>(\d+\.?\d*)<\/td>/i] },
-      { key: 'bluray_extras_rating', patterns: [/Extras[\s\S]*?<td[^>]*>(\d+\.?\d*)<\/td>/i] },
-      { key: 'bluray_overall_rating', patterns: [/Overall[\s\S]*?<td[^>]*>(\d+\.?\d*)<\/td>/i] }
-    ];
-    
-    // Find the ratings table section
-    const ratingsSection = html.match(/<h3[^>]*>Blu-ray user rating<\/h3>([\s\S]*?)(?:<h3|<div class="clear">)/i);
-    
-    if (ratingsSection) {
-      const ratingsHtml = ratingsSection[1];
+    // Pattern: finds rating number that appears after the label
+    const extract = (label: string) => {
+      // Try multiple patterns
+      const patterns = [
+        // Pattern 1: Label in td, rating in next td
+        new RegExp(`<td[^>]*>${label}</td>[\\s\\S]*?<td[^>]*>(\\d+\\.?\\d*)</td>`, 'i'),
+        // Pattern 2: Label followed by rating in any structure
+        new RegExp(`${label}[\\s\\S]{0,200}?(\\d+\\.\\d)`, 'i')
+      ];
       
-      // Extract each rating from the section
-      for (const { key, patterns } of ratingPatterns) {
-        for (const pattern of patterns) {
-          const match = ratingsHtml.match(pattern);
-          if (match) {
-            const value = parseFloat(match[1]);
-            if (value >= 0 && value <= 5) {
-              ratings[key] = value;
-              break;
-            }
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match) {
+          const value = parseFloat(match[1]);
+          if (value >= 0 && value <= 5) {
+            return value;
           }
         }
       }
-    }
+      return null;
+    };
     
-    // Fallback: try original simple patterns if no ratings found
-    if (Object.keys(ratings).length === 0) {
-      const video4kMatch = html.match(/(?:Video\s*4K|4K)\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i);
-      if (video4kMatch) ratings.bluray_video_4k_rating = parseFloat(video4kMatch[1]);
-      
-      const video2kMatch = html.match(/Video\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i);
-      if (video2kMatch && !ratings.bluray_video_4k_rating) {
-        ratings.bluray_video_2k_rating = parseFloat(video2kMatch[1]);
-      }
-      
-      const audioMatch = html.match(/Audio\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i);
-      if (audioMatch) ratings.bluray_audio_rating = parseFloat(audioMatch[1]);
-      
-      const extrasMatch = html.match(/Extras\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i);
-      if (extrasMatch) ratings.bluray_extras_rating = parseFloat(extrasMatch[1]);
-      
-      const overallMatch = html.match(/Overall\s*<\/td>\s*<td[^>]*>(\d+\.?\d*)/i);
-      if (overallMatch) ratings.bluray_overall_rating = parseFloat(overallMatch[1]);
-    }
+    // Extract each rating with simple labels
+    const video4k = extract('4K');
+    const video = extract('Video');
+    const audio = extract('Audio');
+    const extras = extract('Extras');
+    const overall = extract('Overall');
+    const threeD = extract('3D');
+    
+    // Assign to correct fields
+    if (video4k) ratings.bluray_video_4k_rating = video4k;
+    if (threeD) ratings.bluray_3d_rating = threeD;
+    if (video) ratings.bluray_video_2k_rating = video;
+    if (audio) ratings.bluray_audio_rating = audio;
+    if (extras) ratings.bluray_extras_rating = extras;
+    if (overall) ratings.bluray_overall_rating = overall;
     
     console.log('[ExtractRatings] Found ratings:', ratings);
   } catch (error) {
