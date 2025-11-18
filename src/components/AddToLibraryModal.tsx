@@ -760,14 +760,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                   )}
 
                   {/* Blu-ray.com Ratings Section - Collapsible */}
-                  {extractedSpecs && (
-                    extractedSpecs.bluray_video_4k_rating || 
-                    extractedSpecs.bluray_video_2k_rating || 
-                    extractedSpecs.bluray_3d_rating ||
-                    extractedSpecs.bluray_audio_rating || 
-                    extractedSpecs.bluray_extras_rating ||
-                    extractedSpecs.bluray_overall_rating
-                  ) && (
+                  {extractedSpecs && (                    
                     <div className="border border-purple-200 rounded-lg overflow-hidden">
                       <button
                         type="button"
