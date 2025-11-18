@@ -149,9 +149,23 @@ function extractTechSpecs(html: string) {
       else if (/slipcover/i.test(html)) specs.packaging = 'Slipcover'
     }
     
-    const regionMatch = html.match(/Region:\s*([^<\n]+)/i)
-    if (regionMatch) {
-      specs.playback_info = `Region ${regionMatch[1].trim()}`
+    // Look for Playback section first
+    const playbackMatch = html.match(/<span class="subheading">Playback<\/span><br>([\s\S]*?)(?:<br><br>|<span class="subheading">)/i)
+    if (playbackMatch) {
+      const playbackText = playbackMatch[1].replace(/<[^>]+>/g, '').trim()
+      specs.playback_info = playbackText
+    } else {
+      // Fallback: Look for "Region free" pattern (common in 4K releases)
+      const regionFreeMatch = html.match(/(?:4K Blu-ray|Blu-ray):\s*(Region\s+free)/i)
+      if (regionFreeMatch) {
+        specs.playback_info = regionFreeMatch[1]
+      } else {
+        // Fallback: Look for standard Region code
+        const regionMatch = html.match(/Region[:\s]+([ABC\d\s,]+)/i)
+        if (regionMatch) {
+          specs.playback_info = `Region ${regionMatch[1].trim()}`
+        }
+      }
     }
   } catch (error) {
     console.error('[ExtractSpecs] Error:', error)
