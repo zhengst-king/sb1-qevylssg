@@ -776,102 +776,137 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                       
                       {!ratingsCollapsed && (
                         <div className="p-4 bg-white space-y-3">
-                          {extractedSpecs.bluray_video_4k_rating && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-700 font-medium">Video 4K</span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star 
-                                      key={star} 
-                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_4k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_4k_rating}/5</span>
-                              </div>
+                          {/* Video 4K */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-700 font-medium">Video 4K</span>
+                            <div className="flex items-center gap-2">
+                              {extractedSpecs.bluray_video_4k_rating ? (
+                                <>
+                                  <div className="flex">
+                                    {[1,2,3,4,5].map(star => (
+                                      <Star 
+                                        key={star} 
+                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_4k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_4k_rating}/5</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not rated</span>
+                              )}
                             </div>
-                          )}
-                          {extractedSpecs.bluray_3d_rating && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-700 font-medium">3D</span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star 
-                                      key={star} 
-                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_3d_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_3d_rating}/5</span>
-                              </div>
+                          </div>
+                          
+                          {/* Video 2K */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-700 font-medium">Video 2K</span>
+                            <div className="flex items-center gap-2">
+                              {extractedSpecs.bluray_video_2k_rating ? (
+                                <>
+                                  <div className="flex">
+                                    {[1,2,3,4,5].map(star => (
+                                      <Star 
+                                        key={star} 
+                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_2k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_2k_rating}/5</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not rated</span>
+                              )}
                             </div>
-                          )}
-                          {extractedSpecs.bluray_video_2k_rating && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-700 font-medium">Video 2K</span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star 
-                                      key={star} 
-                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_2k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_2k_rating}/5</span>
-                              </div>
+                          </div>
+                          
+                          {/* 3D */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-700 font-medium">3D</span>
+                            <div className="flex items-center gap-2">
+                              {extractedSpecs.bluray_3d_rating ? (
+                                <>
+                                  <div className="flex">
+                                    {[1,2,3,4,5].map(star => (
+                                      <Star 
+                                        key={star} 
+                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_3d_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_3d_rating}/5</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not rated</span>
+                              )}
                             </div>
-                          )}
-                          {extractedSpecs.bluray_audio_rating && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-700 font-medium">Audio</span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star 
-                                      key={star} 
-                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_audio_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_audio_rating}/5</span>
-                              </div>
+                          </div>
+                          
+                          {/* Audio */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-700 font-medium">Audio</span>
+                            <div className="flex items-center gap-2">
+                              {extractedSpecs.bluray_audio_rating ? (
+                                <>
+                                  <div className="flex">
+                                    {[1,2,3,4,5].map(star => (
+                                      <Star 
+                                        key={star} 
+                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_audio_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_audio_rating}/5</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not rated</span>
+                              )}
                             </div>
-                          )}
-                          {extractedSpecs.bluray_extras_rating && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-slate-700 font-medium">Special Features</span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star 
-                                      key={star} 
-                                      className={`w-4 h-4 ${star <= extractedSpecs.bluray_extras_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="font-semibold text-slate-900">{extractedSpecs.bluray_extras_rating}/5</span>
-                              </div>
+                          </div>
+                          
+                          {/* Extras */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-700 font-medium">Special Features</span>
+                            <div className="flex items-center gap-2">
+                              {extractedSpecs.bluray_extras_rating ? (
+                                <>
+                                  <div className="flex">
+                                    {[1,2,3,4,5].map(star => (
+                                      <Star 
+                                        key={star} 
+                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_extras_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_extras_rating}/5</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not rated</span>
+                              )}
                             </div>
-                          )}
-                          {extractedSpecs.bluray_overall_rating && (
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                              <span className="text-slate-900 font-semibold">Overall</span>
-                              <div className="flex items-center gap-2">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star 
-                                      key={star} 
-                                      className={`w-5 h-5 ${star <= extractedSpecs.bluray_overall_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="font-bold text-slate-900 text-lg">{extractedSpecs.bluray_overall_rating}/5</span>
-                              </div>
+                          </div>
+                          
+                          {/* Overall */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                            <span className="text-slate-900 font-semibold">Overall</span>
+                            <div className="flex items-center gap-2">
+                              {extractedSpecs.bluray_overall_rating ? (
+                                <>
+                                  <div className="flex">
+                                    {[1,2,3,4,5].map(star => (
+                                      <Star 
+                                        key={star} 
+                                        className={`w-5 h-5 ${star <= extractedSpecs.bluray_overall_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-bold text-slate-900 text-lg">{extractedSpecs.bluray_overall_rating}/5</span>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-sm">Not rated</span>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
                       )}
                     </div>
