@@ -745,7 +745,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                           {extractedSpecs.packaging && (
                             <div className="flex">
                               <span className="text-slate-600 w-40">Packaging:</span>
-                              <span className="font-medium">{extractedSpecs.packaging}</span>
+                              <span className="font-medium whitespace-pre-line">{extractedSpecs.packaging}</span>
                             </div>
                           )}
                           {extractedSpecs.playback_info && (
