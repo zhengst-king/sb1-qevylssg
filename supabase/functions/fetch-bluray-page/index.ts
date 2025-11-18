@@ -140,21 +140,12 @@ function extractTechSpecs(html: string) {
     
     specs.digital_copy_included = /digital\s*(hd|copy|download|ultraviolet|vudu|itunes)/i.test(html)
     
-    // Look for Packaging in the specs section only
+    // Extract packaging as-is from the page
     const packagingMatch = html.match(/Packaging:\s*([^<\n]+)/i)
     if (packagingMatch) {
       specs.packaging = packagingMatch[1].trim()
-    } else {
-      // Try to find packaging within the specs section (between Video and Playback)
-      const specsSection = html.match(/<span class="subheading">Video<\/span>([\s\S]*?)<span class="subheading">Playback<\/span>/i)
-      if (specsSection) {
-        const specsText = specsSection[1].toLowerCase()
-        if (specsText.includes('steelbook')) specs.packaging = 'Steelbook'
-        else if (specsText.includes('digibook')) specs.packaging = 'Digibook'
-        else if (specsText.includes('slipcover')) specs.packaging = 'Slipcover'
-      }
-      // If still not found, leave undefined (don't guess)
     }
+    // If not found, leave undefined - don't guess
     
     // Look for Playback section first
     const playbackMatch = html.match(/<span class="subheading">Playback<\/span><br>([\s\S]*?)(?:<br><br>|<span class="subheading">)/i)
@@ -185,38 +176,41 @@ function extractRatings(html: string) {
   const ratings: any = {}
   
   try {
-    // Find the ratings table - look for the specific table structure
-    // The ratings are in a table with labels in one column and values in another
+    // Find ONLY the ratings table section
+    const ratingsTableMatch = html.match(/<h3[^>]*>Blu-ray user rating<\/h3>([\s\S]*?)(?:<\/table>[\s\S]*?<h3|Based on \d+ user ratings)/i);
     
-    // Pattern: finds rating number that appears after the label
-    const extract = (label: string) => {
-      // Try multiple patterns
-      const patterns = [
-        // Pattern 1: Label in td, rating in next td
-        new RegExp(`<td[^>]*>${label}</td>[\\s\\S]*?<td[^>]*>(\\d+\\.?\\d*)</td>`, 'i'),
-        // Pattern 2: Label followed by rating in any structure
-        new RegExp(`${label}[\\s\\S]{0,200}?(\\d+\\.\\d)`, 'i')
-      ];
+    if (!ratingsTableMatch) {
+      console.log('[ExtractRatings] Could not find ratings table section');
+      return ratings;
+    }
+    
+    const ratingsTable = ratingsTableMatch[1];
+    console.log('[ExtractRatings] Found ratings table, length:', ratingsTable.length);
+    
+    // Extract ratings from this isolated section
+    // Look for: <td>Label</td> ... <td>rating</td>
+    const extractFromTable = (label: string) => {
+      // Match the table row pattern more precisely
+      const rowPattern = new RegExp(`<tr[^>]*>[\\s\\S]*?<td[^>]*>${label}</td>[\\s\\S]*?<td[^>]*>(\\d\\.\\d)</td>`, 'i');
+      const match = ratingsTable.match(rowPattern);
       
-      for (const pattern of patterns) {
-        const match = html.match(pattern);
-        if (match) {
-          const value = parseFloat(match[1]);
-          if (value >= 0 && value <= 5) {
-            return value;
-          }
+      if (match) {
+        const value = parseFloat(match[1]);
+        console.log(`[ExtractRatings] ${label}: ${value}`);
+        if (value >= 0 && value <= 5) {
+          return value;
         }
       }
       return null;
     };
     
-    // Extract each rating with simple labels
-    const video4k = extract('4K');
-    const video = extract('Video');
-    const audio = extract('Audio');
-    const extras = extract('Extras');
-    const overall = extract('Overall');
-    const threeD = extract('3D');
+    // Extract each rating with exact labels from the page
+    const video4k = extractFromTable('4K');
+    const video = extractFromTable('Video');
+    const audio = extractFromTable('Audio');
+    const extras = extractFromTable('Extras');
+    const overall = extractFromTable('Overall');
+    const threeD = extractFromTable('3D');
     
     // Assign to correct fields
     if (video4k) ratings.bluray_video_4k_rating = video4k;
@@ -226,7 +220,7 @@ function extractRatings(html: string) {
     if (extras) ratings.bluray_extras_rating = extras;
     if (overall) ratings.bluray_overall_rating = overall;
     
-    console.log('[ExtractRatings] Found ratings:', ratings);
+    console.log('[ExtractRatings] Final ratings:', ratings);
   } catch (error) {
     console.error('[ExtractRatings] Error:', error);
   }
