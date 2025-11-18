@@ -140,12 +140,16 @@ function extractTechSpecs(html: string) {
     
     specs.digital_copy_included = /digital\s*(hd|copy|download|ultraviolet|vudu|itunes)/i.test(html)
     
-    // Extract packaging - same pattern as Subtitles
+    // Extract packaging - preserve line breaks like Audio does
     const packagingMatch = html.match(/<span class="subheading">Packaging<\/span><br>([\s\S]*?)(?:<br><br>|<span class="subheading">)/i)
     if (packagingMatch) {
-      const packagingText = packagingMatch[1].replace(/<[^>]+>/g, '').trim()
-      if (packagingText) {
-        specs.packaging = packagingText
+      const packagingLines = packagingMatch[1]
+        .split('<br>')
+        .map((line: string) => line.replace(/<[^>]+>/g, '').trim())
+        .filter((line: string) => line && line !== '&nbsp;');
+      
+      if (packagingLines.length > 0) {
+        specs.packaging = packagingLines.join('\n'); // Join with newline
       }
     }
     
