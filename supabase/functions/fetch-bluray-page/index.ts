@@ -140,13 +140,20 @@ function extractTechSpecs(html: string) {
     
     specs.digital_copy_included = /digital\s*(hd|copy|download|ultraviolet|vudu|itunes)/i.test(html)
     
+    // Look for Packaging in the specs section only
     const packagingMatch = html.match(/Packaging:\s*([^<\n]+)/i)
     if (packagingMatch) {
       specs.packaging = packagingMatch[1].trim()
     } else {
-      if (/steelbook/i.test(html)) specs.packaging = 'Steelbook'
-      else if (/digibook/i.test(html)) specs.packaging = 'Digibook'
-      else if (/slipcover/i.test(html)) specs.packaging = 'Slipcover'
+      // Try to find packaging within the specs section (between Video and Playback)
+      const specsSection = html.match(/<span class="subheading">Video<\/span>([\s\S]*?)<span class="subheading">Playback<\/span>/i)
+      if (specsSection) {
+        const specsText = specsSection[1].toLowerCase()
+        if (specsText.includes('steelbook')) specs.packaging = 'Steelbook'
+        else if (specsText.includes('digibook')) specs.packaging = 'Digibook'
+        else if (specsText.includes('slipcover')) specs.packaging = 'Slipcover'
+      }
+      // If still not found, leave undefined (don't guess)
     }
     
     // Look for Playback section first
