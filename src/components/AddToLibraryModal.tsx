@@ -222,6 +222,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         collection_type: collectionType,
         edition_name: editionName || undefined,
         bluray_com_url: parsedEdition?.url || undefined
+        edition_cover_url: extractedSpecs?.edition_cover_url || undefined
         // Technical specs will be scraped in background and shown in detail modal
       };
 
