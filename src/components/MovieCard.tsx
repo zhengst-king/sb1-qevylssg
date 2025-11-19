@@ -5,6 +5,7 @@ import { OMDBMovieDetails } from '../lib/omdb';
 import { supabase } from '../lib/supabase';
 import { useMovies } from '../hooks/useMovies'; 
 import { buildMovieFromOMDb, getTMDBIdFromIMDb } from '../utils/movieDataBuilder';
+import { watchlistService } from '../services/watchlistService';
 
 interface MovieCardProps {
   movie: OMDBMovieDetails;
@@ -47,54 +48,36 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
 
     setIsAdding(true);
     try {
-      console.log('[MovieCard] Adding movie to watchlist:', movie.Title);
+      console.log('[MovieCard] Adding to watchlist:', movie.Title);
       
-      // Step 1: Get the current authenticated user
-      const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
-      
-      // Step 2: Check if user is signed in
-      if (authError || !currentUser) {
-        console.error('[MovieCard] User not authenticated:', authError);
-        alert('Please sign in to add titles to your watchlist.');
-        return;
-      }
+      // Use centralized watchlist service
+      await watchlistService.addToWatchlist({
+        title: movie.Title,
+        year: movie.Year !== 'N/A' ? parseInt(movie.Year) : undefined,
+        imdb_id: movie.imdbID,
+        tmdb_id: undefined, // MovieCard doesn't have TMDB ID initially
+        poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
+        plot: movie.Plot !== 'N/A' ? movie.Plot : undefined,
+        imdb_score: movie.imdbRating !== 'N/A' ? parseFloat(movie.imdbRating) : undefined,
+        media_type: movie.Type === 'series' ? 'series' : 'movie',
+        status: 'To Watch'
+      });
 
-      // ✅ NEW: Get TMDB ID from IMDb ID
-      const tmdbId = await getTMDBIdFromIMDb(movie.imdbID, movie.Type === 'series' ? 'tv' : 'movie');
-
-      // ✅ NEW: movie already has OMDb details, use buildMovieFromOMDb
-      const movieData = buildMovieFromOMDb(
-        {
-          title: movie.Title,
-          year: movie.Year !== 'N/A' ? parseInt(movie.Year) : undefined,
-          imdb_id: movie.imdbID,
-          tmdb_id: tmdbId || undefined, // ✅ Include TMDB ID
-          poster_url: movie.Poster !== 'N/A' ? movie.Poster : undefined,
-          plot: movie.Plot !== 'N/A' ? movie.Plot : undefined,
-          imdb_score: movie.imdbRating !== 'N/A' ? parseFloat(movie.imdbRating) : undefined,
-          media_type: movie.Type === 'series' ? 'series' : 'movie',
-          status: 'To Watch'
-        },
-        movie // ✅ Pass the entire movie object as OMDb details
-      );
-
-      // ✅ NEW: Use the hook instead of direct insert
-      await addMovie(movieData);
-
-      console.log('[MovieCard] ✅ Movie added successfully with tmdb_id');
-      
-      // Mark this card as added without a popup
       setIsInWatchlist(true);
       
-      // Call the callback to refresh parent component if provided
+      // Call the callback to refresh parent component
       if (onMovieAdded) {
-        console.log('[MovieCard] Calling onMovieAdded callback');
         onMovieAdded();
       }
 
+      console.log('[MovieCard] Successfully added to watchlist');
     } catch (error) {
-      console.error('[MovieCard] Error adding to watchlist:', error);
-      alert('An unexpected error occurred. Please try again.');
+      console.error('[MovieCard] Failed to add to watchlist:', error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('Failed to add to watchlist. Please try again.');
+      }
     } finally {
       setIsAdding(false);
     }
