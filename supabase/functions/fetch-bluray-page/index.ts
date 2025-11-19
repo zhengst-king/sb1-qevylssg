@@ -117,6 +117,13 @@ function extractTechSpecs(html: string) {
       
       const origAspectMatch = videoText.match(/Original aspect ratio:\s*([^<]+)/i)
       if (origAspectMatch) specs.original_aspect_ratio = origAspectMatch[1].trim()
+      
+      // Extract edition cover image URL
+      const coverMatch = html.match(/<img[^>]*src="(https:\/\/images\.static-bluray\.com\/movies\/covers\/[^"]+)"[^>]*alt="[^"]*cover"/i);
+      if (coverMatch) {
+        specs.edition_cover_url = coverMatch[1];
+        console.log('[ExtractSpecs] Found cover:', specs.edition_cover_url);
+      }
     }
     
     const audioMatch = html.match(/<span class="subheading">Audio<\/span><br>[\s\S]*?<div[^>]*id="shortaudio"[^>]*>([\s\S]*?)<\/div>/)
