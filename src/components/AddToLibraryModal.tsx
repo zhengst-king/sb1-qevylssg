@@ -725,11 +725,11 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             </div>
                           )}
                           {extractedSpecs.discs && extractedSpecs.discs.length > 0 && (
-                            <div>
-                              <span className="text-slate-600 block mb-1">Discs:</span>
-                              <div className="space-y-1 ml-4">
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Discs:</span>
+                              <div className="font-medium space-y-0.5">
                                 {extractedSpecs.discs.map((disc: string, i: number) => (
-                                  <div key={i} className="text-slate-700">{disc}</div>
+                                  <div key={i}>{disc}</div>
                                 ))}
                               </div>
                             </div>
