@@ -27,6 +27,7 @@ import { blurayLinkService } from '../services/blurayLinkService';
 import type { BlurayEditionInfo } from '../services/blurayLinkService';
 import { MediaItemDetailsDisplay } from './MediaItemDetailsDisplay';
 import { MediaItemFormInputs } from './MediaItemFormInputs';
+import { watchlistService } from '../services/watchlistService';
 
 interface AddToLibraryModalProps {
   isOpen: boolean;
@@ -201,6 +202,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   };
 
   // Add to library
+  // Add to library
   const handleAddToLibrary = async () => {
     if (!selectedMovie) return;
 
@@ -227,46 +229,29 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         edition_cover_url: extractedSpecs?.edition_cover_url || undefined
       };
 
+      console.log('[AddToLibrary] Adding to physical media library:', libraryItem);
+      
       // Add to physical media library
       await onAdd(libraryItem);
 
-      // Check if movie is already in watchlist
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data: existingMovie } = await supabase
-        .from('movies')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('imdb_id', selectedMovie.imdbID)
-        .single();
-
-      // If not in watchlist, add it with "To Watch" status
-      if (!existingMovie) {
-        console.log('[AddToLibrary] Adding to watchlist with "To Watch" status');
-        
-        const { error: watchlistError } = await supabase
-          .from('movies')
-          .insert([{
-            user_id: user.id,
-            imdb_id: selectedMovie.imdbID,
-            title: selectedMovie.Title,
-            year: parseInt(selectedMovie.Year) || null,
-            genre: selectedMovie.Genre !== 'N/A' ? selectedMovie.Genre : null,
-            director: selectedMovie.Director !== 'N/A' ? selectedMovie.Director : null,
-            poster_url: extractedSpecs?.edition_cover_url || (selectedMovie.Poster !== 'N/A' ? selectedMovie.Poster : null),
-            status: 'To Watch',
-            type: selectedMovie.Type === 'series' ? 'tv' : 'movie'
-          }]);
-
-        if (watchlistError) {
-          console.error('[AddToLibrary] Failed to add to watchlist:', watchlistError);
-          // Don't throw error - library item was added successfully
-        } else {
-          console.log('[AddToLibrary] Successfully added to watchlist');
-        }
-      } else {
-        console.log('[AddToLibrary] Already in watchlist, skipping');
+      // Add to watchlist using centralized service
+      console.log('[AddToLibrary] Adding to watchlist...');
+      try {
+        await watchlistService.addToWatchlist({
+          title: selectedMovie.Title,
+          year: parseInt(selectedMovie.Year) || undefined,
+          imdb_id: selectedMovie.imdbID,
+          poster_url: extractedSpecs?.edition_cover_url || (selectedMovie.Poster !== 'N/A' ? selectedMovie.Poster : undefined),
+          plot: selectedMovie.Plot !== 'N/A' ? selectedMovie.Plot : undefined,
+          imdb_score: selectedMovie.imdbRating !== 'N/A' ? parseFloat(selectedMovie.imdbRating) : undefined,
+          media_type: selectedMovie.Type === 'series' ? 'series' : 'movie',
+          status: 'To Watch'
+        });
+        console.log('[AddToLibrary] Successfully added to watchlist');
+      } catch (watchlistError) {
+        // Don't fail the whole operation if watchlist addition fails
+        console.error('[AddToLibrary] Watchlist addition failed (non-critical):', watchlistError);
+        // Could already exist in watchlist, which is fine
       }
 
       handleClose();
