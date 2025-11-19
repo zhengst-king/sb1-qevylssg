@@ -127,7 +127,11 @@ function extractTechSpecs(html: string) {
     
     const subsMatch = html.match(/<span class="subheading">Subtitles<\/span><br>[\s\S]*?<div[^>]*id="shortsubs"[^>]*>([\s\S]*?)<\/div>/)
     if (subsMatch) {
-      const subsText = subsMatch[1].replace(/<[^>]+>/g, '').trim()
+      const subsText = subsMatch[1]
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .trim()
       specs.subtitles = subsText.split(/,\s*/).map((s: string) => s.trim()).filter((s: string) => s)
     }
     
