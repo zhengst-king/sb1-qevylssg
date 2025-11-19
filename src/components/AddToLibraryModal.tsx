@@ -709,11 +709,11 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                             </div>
                           )}
                           {extractedSpecs.audio_tracks && extractedSpecs.audio_tracks.length > 0 && (
-                            <div>
-                              <span className="text-slate-600 block mb-1">Audio:</span>
-                              <div className="space-y-1 ml-4">
+                            <div className="flex">
+                              <span className="text-slate-600 w-40">Audio:</span>
+                              <div className="font-medium space-y-0.5">
                                 {extractedSpecs.audio_tracks.map((track: string, i: number) => (
-                                  <div key={i} className="text-slate-700">{track}</div>
+                                  <div key={i}>{track}</div>
                                 ))}
                               </div>
                             </div>
