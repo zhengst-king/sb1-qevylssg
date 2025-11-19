@@ -618,59 +618,61 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
 
                     {/* Right: Item Status + Format */}
                     <div className="flex-1 space-y-6">
-                  {/* Item Status Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Item Status
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {collectionTypeOptions.map((type) => {
-                        const IconComponent = type.icon;
-                        return (
-                          <button
-                            key={type.id}
-                            type="button"
-                            onClick={() => setCollectionType(type.id as CollectionType)}
-                            className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${collectionType === type.id ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
+                      {/* Item Status Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Item Status
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {collectionTypeOptions.map((type) => {
+                            const IconComponent = type.icon;
+                            return (
+                              <button
+                                key={type.id}
+                                type="button"
+                                onClick={() => setCollectionType(type.id as CollectionType)}
+                                className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${collectionType === type.id ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
+                              >
+                                <IconComponent className="h-4 w-4" />
+                                <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Format and Edition */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Format *
+                          </label>
+                          <select
+                            value={format}
+                            onChange={(e) => setFormat(e.target.value as any)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            required
                           >
-                            <IconComponent className="h-4 w-4" />
-                            <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                            <option value="DVD">DVD</option>
+                            <option value="Blu-ray">Blu-ray</option>
+                            <option value="4K UHD">4K UHD</option>
+                            <option value="3D Blu-ray">3D Blu-ray</option>
+                          </select>
+                        </div>
 
-                  {/* Format and Edition */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Format *
-                      </label>
-                      <select
-                        value={format}
-                        onChange={(e) => setFormat(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                        required
-                      >
-                        <option value="DVD">DVD</option>
-                        <option value="Blu-ray">Blu-ray</option>
-                        <option value="4K UHD">4K UHD</option>
-                        <option value="3D Blu-ray">3D Blu-ray</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Edition Name
-                      </label>
-                      <input
-                        type="text"
-                        value={editionName}
-                        onChange={(e) => setEditionName(e.target.value)}
-                        placeholder="e.g., Steelbook, Collector's Edition"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Edition Name
+                          </label>
+                          <input
+                            type="text"
+                            value={editionName}
+                            onChange={(e) => setEditionName(e.target.value)}
+                            placeholder="e.g., Steelbook, Collector's Edition"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
