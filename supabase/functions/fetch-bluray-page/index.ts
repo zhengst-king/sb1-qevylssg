@@ -118,11 +118,12 @@ function extractTechSpecs(html: string, url: string) {
       const origAspectMatch = videoText.match(/Original aspect ratio:\s*([^<]+)/i)
       if (origAspectMatch) specs.original_aspect_ratio = origAspectMatch[1].trim()
       
-      // Extract edition cover image URL
-      const coverMatch = html.match(/<img[^>]*src="(https:\/\/images\.static-bluray\.com\/movies\/covers\/[^"]+)"[^>]*alt="[^"]*cover"/i);
-      if (coverMatch) {
-        specs.edition_cover_url = coverMatch[1];
-        console.log('[ExtractSpecs] Found cover:', specs.edition_cover_url);
+      // Extract edition cover image URL from the edition ID
+      const urlIdMatch = url.match(/\/(\d+)\/?$/);
+      if (urlIdMatch) {
+        const movieId = urlIdMatch[1];
+        specs.edition_cover_url = `https://images.static-bluray.com/movies/covers/${movieId}_front.jpg`;
+        console.log('[ExtractSpecs] Cover URL:', specs.edition_cover_url);
       }
     }
     
