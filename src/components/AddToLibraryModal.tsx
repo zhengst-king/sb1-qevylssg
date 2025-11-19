@@ -737,7 +737,7 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                           {extractedSpecs.digital_copy_included !== undefined && (
                             <div className="flex">
                               <span className="text-slate-600 w-40">Digital Copy:</span>
-                              <span className={`font-medium ${extractedSpecs.digital_copy_included ? 'text-green-600' : 'text-slate-400'}`}>
+                              <span className="font-medium">
                                 {extractedSpecs.digital_copy_included ? 'Yes' : 'No'}
                               </span>
                             </div>
