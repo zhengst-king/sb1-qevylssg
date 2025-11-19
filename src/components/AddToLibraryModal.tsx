@@ -202,7 +202,6 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
   };
 
   // Add to library
-  // Add to library
   const handleAddToLibrary = async () => {
     if (!selectedMovie) return;
 
