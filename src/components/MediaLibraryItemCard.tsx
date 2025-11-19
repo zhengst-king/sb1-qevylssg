@@ -191,9 +191,9 @@ export const MediaLibraryItemCard: React.FC<MediaLibraryItemCardProps> = ({
       >
         {/* Poster Image */}
         <div className="aspect-[2/3] relative bg-slate-100">
-          {item.poster_url ? (
+          {(item.edition_cover_url || item.poster_url) ? (
             <img
-              src={item.poster_url}
+              src={item.edition_cover_url || item.poster_url}
               alt={`${item.title} poster`}
               className="w-full h-full object-cover"
               loading="lazy"
