@@ -605,6 +605,19 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                 </h3>
 
                 <div className="space-y-6">
+                  {/* Top Section: Image + Item Status + Format */}
+                  <div className="flex gap-6">
+                    {/* Left: Edition Cover Image */}
+                    <div className="flex-shrink-0">
+                      <img 
+                        src={extractedSpecs?.edition_cover_url || selectedMovie.Poster || '/placeholder.png'} 
+                        alt={`${selectedMovie.Title} cover`}
+                        className="w-32 h-48 object-cover rounded-lg shadow-md border border-slate-300"
+                      />
+                    </div>
+
+                    {/* Right: Item Status + Format */}
+                    <div className="flex-1 space-y-6">
                   {/* Item Status Selection */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
