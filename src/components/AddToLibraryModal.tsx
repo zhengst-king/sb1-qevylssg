@@ -25,6 +25,8 @@ import { supabase } from '../lib/supabase';
 import type { PhysicalMediaCollection, CollectionType } from '../lib/supabase';
 import { blurayLinkService } from '../services/blurayLinkService';
 import type { BlurayEditionInfo } from '../services/blurayLinkService';
+import { MediaItemDetailsDisplay } from './MediaItemDetailsDisplay';
+import { MediaItemFormInputs } from './MediaItemFormInputs';
 
 interface AddToLibraryModalProps {
   isOpen: boolean;
@@ -605,462 +607,67 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
                 </h3>
 
                 <div className="space-y-6">
-                  {/* Top Section: Image + Item Status + Format */}
-                  <div className="flex gap-6">
-                    {/* Left: Edition Cover Image */}
-                    <div className="flex-shrink-0">
-                      <img 
-                        src={extractedSpecs?.edition_cover_url || selectedMovie.Poster || '/placeholder.png'} 
-                        alt={`${selectedMovie.Title} cover`}
-                        className="w-32 h-48 object-cover rounded-lg shadow-md border border-slate-300"
-                      />
-                    </div>
+                  {/* Form Inputs Component */}
+                  <MediaItemFormInputs
+                    coverImageUrl={extractedSpecs?.edition_cover_url || selectedMovie.Poster}
+                    showCoverImage={true}
+                    collectionType={collectionType}
+                    format={format}
+                    editionName={editionName}
+                    condition={condition}
+                    purchaseDate={purchaseDate}
+                    purchasePrice={purchasePrice}
+                    purchaseLocation={purchaseLocation}
+                    personalRating={personalRating}
+                    notes={notes}
+                    onCollectionTypeChange={setCollectionType}
+                    onFormatChange={(f) => setFormat(f as any)}
+                    onEditionNameChange={setEditionName}
+                    onConditionChange={(c) => setCondition(c as any)}
+                    onPurchaseDateChange={setPurchaseDate}
+                    onPurchasePriceChange={setPurchasePrice}
+                    onPurchaseLocationChange={setPurchaseLocation}
+                    onPersonalRatingChange={setPersonalRating}
+                    onNotesChange={setNotes}
+                  />
 
-                    {/* Right: Item Status + Format */}
-                    <div className="flex-1 space-y-6">
-                      {/* Item Status Selection */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Item Status
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {collectionTypeOptions.map((type) => {
-                            const IconComponent = type.icon;
-                            return (
-                              <button
-                                key={type.id}
-                                type="button"
-                                onClick={() => setCollectionType(type.id as CollectionType)}
-                                className={`flex items-center space-x-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${collectionType === type.id ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}
-                              >
-                                <IconComponent className="h-4 w-4" />
-                                <span>{type.label.replace('Add to Library', 'Owned').replace('Add to ', '').replace('Mark for Sale', 'For Sale')}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Format and Edition */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Format *
-                          </label>
-                          <select
-                            value={format}
-                            onChange={(e) => setFormat(e.target.value as any)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            required
-                          >
-                            <option value="DVD">DVD</option>
-                            <option value="Blu-ray">Blu-ray</option>
-                            <option value="4K UHD">4K UHD</option>
-                            <option value="3D Blu-ray">3D Blu-ray</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Edition Name
-                          </label>
-                          <input
-                            type="text"
-                            value={editionName}
-                            onChange={(e) => setEditionName(e.target.value)}
-                            placeholder="e.g., Steelbook, Collector's Edition"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tech Specs Section - Collapsible */}
-                  {extractedSpecs && (
-                    <div className="border border-blue-200 rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setSpecsCollapsed(!specsCollapsed)}
-                        className="w-full flex items-center justify-between p-3 bg-blue-50 hover:bg-blue-100 transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileVideo className="w-4 h-4 text-blue-600" />
-                          <span className="font-medium text-slate-900">Technical Specifications</span>
-                          {extracting && <span className="text-xs text-slate-500">(extracting...)</span>}
-                        </div>
-                        <ChevronRight className={`w-4 h-4 transition-transform ${specsCollapsed ? '' : 'rotate-90'}`} />
-                      </button>
-                      
-                      {!specsCollapsed && (
-                        <div className="p-4 bg-white space-y-3 text-sm">
-                          {extractedSpecs.video_codec && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Video Codec:</span>
-                              <span className="font-medium">{extractedSpecs.video_codec}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.video_resolution && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Resolution:</span>
-                              <span className="font-medium">{extractedSpecs.video_resolution}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.hdr_format && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">HDR:</span>
-                              <span className="font-medium">{extractedSpecs.hdr_format.join(', ')}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.aspect_ratio && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Aspect Ratio:</span>
-                              <span className="font-medium">{extractedSpecs.aspect_ratio}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.original_aspect_ratio && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Original Aspect Ratio:</span>
-                              <span className="font-medium">{extractedSpecs.original_aspect_ratio}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.audio_tracks && extractedSpecs.audio_tracks.length > 0 && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Audio:</span>
-                              <div className="font-medium space-y-0.5">
-                                {extractedSpecs.audio_tracks.map((track: string, i: number) => (
-                                  <div key={i}>{track}</div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {extractedSpecs.subtitles && extractedSpecs.subtitles.length > 0 && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Subtitles:</span>
-                              <span className="font-medium">{extractedSpecs.subtitles.join(', ')}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.discs && extractedSpecs.discs.length > 0 && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Discs:</span>
-                              <div className="font-medium space-y-0.5">
-                                {extractedSpecs.discs.map((disc: string, i: number) => (
-                                  <div key={i}>{disc}</div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {extractedSpecs.digital_copy_included !== undefined && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Digital Copy:</span>
-                              <span className="font-medium">
-                                {extractedSpecs.digital_copy_included ? 'Yes' : 'No'}
-                              </span>
-                            </div>
-                          )}
-                          {extractedSpecs.packaging && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Packaging:</span>
-                              <span className="font-medium whitespace-pre-line">{extractedSpecs.packaging}</span>
-                            </div>
-                          )}
-                          {extractedSpecs.playback_info && (
-                            <div className="flex">
-                              <span className="text-slate-600 w-40">Playback:</span>
-                              <span className="font-medium">{extractedSpecs.playback_info}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Blu-ray.com Ratings Section - Collapsible */}
-                  {extractedSpecs && (                    
-                    <div className="border border-purple-200 rounded-lg overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setRatingsCollapsed(!ratingsCollapsed)}
-                        className="w-full flex items-center justify-between p-3 bg-purple-50 hover:bg-purple-100 transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Star className="w-4 h-4 text-purple-600" />
-                          <span className="font-medium text-slate-900">Blu-ray.com User Ratings</span>
-                        </div>
-                        <ChevronRight className={`w-4 h-4 transition-transform ${ratingsCollapsed ? '' : 'rotate-90'}`} />
-                      </button>
-                      
-                      {!ratingsCollapsed && (
-                        <div className="p-4 bg-white space-y-3">
-                          {/* Video 4K */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-700 font-medium">Video 4K</span>
-                            <div className="flex items-center gap-2">
-                              {extractedSpecs.bluray_video_4k_rating ? (
-                                <>
-                                  <div className="flex">
-                                    {[1,2,3,4,5].map(star => (
-                                      <Star 
-                                        key={star} 
-                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_4k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_4k_rating}/5</span>
-                                </>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not rated</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Video 2K */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-700 font-medium">Video 2K</span>
-                            <div className="flex items-center gap-2">
-                              {extractedSpecs.bluray_video_2k_rating ? (
-                                <>
-                                  <div className="flex">
-                                    {[1,2,3,4,5].map(star => (
-                                      <Star 
-                                        key={star} 
-                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_video_2k_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_video_2k_rating}/5</span>
-                                </>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not rated</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* 3D */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-700 font-medium">3D</span>
-                            <div className="flex items-center gap-2">
-                              {extractedSpecs.bluray_3d_rating ? (
-                                <>
-                                  <div className="flex">
-                                    {[1,2,3,4,5].map(star => (
-                                      <Star 
-                                        key={star} 
-                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_3d_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_3d_rating}/5</span>
-                                </>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not rated</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Audio */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-700 font-medium">Audio</span>
-                            <div className="flex items-center gap-2">
-                              {extractedSpecs.bluray_audio_rating ? (
-                                <>
-                                  <div className="flex">
-                                    {[1,2,3,4,5].map(star => (
-                                      <Star 
-                                        key={star} 
-                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_audio_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_audio_rating}/5</span>
-                                </>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not rated</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Extras */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-700 font-medium">Special Features</span>
-                            <div className="flex items-center gap-2">
-                              {extractedSpecs.bluray_extras_rating ? (
-                                <>
-                                  <div className="flex">
-                                    {[1,2,3,4,5].map(star => (
-                                      <Star 
-                                        key={star} 
-                                        className={`w-4 h-4 ${star <= extractedSpecs.bluray_extras_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="font-semibold text-slate-900">{extractedSpecs.bluray_extras_rating}/5</span>
-                                </>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not rated</span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Overall */}
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                            <span className="text-slate-900 font-semibold">Overall</span>
-                            <div className="flex items-center gap-2">
-                              {extractedSpecs.bluray_overall_rating ? (
-                                <>
-                                  <div className="flex">
-                                    {[1,2,3,4,5].map(star => (
-                                      <Star 
-                                        key={star} 
-                                        className={`w-5 h-5 ${star <= extractedSpecs.bluray_overall_rating ? 'text-yellow-400 fill-current' : 'text-slate-300'}`} 
-                                      />
-                                    ))}
-                                  </div>
-                                  <span className="font-bold text-slate-900 text-lg">{extractedSpecs.bluray_overall_rating}/5</span>
-                                </>
-                              ) : (
-                                <span className="text-slate-400 text-sm">Not rated</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Condition */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Condition</label>
-                      <select
-                        value={condition}
-                        onChange={(e) => setCondition(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="New">New</option>
-                        <option value="Like New">Like New</option>
-                        <option value="Good">Good</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Poor">Poor</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Purchase Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        <Calendar className="inline h-4 w-4 mr-1" />
-                        {collectionType === 'wishlist' ? 'Target Date' : 'Purchase Date'}
-                      </label>
-                      <input
-                        type="date"
-                        value={purchaseDate}
-                        onChange={(e) => setPurchaseDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        <DollarSign className="inline h-4 w-4 mr-1" />
-                        {collectionType === 'for_sale' 
-                          ? 'Asking Price' 
-                          : collectionType === 'wishlist' 
-                          ? 'Target Price' 
-                          : 'Purchase Price'
-                        }
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={purchasePrice}
-                        onChange={(e) => setPurchasePrice(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        <MapPin className="inline h-4 w-4 mr-1" />
-                        {collectionType === 'loaned_out' 
-                          ? 'Loaned To' 
-                          : collectionType === 'for_sale' 
-                          ? 'Selling Platform' 
-                          : 'Purchase Location'
-                        }
-                      </label>
-                      <input
-                        type="text"
-                        value={purchaseLocation}
-                        onChange={(e) => setPurchaseLocation(e.target.value)}
-                        placeholder={
-                          collectionType === 'loaned_out' 
-                            ? 'Friend\'s name' 
-                            : collectionType === 'for_sale' 
-                            ? 'eBay, Facebook, etc.' 
-                            : 'Best Buy, Amazon, etc.'
-                        }
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        <Star className="inline h-4 w-4 mr-1" />
-                        Personal Rating
-                      </label>
-                      <select
-                        value={personalRating}
-                        onChange={(e) => setPersonalRating(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">No rating</option>
-                        {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(rating => (
-                          <option key={rating} value={rating}>{rating}/10</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Special edition details, condition notes, etc."
-                      rows={3}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  {/* Add to Library Button */}
-                  <button
-                    onClick={handleAddToLibrary}
-                    disabled={adding}
-                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
-                  >
-                    {adding ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        <span>Adding to Library...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Package className="h-5 w-5" />
-                        <span>Add to Library</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Tech Specs & Ratings Display Component */}
+                  <MediaItemDetailsDisplay
+                    coverUrl={extractedSpecs?.edition_cover_url}
+                    title={selectedMovie.Title}
+                    fallbackPosterUrl={selectedMovie.Poster}
+                    extractedSpecs={extractedSpecs}
+                    extracting={extracting}
+                    showImage={false}
+                  />
                 </div>
               </div>
             )}
-
           </div>
         </div>
+
+        {/* Add to Library Button - OUTSIDE scrollable content, at bottom of modal */}
+        {showDetailsForm && selectedMovie && (
+          <div className="border-t border-slate-200 p-6 flex-shrink-0">
+            <button
+              onClick={handleAddToLibrary}
+              disabled={adding}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center space-x-2"
+            >
+              {adding ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Adding to Library...</span>
+                </>
+              ) : (
+                <>
+                  <Package className="h-5 w-5" />
+                  <span>Add to Library</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add fadeIn animation */}
