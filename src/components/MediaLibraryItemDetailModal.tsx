@@ -151,7 +151,7 @@ export function MediaLibraryItemDetailModal({
         {/* Scrollable Content */}
         <div className="overflow-y-auto flex-1 p-6">
           <div className="space-y-6">
-            {/* Poster Image - Clickable, Smaller */}
+            {/* SECTION 1: Title Poster Image - Clickable */}
             <div className="flex justify-center">
               <div 
                 className="cursor-pointer hover:opacity-90 transition-opacity"
@@ -159,46 +159,65 @@ export function MediaLibraryItemDetailModal({
                 title="View title details"
               >
                 <img
-                  src={item.edition_cover_url || item.poster_url || '/placeholder.png'}
+                  src={item.poster_url || '/placeholder.png'}
                   alt={item.title}
                   className="w-32 h-48 object-cover rounded-lg shadow-md border border-slate-300"
                 />
               </div>
             </div>
 
-            {/* MediaItemFormInputs Component */}
-            <MediaItemFormInputs
-              coverImageUrl={item.edition_cover_url || item.poster_url}
-              showCoverImage={false}
-              collectionType={collectionType as any}
-              format={format}
-              editionName={editionName}
-              condition={condition as any}
-              purchaseDate={purchaseDate}
-              purchasePrice={purchasePrice}
-              purchaseLocation={purchaseLocation}
-              personalRating={personalRating}
-              notes={notes}
-              onCollectionTypeChange={setCollectionType as any}
-              onFormatChange={(f) => setFormat(f as any)}
-              onEditionNameChange={setEditionName}
-              onConditionChange={(c) => setCondition(c as any)}
-              onPurchaseDateChange={setPurchaseDate}
-              onPurchasePriceChange={setPurchasePrice}
-              onPurchaseLocationChange={setPurchaseLocation}
-              onPersonalRatingChange={setPersonalRating}
-              onNotesChange={setNotes}
-            />
+            {/* SECTION 2: Physical Media Details (Same as Step 3 but without title) */}
+            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+              <div className="space-y-6">
+                {/* Top Section: Edition Cover + Form Inputs */}
+                <div className="flex gap-6">
+                  {/* Left: Edition Cover Image */}
+                  <div className="flex-shrink-0">
+                    <img 
+                      src={extractedSpecs?.edition_cover_url || item.edition_cover_url || item.poster_url || '/placeholder.png'} 
+                      alt={`${item.title} edition cover`}
+                      className="w-32 h-48 object-cover rounded-lg shadow-md border border-slate-300"
+                    />
+                  </div>
 
-            {/* MediaItemDetailsDisplay Component */}
-            <MediaItemDetailsDisplay
-              coverUrl={item.edition_cover_url}
-              title={item.title}
-              fallbackPosterUrl={item.poster_url}
-              extractedSpecs={extractedSpecs}
-              extracting={extracting}
-              showImage={false}
-            />
+                  {/* Right: Item Status + Format (from MediaItemFormInputs, inline) */}
+                  <div className="flex-1">
+                    <MediaItemFormInputs
+                      coverImageUrl={extractedSpecs?.edition_cover_url || item.edition_cover_url || item.poster_url}
+                      showCoverImage={false}
+                      collectionType={collectionType as any}
+                      format={format}
+                      editionName={editionName}
+                      condition={condition as any}
+                      purchaseDate={purchaseDate}
+                      purchasePrice={purchasePrice}
+                      purchaseLocation={purchaseLocation}
+                      personalRating={personalRating}
+                      notes={notes}
+                      onCollectionTypeChange={setCollectionType as any}
+                      onFormatChange={(f) => setFormat(f as any)}
+                      onEditionNameChange={setEditionName}
+                      onConditionChange={(c) => setCondition(c as any)}
+                      onPurchaseDateChange={setPurchaseDate}
+                      onPurchasePriceChange={setPurchasePrice}
+                      onPurchaseLocationChange={setPurchaseLocation}
+                      onPersonalRatingChange={setPersonalRating}
+                      onNotesChange={setNotes}
+                    />
+                  </div>
+                </div>
+
+                {/* Tech Specs & Ratings Display */}
+                <MediaItemDetailsDisplay
+                  coverUrl={extractedSpecs?.edition_cover_url || item.edition_cover_url}
+                  title={item.title}
+                  fallbackPosterUrl={item.poster_url}
+                  extractedSpecs={extractedSpecs}
+                  extracting={extracting}
+                  showImage={false}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
