@@ -64,7 +64,7 @@ serve(async (req) => {
     console.log('[FetchBluray] Fetched HTML:', html.length, 'chars')
 
     // Extract data
-    const specs = extractTechSpecs(html)
+    const specs = extractTechSpecs(html, url)
     const ratings = extractRatings(html)
 
     console.log('[FetchBluray] Extracted')
@@ -95,7 +95,7 @@ serve(async (req) => {
   }
 })
 
-function extractTechSpecs(html: string) {
+function extractTechSpecs(html: string, url: string) {
   const specs: any = {}
   
   try {
