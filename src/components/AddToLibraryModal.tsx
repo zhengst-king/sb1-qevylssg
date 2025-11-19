@@ -225,10 +225,50 @@ export function AddToLibraryModal({ isOpen, onClose, onAdd, defaultCollectionTyp
         edition_name: editionName || undefined,
         bluray_com_url: parsedEdition?.url || undefined,
         edition_cover_url: extractedSpecs?.edition_cover_url || undefined
-        // Technical specs will be scraped in background and shown in detail modal
       };
 
+      // Add to physical media library
       await onAdd(libraryItem);
+
+      // Check if movie is already in watchlist
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data: existingMovie } = await supabase
+        .from('movies')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('imdb_id', selectedMovie.imdbID)
+        .single();
+
+      // If not in watchlist, add it with "To Watch" status
+      if (!existingMovie) {
+        console.log('[AddToLibrary] Adding to watchlist with "To Watch" status');
+        
+        const { error: watchlistError } = await supabase
+          .from('movies')
+          .insert([{
+            user_id: user.id,
+            imdb_id: selectedMovie.imdbID,
+            title: selectedMovie.Title,
+            year: parseInt(selectedMovie.Year) || null,
+            genre: selectedMovie.Genre !== 'N/A' ? selectedMovie.Genre : null,
+            director: selectedMovie.Director !== 'N/A' ? selectedMovie.Director : null,
+            poster_url: extractedSpecs?.edition_cover_url || (selectedMovie.Poster !== 'N/A' ? selectedMovie.Poster : null),
+            status: 'To Watch',
+            type: selectedMovie.Type === 'series' ? 'tv' : 'movie'
+          }]);
+
+        if (watchlistError) {
+          console.error('[AddToLibrary] Failed to add to watchlist:', watchlistError);
+          // Don't throw error - library item was added successfully
+        } else {
+          console.log('[AddToLibrary] Successfully added to watchlist');
+        }
+      } else {
+        console.log('[AddToLibrary] Already in watchlist, skipping');
+      }
+
       handleClose();
     } catch (error) {
       console.error('[AddToLibrary] Failed to add to library:', error);
