@@ -2,7 +2,7 @@
 // REFACTORED VERSION - Uses AddToWatchlistButton component
 
 import React, { useEffect, useState } from 'react';
-import { X, Film, Calendar, Star, Layers, Check } from 'lucide-react';
+import { X, Film, Calendar, Star, Layers, Check, ExternalLink } from 'lucide-react';
 import { tmdbService, TMDBCollection, TMDBCollectionPart } from '../lib/tmdb';
 import { useMovies } from '../hooks/useMovies';
 import { Movie } from '../lib/supabase';
@@ -35,12 +35,49 @@ export function CollectionDetailModal({
   const [loading, setLoading] = useState(true);
   const { movies, refetch } = useMovies('movie'); // ✅ REMOVED: addMovie (no longer needed)
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
+  const [movieDetailsOpen, setMovieDetailsOpen] = useState(false); // ✅ NEW: Track movie details modal state
   
   // Custom Collections state
   const { collections: customCollections } = useCustomCollections();
   const [showCollectionSelector, setShowCollectionSelector] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
   const [addingToCollections, setAddingToCollections] = useState(false);
+
+  // ✅ NEW: Handle ESC key to close modal (but not if movie details is open)
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showCollectionSelector) {
+        if (movieDetailsOpen) {
+          // First ESC press: Mark movie details as closing, don't close collection modal
+          setMovieDetailsOpen(false);
+        } else {
+          // Second ESC press (or first if no movie details): Close collection modal
+          onClose();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [isOpen, movieDetailsOpen, showCollectionSelector, onClose]);
+
+  // ✅ NEW: Listen for clicks to detect when movie details modal might be closed
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      // If user clicks anywhere and movie details was open, assume it might be closed
+      if (movieDetailsOpen) {
+        // Small delay to allow the click to register and potentially close the modal
+        setTimeout(() => setMovieDetailsOpen(false), 100);
+      }
+    };
+
+    if (isOpen && movieDetailsOpen) {
+      document.addEventListener('click', handleDocumentClick);
+      return () => document.removeEventListener('click', handleDocumentClick);
+    }
+  }, [isOpen, movieDetailsOpen]);
 
   useEffect(() => {
     if (isOpen && collectionId) {
@@ -128,6 +165,7 @@ export function CollectionDetailModal({
 
       if (dbMovie) {
         console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
+        setMovieDetailsOpen(true); // ✅ Track that movie details modal is opening
         onMovieDetailsClick(dbMovie);
       } else {
         console.log('[CollectionDetailModal] No movie found in database');
@@ -239,12 +277,25 @@ export function CollectionDetailModal({
     }
   };
 
+  // Handle background click to close
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
-      <div className="min-h-screen px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-6xl mx-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto"
+      onClick={handleBackgroundClick}
+    >
+      <div className="min-h-screen px-4 py-8" onClick={handleBackgroundClick}>
+        <div 
+          className="bg-white rounded-2xl shadow-2xl max-w-6xl mx-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl z-10">
             <div className="flex items-center justify-between">
@@ -252,9 +303,21 @@ export function CollectionDetailModal({
                 <Layers className="h-6 w-6 text-purple-600" />
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">{collectionName}</h2>
-                  <p className="text-sm text-slate-500">
-                    {collection?.parts?.length || 0} movies
-                  </p>
+                  <div className="flex items-center space-x-3">
+                    <p className="text-sm text-slate-500">
+                      {collection?.parts?.length || 0} movies
+                    </p>
+                    <a
+                      href={`https://www.themoviedb.org/collection/${collectionId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>View on TMDB</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
                 </div>
               </div>
               <button
