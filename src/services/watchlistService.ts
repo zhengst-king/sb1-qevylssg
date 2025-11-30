@@ -315,6 +315,29 @@ export const watchlistService = {
       }
 
       console.log('[watchlistService] Successfully added from TMDB:', insertedMovie.title);
+      
+      // ✅ Automatically queue episode discovery for TV series
+      if (insertedMovie.media_type === 'series' && insertedMovie.imdb_id) {
+        console.log('[watchlistService] 📺 Queueing episode discovery for:', insertedMovie.title);
+        
+        try {
+          // Dynamic import to avoid circular dependency
+          const { serverSideEpisodeService } = await import('../services/serverSideEpisodeService');
+          
+          await serverSideEpisodeService.addSeriesToQueue(
+            insertedMovie.imdb_id,
+            insertedMovie.title,
+            'low' // Use low priority for automatic background discovery
+          );
+          
+          console.log('[watchlistService] ✅ Episode discovery queued successfully');
+        } catch (discoveryError) {
+          // Don't fail the entire operation if episode discovery fails
+          console.error('[watchlistService] ⚠️ Failed to queue episode discovery:', discoveryError);
+          // User can still manually trigger discovery later via "View Episodes"
+        }
+      }
+      
       return insertedMovie;
 
     } catch (error) {
