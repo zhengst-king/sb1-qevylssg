@@ -35,7 +35,6 @@ export function CollectionDetailModal({
   const [loading, setLoading] = useState(true);
   const { movies, refetch } = useMovies('movie'); // ✅ REMOVED: addMovie (no longer needed)
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<Set<number>>(new Set());
-  const [movieDetailsOpen, setMovieDetailsOpen] = useState(false); // ✅ NEW: Track movie details modal state
   
   // Custom Collections state
   const { collections: customCollections } = useCustomCollections();
@@ -43,15 +42,13 @@ export function CollectionDetailModal({
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
   const [addingToCollections, setAddingToCollections] = useState(false);
 
-  // ✅ NEW: Handle ESC key to close modal (but not if movie details is open)
+  // Handle ESC key - only close if no child modals are open
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !showCollectionSelector) {
-        if (movieDetailsOpen) {
-          // First ESC press: Mark movie details as closing, don't close collection modal
-          setMovieDetailsOpen(false);
-        } else {
-          // Second ESC press (or first if no movie details): Close collection modal
+        // Check if movie details modal is open by checking DOM
+        const movieDetailsModal = document.querySelector('[data-modal="movie-details"]');
+        if (!movieDetailsModal) {
           onClose();
         }
       }
@@ -61,23 +58,7 @@ export function CollectionDetailModal({
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
-  }, [isOpen, movieDetailsOpen, showCollectionSelector, onClose]);
-
-  // ✅ NEW: Listen for clicks to detect when movie details modal might be closed
-  useEffect(() => {
-    const handleDocumentClick = () => {
-      // If user clicks anywhere and movie details was open, assume it might be closed
-      if (movieDetailsOpen) {
-        // Small delay to allow the click to register and potentially close the modal
-        setTimeout(() => setMovieDetailsOpen(false), 100);
-      }
-    };
-
-    if (isOpen && movieDetailsOpen) {
-      document.addEventListener('click', handleDocumentClick);
-      return () => document.removeEventListener('click', handleDocumentClick);
-    }
-  }, [isOpen, movieDetailsOpen]);
+  }, [isOpen, showCollectionSelector, onClose]);
 
   useEffect(() => {
     if (isOpen && collectionId) {
@@ -165,7 +146,6 @@ export function CollectionDetailModal({
 
       if (dbMovie) {
         console.log('[CollectionDetailModal] Opening movie details modal for:', dbMovie.title);
-        setMovieDetailsOpen(true); // ✅ Track that movie details modal is opening
         onMovieDetailsClick(dbMovie);
       } else {
         console.log('[CollectionDetailModal] No movie found in database');
