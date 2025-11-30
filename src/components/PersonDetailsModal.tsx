@@ -9,6 +9,7 @@ import { omdbEnrichmentService } from '../services/omdbEnrichmentService';
 import { omdbApi } from '../lib/omdb';
 import { useMovies } from '../hooks/useMovies';
 import { buildMovieFromOMDb, buildSeriesFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder';
+import { AddToWatchlistButton } from './AddToWatchlistButton';
 
 interface PersonDetailsModalProps {
   tmdbPersonId: number;
@@ -507,9 +508,7 @@ interface CreditCardProps {
 }
 
 function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatchlistUpdate, onOpenMovieDetails, onOpenSeriesDetails }: CreditCardProps) {
-  const [isAdding, setIsAdding] = useState(false);
-  const { addMovie: addMovieToWatchlist } = useMovies();
-  
+
   const posterUrl = credit.poster_path
     ? tmdbService.getImageUrl(credit.poster_path, 'w342')
     : null;
@@ -519,96 +518,6 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
   const displayYear = year ? new Date(year).getFullYear() : '';
   const rating = credit.vote_average ? credit.vote_average.toFixed(1) : null;
   const mediaType = credit.media_type === 'tv' ? 'series' : 'movie';
-
-  const handleToggleWatchlist = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (isAdding) return;
-    
-    setIsAdding(true);
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert('Please sign in to add titles to your watchlist.');
-        return;
-      }
-
-      if (isInWatchlist) {
-        // Remove from watchlist
-        const { error } = await supabase
-          .from('movies')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('title', title)
-          .eq('media_type', mediaType);
-
-        if (error) throw error;
-      } else {
-        // ✅ REFACTORED - Use centralized builder for both movies and series
-        console.log('[PersonDetailsModal] Adding to watchlist:', title, 'Type:', mediaType);
-        
-        // Get IMDb ID from TMDB
-        const imdbId = await getIMDbIdFromTMDB(credit.id, credit.media_type === 'tv' ? 'tv' : 'movie');
-        
-        // Fetch OMDb enrichment (if IMDb ID available)
-        let omdbDetails = null;
-        if (imdbId) {
-          try {
-            console.log('[PersonDetailsModal] Fetching OMDb data for:', title, imdbId);
-            omdbDetails = await omdbApi.getMovieDetails(imdbId);
-          } catch (omdbError) {
-            console.error('[PersonDetailsModal] OMDb fetch failed:', omdbError);
-            // Continue without OMDb data
-          }
-        }
-        
-        // ✅ USE CENTRALIZED BUILDER - choose based on media type
-        const itemData = mediaType === 'series' 
-          ? buildSeriesFromOMDb(
-              {
-                title: title,
-                year: displayYear || undefined,
-                imdb_id: imdbId || `tmdb_${credit.id}`,
-                tmdb_id: credit.id, // ✅ Include TMDB ID
-                poster_url: posterUrl || undefined,
-                plot: undefined,
-                imdb_score: credit.vote_average,
-                status: 'To Watch'
-              },
-              omdbDetails
-            )
-          : buildMovieFromOMDb(
-              {
-                title: title,
-                year: displayYear || undefined,
-                imdb_id: imdbId || `tmdb_${credit.id}`,
-                tmdb_id: credit.id, // ✅ Include TMDB ID
-                poster_url: posterUrl || undefined,
-                plot: undefined,
-                imdb_score: credit.vote_average,
-                media_type: 'movie',
-                status: 'To Watch'
-              },
-              omdbDetails
-            );
-
-        // ✅ USE HOOK FOR INSERT
-        await addMovieToWatchlist(itemData);
-
-        console.log('[PersonDetailsModal] ✅ Item added with complete data');
-      }
-      
-      // Refresh watchlist
-      onWatchlistUpdate();
-    } catch (error) {
-      console.error('Error toggling watchlist:', error);
-      alert('Failed to update watchlist. Please try again.');
-    } finally {
-      setIsAdding(false);
-    }
-  };
 
   const handleCardClick = async (e: React.MouseEvent) => {
     if (isInWatchlist) {
@@ -702,28 +611,24 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
             )}
 
             {/* Watchlist Button */}
-            <button
-              onClick={handleToggleWatchlist}
-              disabled={isAdding}
-              className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
-                isInWatchlist 
-                  ? 'bg-red-500 hover:bg-red-600' 
-                  : 'bg-white/90 hover:bg-white'
-              }`}
-              title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
-            >
-              {isAdding ? (
-                <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <X
-                  className={`h-4 w-4 transition-all ${
-                    isInWatchlist 
-                      ? 'text-white rotate-0' 
-                      : 'text-slate-600 hover:text-purple-500 rotate-45'
-                  }`}
-                />
-              )}
-            </button>
+            <div className="absolute top-2 right-2 z-10">
+              <AddToWatchlistButton
+                tmdbId={credit.id}
+                title={title}
+                mediaType={credit.media_type === 'tv' ? 'tv' : 'movie'}
+                year={displayYear || undefined}
+                posterPath={credit.poster_path}
+                voteAverage={credit.vote_average}
+                releaseDate={credit.release_date}
+                firstAirDate={credit.first_air_date}
+                variant="card-overlay"
+                iconSize="md"
+                isInWatchlist={true}
+                onWatchlistChange={() => {
+                  onWatchlistUpdate();
+                }}
+              />
+            </div>
 
             {/* Rating Badge */}
             {rating && parseFloat(rating) > 0 && (
@@ -788,28 +693,24 @@ function CreditCard({ credit, personType, showJob = false, isInWatchlist, onWatc
           )}
 
           {/* Watchlist Button */}
-          <button
-            onClick={handleToggleWatchlist}
-            disabled={isAdding}
-            className={`absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all ${
-              isInWatchlist 
-                ? 'bg-red-500 hover:bg-red-600' 
-                : 'bg-white/90 hover:bg-white'
-            }`}
-            title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
-          >
-            {isAdding ? (
-              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <X
-                className={`h-4 w-4 transition-all ${
-                  isInWatchlist 
-                    ? 'text-white rotate-0' 
-                    : 'text-slate-600 hover:text-purple-500 rotate-45'
-                }`}
-              />
-            )}
-          </button>
+          <div className="absolute top-2 right-2 z-10">
+            <AddToWatchlistButton
+              tmdbId={credit.id}
+              title={title}
+              mediaType={credit.media_type === 'tv' ? 'tv' : 'movie'}
+              year={displayYear || undefined}
+              posterPath={credit.poster_path}
+              voteAverage={credit.vote_average}
+              releaseDate={credit.release_date}
+              firstAirDate={credit.first_air_date}
+              variant="card-overlay"
+              iconSize="md"
+              isInWatchlist={false}
+              onWatchlistChange={() => {
+                onWatchlistUpdate();
+              }}
+            />
+          </div>
 
           {/* Rating Badge */}
           {rating && parseFloat(rating) > 0 && (
