@@ -10,6 +10,7 @@ import { Movie } from '../lib/supabase';
 import { omdbApi } from '../lib/omdb';
 import { useMovies } from '../hooks/useMovies'; // ✅ ADD
 import { buildMovieFromOMDb, getIMDbIdFromTMDB } from '../utils/movieDataBuilder'; // ✅ ADD
+import { AddToWatchlistButton } from './AddToWatchlistButton';
 
 interface MovieRecommendationsProps {
   recommendations?: TMDBMovieRecommendationsResponse;
@@ -160,8 +161,6 @@ interface RecommendationCardProps {
 }
 
 function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDetailsClick, onMovieAddedToWatchlist }: RecommendationCardProps) {
-  const [isAdding, setIsAdding] = useState(false);
-  const { addMovie } = useMovies('movie');
 
   const posterUrl = item.poster_path 
     ? tmdbService.getImageUrl(item.poster_path, 'w342')
@@ -171,91 +170,6 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
   const year = item.release_date ? new Date(item.release_date).getFullYear() : '';
   const rating = item.vote_average ? item.vote_average.toFixed(1) : null;
   const title = item.title;
-
-  // ✅ REFACTORED - Use centralized utility
-  const handleToggleWatchlist = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (isAdding) return;
-    
-    setIsAdding(true);
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert('Please sign in to add titles to your watchlist.');
-        return;
-      }
-
-      if (isInWatchlist) {
-        // Remove from watchlist
-        const { error } = await supabase
-          .from('movies')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('title', title)
-          .eq('media_type', 'movie');
-
-        if (error) throw error;
-      } else {
-        // ✅ REFACTORED - Use centralized builder
-        console.log('[MovieRecommendations] Adding to watchlist:', title);
-        
-        // Get IMDb ID from TMDB
-        const imdbId = await getIMDbIdFromTMDB(item.id, 'movie');
-        
-        // Fetch OMDb enrichment (if IMDb ID available)
-        let omdbDetails = null;
-        if (imdbId) {
-          try {
-            console.log('[MovieRecommendations] Fetching OMDb data for:', title, imdbId);
-            omdbDetails = await omdbApi.getMovieDetails(imdbId);
-          } catch (omdbError) {
-            console.error('[MovieRecommendations] OMDb fetch failed:', omdbError);
-            // Continue without OMDb data
-          }
-        }
-        
-        // ✅ USE CENTRALIZED BUILDER
-        const movieData = buildMovieFromOMDb(
-          {
-            title: title,
-            year: year || undefined,
-            imdb_id: imdbId || `tmdb_${item.id}`,
-            tmdb_id: item.id,
-            poster_url: posterUrl || undefined,
-            plot: item.overview,
-            imdb_score: item.vote_average,
-            media_type: 'movie',
-            status: 'To Watch'
-          },
-          omdbDetails
-        );
-
-        // ✅ USE HOOK FOR INSERT
-        await addMovie(movieData);
-
-        if (onMovieAddedToWatchlist) {
-          onMovieAddedToWatchlist();
-        }
-
-        console.log('[MovieRecommendations] ✅ Movie added with complete data');
-
-        if (onMovieAddedToWatchlist) {
-          onMovieAddedToWatchlist();
-        }
-      }
-      
-      // Refresh watchlist
-      await onWatchlistUpdate();
-    } catch (error) {
-      console.error('Error toggling watchlist:', error);
-      alert('Failed to update watchlist. Please try again.');
-    } finally {
-      setIsAdding(false);
-    }
-  };
 
   const handleCardClick = async (e: React.MouseEvent) => {
     if (isInWatchlist && onMovieDetailsClick) {
@@ -322,18 +236,27 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
             )}
 
             {/* Watchlist Button */}
-            <button
-              onClick={handleToggleWatchlist}
-              disabled={isAdding}
-              className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-red-500 hover:bg-red-600"
-              title="Remove from watchlist"
-            >
-              {isAdding ? (
-                <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <X className="h-4 w-4 transition-all text-white rotate-0" />
-              )}
-            </button>
+            <div className="absolute top-2 right-2 z-10">
+              <AddToWatchlistButton
+                tmdbId={item.id}
+                title={title}
+                mediaType="movie"
+                year={year || undefined}
+                posterPath={item.poster_path}
+                overview={item.overview}
+                voteAverage={item.vote_average}
+                releaseDate={item.release_date}
+                variant="card-overlay"
+                iconSize="md"
+                isInWatchlist={true}
+                onWatchlistChange={() => {
+                  onWatchlistUpdate();
+                  if (onMovieAddedToWatchlist) {
+                    onMovieAddedToWatchlist();
+                  }
+                }}
+              />
+            </div>
 
             {/* Rating Badge */}
             {rating && parseFloat(rating) > 0 && (
@@ -384,18 +307,27 @@ function RecommendationCard({ item, isInWatchlist, onWatchlistUpdate, onMovieDet
           )}
 
           {/* Watchlist Button */}
-          <button
-            onClick={handleToggleWatchlist}
-            disabled={isAdding}
-            className="absolute top-2 right-2 z-10 p-1.5 backdrop-blur-sm rounded-full shadow-md transition-all bg-white/90 hover:bg-white"
-            title="Add to watchlist"
-          >
-            {isAdding ? (
-              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <X className="h-4 w-4 transition-all text-slate-600 hover:text-purple-500 rotate-45" />
-            )}
-          </button>
+          <div className="absolute top-2 right-2 z-10">
+            <AddToWatchlistButton
+              tmdbId={item.id}
+              title={title}
+              mediaType="movie"
+              year={year || undefined}
+              posterPath={item.poster_path}
+              overview={item.overview}
+              voteAverage={item.vote_average}
+              releaseDate={item.release_date}
+              variant="card-overlay"
+              iconSize="md"
+              isInWatchlist={false}
+              onWatchlistChange={() => {
+                onWatchlistUpdate();
+                if (onMovieAddedToWatchlist) {
+                  onMovieAddedToWatchlist();
+                }
+              }}
+            />
+          </div>
 
           {/* Rating Badge */}
           {rating && parseFloat(rating) > 0 && (
