@@ -282,7 +282,9 @@ export function CollectionDetailModal({
               <div className="flex items-center space-x-3">
                 <Layers className="h-6 w-6 text-purple-600" />
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">{collectionName}</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    {collection?.name || collectionName}
+                  </h2>
                   <div className="flex items-center space-x-3">
                     <p className="text-sm text-slate-500">
                       {collection?.parts?.length || 0} movies
