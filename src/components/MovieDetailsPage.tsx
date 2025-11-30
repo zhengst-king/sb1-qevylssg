@@ -481,7 +481,7 @@ export function MovieDetailsPage({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div data-modal="movie-details" className="flex flex-col h-full bg-white">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 flex-shrink-0">
         <div className="max-w-6xl mx-auto px-4 py-4">
