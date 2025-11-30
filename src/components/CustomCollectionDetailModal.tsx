@@ -6,6 +6,7 @@ import { Movie } from '../lib/supabase';
 import { tmdbService } from '../lib/tmdb';
 import { supabase } from '../lib/supabase';
 import type { CustomCollection } from '../types/customCollections';
+import { AddToWatchlistButton } from './AddToWatchlistButton';
 
 interface CustomCollectionDetailModalProps {
   isOpen: boolean;
@@ -206,90 +207,24 @@ export function CustomCollectionDetailModal({
                             </div>
                           )}
 
-                          {/* Upper Right: Remove from Watchlist Button (X) - Only show if in watchlist */}
-                          {isInWatchlist && (
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (window.confirm(`Remove "${item.title}" from your watchlist?\n\nNote: This will keep it in custom collections as a TMDB reference.`)) {
-                                  try {
-                                    const { data: { user } } = await supabase.auth.getUser();
-                                    if (!user) return;
-
-                                    // First, convert all collection references to TMDB references
-                                    const { data: collectionItems, error: fetchError } = await supabase
-                                      .from('collection_items_custom_collections')
-                                      .select('id, custom_collection_id')
-                                      .eq('collection_item_id', item.id);
-
-                                    if (fetchError) {
-                                      console.error('Error fetching collection items:', fetchError);
-                                      alert('Failed to update collections. Please try again.');
-                                      return;
-                                    }
-
-                                    // Update each collection item to use tmdb_id instead
-                                    if (collectionItems && collectionItems.length > 0 && item.tmdb_id) {
-                                      const updatePromises = collectionItems.map(ci => 
-                                        supabase
-                                          .from('collection_items_custom_collections')
-                                          .update({
-                                            collection_item_id: null,
-                                            tmdb_id: item.tmdb_id
-                                          })
-                                          .eq('id', ci.id)
-                                      );
-
-                                      const results = await Promise.all(updatePromises);
-                                      const failed = results.find(r => r.error);
-                                      
-                                      if (failed) {
-                                        console.error('Error updating collection items:', failed.error);
-                                        alert('Failed to update some collections. Please try again.');
-                                        return;
-                                      }
-                                    }
-
-                                    // Now delete from watchlist
-                                    const { error } = await supabase
-                                      .from('movies')
-                                      .delete()
-                                      .eq('id', item.id)
-                                      .eq('user_id', user.id);
-
-                                    if (error) {
-                                      console.error('Error removing from watchlist:', error);
-                                      alert('Failed to remove from watchlist.');
-                                    } else {
-                                      // Refresh the collection items
-                                      await fetchCollectionItems();
-                                    }
-                                  } catch (error) {
-                                    console.error('Error:', error);
-                                    alert('An error occurred.');
-                                  }
-                                }
+                          {/* Upper Right: Add/Remove Watchlist Button */}
+                          <div className="absolute top-2 right-2 z-10">
+                            <AddToWatchlistButton
+                              tmdbId={item.tmdb_id!}
+                              title={item.title}
+                              mediaType={item.media_type === 'tv' ? 'tv' : 'movie'}
+                              year={item.year || undefined}
+                              posterPath={item.poster_url ? item.poster_url.replace('https://image.tmdb.org/t/p/w342', '') : null}
+                              overview={item.plot || undefined}
+                              voteAverage={item.imdb_score || undefined}
+                              variant="card-overlay"
+                              iconSize="md"
+                              isInWatchlist={isInWatchlist}
+                              onWatchlistChange={async () => {
+                                await fetchCollectionItems();
                               }}
-                              className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 rounded-full shadow-md transition-colors z-10"
-                              title="Remove from watchlist"
-                            >
-                              <X className="h-4 w-4 text-white" />
-                            </button>
-                          )}
-
-                          {/* Upper Right: Add to Watchlist Button (+) - Only show if NOT in watchlist */}
-                          {!isInWatchlist && tmdbUrl && (
-                            <a
-                              href={tmdbUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors z-10"
-                              title="View on TMDB"
-                            >
-                              <Plus className="h-4 w-4 text-slate-600 hover:text-purple-500" />
-                            </a>
-                          )}
+                            />
+                          </div>
 
                           {/* Lower Left: Remove from Collection Button (Trash) */}
                           <button
