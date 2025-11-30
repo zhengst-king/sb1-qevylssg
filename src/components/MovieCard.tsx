@@ -89,7 +89,7 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
                   const tmdbId = await getTMDBIdFromIMDb(movie.imdbID, movie.Type === 'series' ? 'tv' : 'movie');
                   
                   // Use watchlistService to add
-                  await watchlistService.addToWatchlist({
+                  const insertedMovie = await watchlistService.addToWatchlist({
                     title: movie.Title,
                     year: movie.Year !== 'N/A' ? parseInt(movie.Year) : undefined,
                     imdb_id: movie.imdbID,
@@ -100,6 +100,23 @@ export function MovieCard({ movie, posterUrl, imdbUrl, onMovieAdded }: MovieCard
                     media_type: movie.Type === 'series' ? 'series' : 'movie',
                     status: 'To Watch'
                   });
+                  
+                  // ✅ Trigger episode discovery for TV series
+                  if (insertedMovie && insertedMovie.media_type === 'series' && insertedMovie.imdb_id) {
+                    console.log('[MovieCard] 📺 Queueing episode discovery for:', insertedMovie.title);
+                    
+                    try {
+                      const { serverSideEpisodeService } = await import('../services/serverSideEpisodeService');
+                      await serverSideEpisodeService.addSeriesToQueue(
+                        insertedMovie.imdb_id,
+                        insertedMovie.title,
+                        'low'
+                      );
+                      console.log('[MovieCard] ✅ Episode discovery queued successfully');
+                    } catch (discoveryError) {
+                      console.error('[MovieCard] ⚠️ Failed to queue episode discovery:', discoveryError);
+                    }
+                  }
                   
                   setIsInWatchlist(true);
                   if (onMovieAdded) {
