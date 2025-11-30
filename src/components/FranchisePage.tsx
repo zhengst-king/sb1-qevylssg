@@ -11,6 +11,7 @@ import { Movie } from '../lib/supabase';
 import { useCustomCollections } from '../hooks/useCustomCollections';
 import type { CustomCollection } from '../types/customCollections';
 import { CustomCollectionDetailModal } from './CustomCollectionDetailModal';
+import { customCollectionsService } from '../services/customCollectionsService';
 
 type CollectionTab = 'tmdb' | 'custom';
 
